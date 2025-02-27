@@ -19,5 +19,7 @@ namespace KHRMS.Services.Request
         public long EmployeeCode { get; set; }
 
         public List<long>? RoleIds { get; set; }
+
+        public string? ShiftId { get; set; }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using KHRMS.Infrastructure;
 using KHRMS.Services.Interfaces;
+using KHRMS.Services.Request;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
 
@@ -14,9 +15,9 @@ namespace KHRMS
         [HttpPost]
         [Route("Login")]
 
-        public async Task<IActionResult> Login(string email , string password)
+        public async Task<IActionResult> Login([FromBody] UserLogin model)
         {
-            var isuserLoginAdded = await _userLoginService.GetUserLoginById(email , password);
+            var isuserLoginAdded = await _userLoginService.GetUserLoginById(model.Email,model.Password);
             if (isuserLoginAdded)
             {
                 var response = new ApiResponse<bool>

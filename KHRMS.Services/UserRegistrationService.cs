@@ -1,4 +1,6 @@
 ﻿using KHRMS.Core;
+using Microsoft.AspNetCore.Identity;
+
 
 namespace KHRMS.Services
 {
@@ -12,6 +14,8 @@ namespace KHRMS.Services
             if (userRegistration != null)
             {
                 userRegistration.CreatedDate = DateTime.Now;
+                var passwordHasher = new PasswordHasher<UserRegistration>();
+                userRegistration.Password = passwordHasher.HashPassword(userRegistration,userRegistration.Password);
                 await _unitOfWork.UserRegistrations.Add(userRegistration);
                 var result = _unitOfWork.Save();
 

@@ -25,7 +25,8 @@ namespace KHRMS.Services
                 CurrentAddress = employeeRequestModel.CurrentAddress,
                 PermanentAddress = employeeRequestModel.PermanentAddress,
                 IsActive = employeeRequestModel.IsActive,
-                CreatedDate = DateTime.Now
+                CreatedDate = DateTime.Now,
+                ShiftIds = employeeRequestModel.ShiftId,
             };
             await _unitOfWork.Employees.Add(newEmployee);
             var result = _unitOfWork.Save();
@@ -89,6 +90,7 @@ namespace KHRMS.Services
                 PermanentAddress = emp.PermanentAddress,
                 IsActive = emp.IsActive,
                 CreatedDate = emp.CreatedDate,
+                ShiftId = emp.ShiftIds,
                 RoleIds = employeeroleMapping
         .Where(mapping => mapping.EmployeeId == emp.Id && mapping.IsActive)
         .Select(mapping => mapping.RoleId)
@@ -134,6 +136,7 @@ namespace KHRMS.Services
             employeeDetails.PermanentAddress = employeeRequestModel.PermanentAddress;
             employeeDetails.IsActive = employeeRequestModel.IsActive;
             employeeDetails.UpdatedDate = DateTime.Now;
+            employeeDetails.ShiftIds = employeeRequestModel.ShiftId;
             _unitOfWork.Employees.Update(employeeDetails);
             var saveEmployeeResult = _unitOfWork.Save();
 
