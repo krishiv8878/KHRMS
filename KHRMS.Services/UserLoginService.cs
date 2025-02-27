@@ -1,5 +1,6 @@
 ﻿using KHRMS.Core;
 using KHRMS.Services.Interfaces;
+using Microsoft.AspNetCore.Identity;
 
 namespace KHRMS.Services
 {
@@ -9,10 +10,14 @@ namespace KHRMS.Services
         public async Task<bool> GetUserLoginById(string email, string password)
         {
             var allUsers = await _unitOfWork.UserLogins.GetAll();
-            var matchedUsers = allUsers.Where(x => x.Email.Equals(email) && x.Password.Equals(password) && x.IsDeleted == false && x.IsActive);
-            if (matchedUsers.Any())
+            var matchedUser = allUsers.FirstOrDefault(x => x.Email == email && !x.IsDeleted && x.IsActive);
+            if (matchedUser != null)
             {
-                return true;
+                var passwordHasher = new PasswordHasher<UserLogin>();
+                var verificationResult = passwordHasher.VerifyHashedPassword(matchedUser, matchedUser.Password, password);
+                Console.WriteLine(verificationResult);
+
+                return verificationResult == PasswordVerificationResult.Success;
             }
             else
             {
