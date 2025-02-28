@@ -8,6 +8,8 @@ namespace KHRMS
 {
     [Route("api/[controller]")]
     [ApiController]
+
+
     public class CandidateController(ICandidateService candidateService) : ControllerBase
     {
         public readonly ICandidateService _candidateService = candidateService;

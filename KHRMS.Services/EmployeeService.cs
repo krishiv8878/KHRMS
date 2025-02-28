@@ -137,6 +137,7 @@ namespace KHRMS.Services
             employeeDetails.IsActive = employeeRequestModel.IsActive;
             employeeDetails.UpdatedDate = DateTime.Now;
             employeeDetails.ShiftIds = employeeRequestModel.ShiftId;
+
             _unitOfWork.Employees.Update(employeeDetails);
             var saveEmployeeResult = _unitOfWork.Save();
 
@@ -171,6 +172,7 @@ namespace KHRMS.Services
                     });
                 }
             }
+
             var saveRoleMappingsResult = _unitOfWork.Save();
             return saveEmployeeResult > 0 && saveRoleMappingsResult > 0;
         }

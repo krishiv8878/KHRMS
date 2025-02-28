@@ -71,10 +71,7 @@ namespace KHRMS.Infrastructure
             AttendanceRequests = attendanceRequestRepository;
             EmployeeAttendance = employeeAttendanceRepository;
             EmployeePaymentInfo = employeePaymentInfo;
-            EmployeementDocument = employeementDocument;
-            
-
-
+            EmployeementDocument = employeementDocument;            
             ShiftRepository = shiftRepository;
             
         }

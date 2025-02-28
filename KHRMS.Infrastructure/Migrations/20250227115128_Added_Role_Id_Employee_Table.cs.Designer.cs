@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace KHRMS.Infrastructure.Migrations
 {
     [DbContext(typeof(KHRMSContextClass))]
-    [Migration("20250220065918_Add_ShiftIds_Column_To_Employee_Table")]
-    partial class Add_ShiftIds_Column_To_Employee_Table
+    [Migration("20250227115128_Added_Role_Id_Employee_Table.cs")]
+    partial class Added_Role_Id_Employee_Tablecs
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -301,6 +301,9 @@ namespace KHRMS.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("RoleIds")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("ShiftIds")
                         .HasColumnType("nvarchar(max)");

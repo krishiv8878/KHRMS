@@ -6,24 +6,25 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace KHRMS.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class Add_ShiftIds_Column_To_Employee_Table : Migration
+    public partial class Added_Employee_Table : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(
-                name: "ShiftIds",
+            migrationBuilder.AddColumn<long>(
+                name: "ShiftId",
                 table: "Employees",
-                type: "nvarchar(max)",
-                nullable: true);
+                type: "bigint",
+                nullable: false,
+                defaultValue: 0L);
 
             migrationBuilder.CreateTable(
-                name: "ShiftMasters",
+                name: "shiftMasters",
                 columns: table => new
                 {
                     Id = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    ShiftName = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    ShiftName = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     StartTime = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     EndTime = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     IsActive = table.Column<bool>(type: "bit", nullable: false),
@@ -35,7 +36,7 @@ namespace KHRMS.Infrastructure.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_ShiftMasters", x => x.Id);
+                    table.PrimaryKey("PK_shiftMasters", x => x.Id);
                 });
         }
 
@@ -43,10 +44,10 @@ namespace KHRMS.Infrastructure.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "ShiftMasters");
+                name: "shiftMasters");
 
             migrationBuilder.DropColumn(
-                name: "ShiftIds",
+                name: "ShiftId",
                 table: "Employees");
         }
     }

@@ -4,6 +4,7 @@ using KHRMS.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace KHRMS.Infrastructure.Migrations
 {
     [DbContext(typeof(KHRMSContextClass))]
-    partial class KHRMSContextClassModelSnapshot : ModelSnapshot
+    [Migration("20250218112520_Added_New_Table_Shift_Master")]
+    partial class Added_New_Table_Shift_Master
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -299,11 +302,8 @@ namespace KHRMS.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<string>("RoleIds")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ShiftIds")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<long>("ShiftId")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("UpdatedBy")
                         .HasColumnType("int");
@@ -357,50 +357,6 @@ namespace KHRMS.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("EmployeeAttendance");
-                });
-
-            modelBuilder.Entity("KHRMS.Core.EmployeeDocumentInfo", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
-
-                    b.Property<int>("CreatedBy")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("CreatedDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<long>("EmployeeId")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("FilePath")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<int>("UpdatedBy")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("UpdatedDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<long>("UploadedBy")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTime?>("UploadedDate")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("EmployeeDocuments");
                 });
 
             modelBuilder.Entity("KHRMS.Core.EmployeePaymentInfo", b =>
@@ -694,7 +650,6 @@ namespace KHRMS.Infrastructure.Migrations
                         .HasColumnType("bit");
 
                     b.Property<string>("ShiftName")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("StartTime")
@@ -708,7 +663,7 @@ namespace KHRMS.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("ShiftMasters");
+                    b.ToTable("shiftMasters");
                 });
 
             modelBuilder.Entity("KHRMS.Core.Skill", b =>
