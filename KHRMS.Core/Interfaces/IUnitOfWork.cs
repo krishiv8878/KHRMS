@@ -17,13 +17,7 @@
         IRoleMasterRepository RoleMaster { get; }
 
         IAttendanceRequestRepository AttendanceRequests { get; }
-        IEmployeeAttendanceRepository EmployeeAttendance { get; }
-
-        IEmployeePaymentInfoRepository EmployeePaymentInfo { get; }
-        IEmployeeDocumentRepository  EmployeementDocument { get; }
-
-        IShiftRepository ShiftRepository { get; }
-
+        IDocumentMasterRepository DocumentMasters { get; }
 
         int Save();
     }

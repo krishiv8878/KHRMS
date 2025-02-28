@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("KHRMS.Core")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a71b5ea453fa93770c9ba2342922380d9a3b5aac")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
 [assembly: System.Reflection.AssemblyProductAttribute("KHRMS.Core")]
 [assembly: System.Reflection.AssemblyTitleAttribute("KHRMS.Core")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
