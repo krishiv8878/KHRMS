@@ -63,25 +63,29 @@ namespace KHRMS.Services
             return null;
         }
 
+       
+
+
         public async Task<bool> UpdateSkill(Skill skill)
         {
-           if(skill != null)
+            if (skill != null)
             {
                 var skillDetails = await _unitOfWork.Skills.GetById(skill.Id);
-                if(skillDetails != null)
+                if (skillDetails != null)
                 {
                     skillDetails.SkillName = skill.SkillName;
                     skillDetails.UpdatedDate = DateTime.Now;
 
+                    // Toggle IsActive state if it exists
+                    skillDetails.IsActive = skill.IsActive;
+
                     _unitOfWork.Skills.Update(skillDetails);
-                    var result = _unitOfWork.Save();
-                    if (result > 0)
-                        return true;
-                    else
-                        return false;
+                    var result =  _unitOfWork.Save(); // Ensure Save is awaited if it's async
+                    return result > 0;
                 }
             }
             return false;
         }
+
     }
 }
