@@ -45,6 +45,15 @@ namespace KHRMS
         [Route("AddEmployee")]
         public async Task<IActionResult> AddEmployee(EmployeeRequestModel employeerequestModel)
         {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = ApiMessageConstant.InvalidData,
+                    Data = false
+                });
+            }
             var isEmployeeAdded = await _employeeService.CreateEmployee(employeerequestModel);
             if (isEmployeeAdded)
             {
@@ -78,6 +87,15 @@ namespace KHRMS
         [Route("UpdateEmployee")]
         public async Task<IActionResult> UpdateEmployee(EmployeeRequestModel employeeRequestModel)
         {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = ApiMessageConstant.InvalidData,
+                    Data = false
+                });
+            }
             var isEmployeeEdited = await _employeeService.UpdateEmployee(employeeRequestModel);
             if (isEmployeeEdited)
             {
