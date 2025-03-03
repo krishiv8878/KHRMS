@@ -76,7 +76,8 @@ namespace KHRMS.Services
                     leaveTypeDetail.Description = leaveType.Description;
                     leaveTypeDetail.Type = leaveType.Type;
                     leaveTypeDetail.UpdatedDate = DateTime.Now;
-
+                    // ✅ Ensure IsActive status is updated
+                    leaveTypeDetail.IsActive = leaveType.IsActive;
                     _unitOfWork.LeaveType.Update(leaveTypeDetail);
                     var result = _unitOfWork.Save();
                     if (result > 0)

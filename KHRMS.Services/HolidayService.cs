@@ -72,7 +72,8 @@ namespace KHRMS.Services
                     holidayDetails.HolidayName = holiday.HolidayName;
                     holidayDetails.Description = holiday.Description;
                     holidayDetails.UpdatedDate = DateTime.Now;
-
+                    // ✅ Ensure IsActive status is updated
+                    holidayDetails.IsActive = holiday.IsActive;
                     _unitOfWork.Holidays.Update(holidayDetails);
                     var result = _unitOfWork.Save();
                     if (result > 0)
