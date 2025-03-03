@@ -71,7 +71,8 @@ namespace KHRMS.Services
                 {
                     roleMasterDetails.RoleName = roleMaster.RoleName;
                     roleMasterDetails.UpdatedDate = DateTime.Now;
-
+                    // ✅ Ensure IsActive status is updated
+                    roleMasterDetails.IsActive = roleMaster.IsActive;
                     _unitOfWork.RoleMaster.Update(roleMasterDetails);
                     var result = _unitOfWork.Save();
 

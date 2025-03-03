@@ -73,6 +73,8 @@ namespace KHRMS.Services
                     designationDetails.DesignationName = designation.DesignationName;
                     designationDetails.UpdatedDate = DateTime.Now;
 
+                    // ✅ Ensure IsActive status is updated
+                    designationDetails.IsActive = designation.IsActive;
                     _unitOfWork.Designations.Update(designationDetails);
                     var result = _unitOfWork.Save();
                     if (result > 0)
