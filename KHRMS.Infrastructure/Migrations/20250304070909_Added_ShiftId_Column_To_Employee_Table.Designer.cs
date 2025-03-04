@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace KHRMS.Infrastructure.Migrations
 {
     [DbContext(typeof(KHRMSContextClass))]
-    [Migration("20250228090104_add_required_filed_Employee_Table.cs")]
-    partial class add_required_filed_Employee_Tablecs
+    [Migration("20250304070909_Added_ShiftId_Column_To_Employee_Table")]
+    partial class Added_ShiftId_Column_To_Employee_Table
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
