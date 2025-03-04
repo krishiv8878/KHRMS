@@ -5,18 +5,24 @@
 namespace KHRMS.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class add_required_filed_Employee_Tablecs : Migration
+    public partial class Added_ShiftId_Column_To_Employee_Table : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-
+            migrationBuilder.AddColumn<string>(
+                name: "ShiftIds",
+                table: "Employees",
+                type: "nvarchar(max)",
+                nullable: true);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-
+            migrationBuilder.DropColumn(
+                name: "ShiftIds",
+                table: "Employees");
         }
     }
 }
