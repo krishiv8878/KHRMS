@@ -46,6 +46,8 @@ namespace KHRMS.Core
         [Required(ErrorMessage = "PermanentAddress is required")]
         public string? PermanentAddress { get; set; }
 
+        public DateTime? ReleaseDate { get; set; }
+
 
 
     }
