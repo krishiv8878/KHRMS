@@ -46,7 +46,7 @@ namespace KHRMS.Core
         [Required(ErrorMessage = "PermanentAddress is required")]
         public string? PermanentAddress { get; set; }
 
-
+        public long ManagerId { get; set; }
 
     }
 

@@ -74,6 +74,7 @@ namespace KHRMS.Services
             var employees = await _unitOfWork.Employees.GetAll();
             var employeeroleMapping = await _unitOfWork.EmployeeRoleMappings.GetAll();
             var rolemaster = (await _unitOfWork.RoleMaster.GetAll()).ToDictionary(role => role.Id);
+            var employeeDictionary = employees.ToDictionary(emp => emp.Id);
 
             var employeesWithRoles = employees.Select(emp => new EmployeeRequestModel
             {
@@ -92,10 +93,12 @@ namespace KHRMS.Services
                 CreatedDate = emp.CreatedDate,
                 ShiftId = emp.ShiftIds,
                 RoleIds = employeeroleMapping
-        .Where(mapping => mapping.EmployeeId == emp.Id && mapping.IsActive)
-        .Select(mapping => mapping.RoleId)
-        .Where(roleId => rolemaster.ContainsKey(roleId))
-        .ToList()
+            .Where(mapping => mapping.EmployeeId == emp.Id && mapping.IsActive)
+            .Select(mapping => mapping.RoleId)
+            .Where(roleId => rolemaster.ContainsKey(roleId))
+            .ToList(),
+                ManagerName = employeeDictionary.ContainsKey(emp.ManagerId) ? $"{employeeDictionary[emp.ManagerId].FirstName} {employeeDictionary[emp.ManagerId].LastName}": "No Manager Assigned"
+
             }).ToList();
 
             return employeesWithRoles;
@@ -137,6 +140,7 @@ namespace KHRMS.Services
             employeeDetails.IsActive = employeeRequestModel.IsActive;
             employeeDetails.UpdatedDate = DateTime.Now;
             employeeDetails.ShiftIds = employeeRequestModel.ShiftId;
+            employeeDetails.ManagerId = employeeRequestModel.ManagerId;
             _unitOfWork.Employees.Update(employeeDetails);
             var saveEmployeeResult = _unitOfWork.Save();
 
