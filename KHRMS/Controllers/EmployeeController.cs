@@ -152,5 +152,14 @@ namespace KHRMS
                 return BadRequest(response);
             }
         }
+
+
+        [HttpGet("managers")]
+        public async Task<IActionResult> GetManagers()
+        {
+            var managers = await _employeeService.GetAllManagers();
+            return Ok(managers);
+        }
+
     }
 }

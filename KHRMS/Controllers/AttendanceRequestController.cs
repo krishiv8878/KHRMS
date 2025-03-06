@@ -1,7 +1,9 @@
-﻿using KHRMS.Core;
+﻿using Azure.Core;
+using KHRMS.Core;
 using KHRMS.Infrastructure;
 using KHRMS.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Net;
 
 namespace KHRMS.Controllers
@@ -68,7 +70,22 @@ namespace KHRMS.Controllers
                     Data = false
                 });
             }
-            await _attendanceRequestService.AddAsync(attendanceRequest);
+
+
+            // ✅ Fetch ManagerId from Employee Table
+            var employee = await _attendanceRequestService.GetByIdAsync(attendanceRequest.EmployeeId);
+            if (employee == null)
+            {
+                return NotFound(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.NotFound,
+                    Message = "Employee not found",
+                    Data = false
+                });
+            }
+
+            attendanceRequest.ManagerId = employee.ManagerId; // Assign ManagerId from Employee
+            await _attendanceRequestService.AddAsync(attendanceRequest, User);
             var response = new ApiResponse<bool>
             {
                 StatusCode = (int)HttpStatusCode.OK,
@@ -76,6 +93,9 @@ namespace KHRMS.Controllers
                 Data = true
             };
             return Ok(response);
+
+
+            
         }
 
 

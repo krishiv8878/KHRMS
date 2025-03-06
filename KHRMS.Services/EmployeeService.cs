@@ -11,7 +11,10 @@ namespace KHRMS.Services
         {
             if (employeeRequestModel == null)
                 return false;
-
+            // Find the most senior employee to assign as a manager
+            var seniorEmployee = (await _unitOfWork.Employees.GetAll())
+                .OrderBy(emp => emp.DateOfJoining)  // Oldest employee (seniority)
+                .FirstOrDefault();
             var newEmployee = new Employee
             {
                 EmployeeCode = employeeRequestModel.EmployeeCode,
@@ -27,6 +30,8 @@ namespace KHRMS.Services
                 IsActive = employeeRequestModel.IsActive,
                 CreatedDate = DateTime.Now,
                 ShiftIds = employeeRequestModel.ShiftId,
+                ManagerId = seniorEmployee?.Id ?? 0 // Assign senior employee as manager if available
+
             };
             await _unitOfWork.Employees.Add(newEmployee);
             var result = _unitOfWork.Save();
@@ -178,5 +183,43 @@ namespace KHRMS.Services
             var saveRoleMappingsResult = _unitOfWork.Save();
             return saveEmployeeResult > 0 && saveRoleMappingsResult > 0;
         }
+
+
+        public async Task<IEnumerable<EmployeeRequestModel>> GetAllManagers()
+        {
+            var employees = await _unitOfWork.Employees.GetAll();
+
+            // Get employees who are assigned as managers by other employees
+            var managerIds = employees
+                .Where(emp => emp.ManagerId > 0) // Employees who have a manager assigned
+                .Select(emp => emp.ManagerId)
+                .Distinct()
+                .ToList();
+
+            // Get manager details
+            var managers = employees
+                .Where(emp => managerIds.Contains(emp.Id))
+                .Select(emp => new EmployeeRequestModel
+                {
+                    Id = emp.Id,
+                    FirstName = emp.FirstName,
+                    LastName = emp.LastName,
+                    EmailAddress = emp.EmailAddress,
+                    EmployeeCode = emp.EmployeeCode,
+                    MobileNumber = emp.MobileNumber,
+                    DesignationId = emp.DesignationId,
+                    DateOfJoining = emp.DateOfJoining,
+                    Gender = emp.Gender,
+                    CurrentAddress = emp.CurrentAddress,
+                    PermanentAddress = emp.PermanentAddress,
+                    IsActive = emp.IsActive,
+                    CreatedDate = emp.CreatedDate,
+                    ShiftId = emp.ShiftIds
+                })
+                .ToList();
+
+            return managers;
+        }
+
     }
 }
