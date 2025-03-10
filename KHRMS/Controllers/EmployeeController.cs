@@ -154,7 +154,7 @@ namespace KHRMS
         }
 
 
-        [HttpGet("managers")]
+        [HttpGet("GetManagers")]
         public async Task<IActionResult> GetManagers()
         {
             var managers = await _employeeService.GetAllManagers();

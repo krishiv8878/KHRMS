@@ -30,7 +30,6 @@ namespace KHRMS.Services
                 IsActive = employeeRequestModel.IsActive,
                 CreatedDate = DateTime.Now,
                 ShiftIds = employeeRequestModel.ShiftId,
-                ManagerId = seniorEmployee?.Id ?? 0 // Assign senior employee as manager if available
 
             };
             await _unitOfWork.Employees.Add(newEmployee);
@@ -95,6 +94,7 @@ namespace KHRMS.Services
                 CurrentAddress = emp.CurrentAddress,
                 PermanentAddress = emp.PermanentAddress,
                 IsActive = emp.IsActive,
+                ManagerId = emp.ManagerId,
                 CreatedDate = emp.CreatedDate,
                 ShiftId = emp.ShiftIds,
                 RoleIds = employeeroleMapping
