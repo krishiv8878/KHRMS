@@ -7,7 +7,7 @@ namespace KHRMS.Core
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public long Id { get; set; }  // Primary Key
+        public long Id { get; set; }
         public string ShiftName { get; set; } = string.Empty;
         public string? StartTime { get; set; }
         public string? EndTime { get; set; }
@@ -17,10 +17,5 @@ namespace KHRMS.Core
         public DateTime CreatedDate { get; set; }
         public int? UpdatedBy { get; set; }
         public DateTime? UpdatedDate { get; set; }
-
-
-
-
-
     }
 }
