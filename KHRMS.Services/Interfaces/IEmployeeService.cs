@@ -10,5 +10,6 @@ namespace KHRMS.Services
         Task<Employee> GetEmployeeById(int employeeId);
         Task<bool> UpdateEmployee(EmployeeRequestModel employeeRequestModel);
         Task<bool> DeleteEmployee(long employeeId);
+        Task<IEnumerable<EmployeeRequestModel>> GetAllManagers();
     }
 }
