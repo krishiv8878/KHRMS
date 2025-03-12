@@ -27,7 +27,7 @@ namespace KHRMS.UnitTest.ServiceTests
             {
                 Id = 1,
                 HolidayName = "",
-                Description = new DateTime(2024, 10, 16, 9, 44, 16),
+                Description = new DateTime(2024, 10, 16, 9, 44, 16).ToString("yyyy-MM-dd HH:mm:ss"),
             };
             holidays.Add(holiday);
             Assert.Equal(1, 1);
@@ -44,7 +44,7 @@ namespace KHRMS.UnitTest.ServiceTests
             {
                 Id = 1,
                 HolidayName = "",
-                Description = new DateTime(2024, 10, 16, 9, 44, 16),
+                Description = new DateTime(2024, 10, 16, 9, 44, 16).ToString("yyyy-MM-dd HH:mm:ss"),
             };
             holidays.Add(holiday);
             var exception = Assert.Throws<InvalidOperationException>(() => holidays.Add(holiday));
@@ -62,7 +62,7 @@ namespace KHRMS.UnitTest.ServiceTests
             {
                 Id = 1,
                 HolidayName = "",
-                Description = new DateTime(2024, 10, 16, 9, 44, 16),
+                Description = new DateTime(2024, 10, 16, 9, 44, 16).ToString("yyyy-MM-dd HH:mm:ss"),
             };
             holidays.Add(holiday);
             var exception = Assert.Throws<ArgumentNullException>(() => holidays.Add(null));
@@ -80,7 +80,7 @@ namespace KHRMS.UnitTest.ServiceTests
             {
                 Id = 1,
                 HolidayName = "",
-                Description = new DateTime(2024, 10, 16, 9, 44, 16),
+                Description = new DateTime(2024, 10, 16, 9, 44, 16).ToString("yyyy-MM-dd HH:mm:ss"),
             };
             mock.Setup(x => x.DeleteHoliday(Id));
             var result = holidayeservice.DeleteHoliday(Id);
@@ -99,7 +99,7 @@ namespace KHRMS.UnitTest.ServiceTests
             {
                 Id = 1,
                 HolidayName = "",
-                Description = new DateTime(2024, 10, 16, 9, 44, 16),
+                Description = new DateTime(2024, 10, 16, 9, 44, 16).ToString("yyyy-MM-dd HH:mm:ss"),
             };
             mock.Setup(x => x.DeleteHoliday(Id));
             var result = holidayeservice.DeleteHoliday(Id);
@@ -119,7 +119,7 @@ namespace KHRMS.UnitTest.ServiceTests
             {
                 Id = 1,
                 HolidayName = "",
-                Description = new DateTime(2024, 10, 16, 9, 44, 16),
+                Description = new DateTime(2024, 10, 16, 9, 44, 16).ToString("yyyy-MM-dd HH:mm:ss"),
             };
             mock.Setup(x => x.DeleteHoliday(Id));
             var result = holidayeservice.DeleteHoliday(Id);
@@ -140,7 +140,7 @@ namespace KHRMS.UnitTest.ServiceTests
             {
                 Id = 1,
                 HolidayName = "",
-                Description = new DateTime(2024, 10, 16, 9, 44, 16),
+                Description = new DateTime(2024, 10, 16, 9, 44, 16).ToString("yyyy-MM-dd HH:mm:ss"),
             };
             mock.Setup(x => x.GetAllHolidays());
             var result = holidayeservice.GetAllHolidays();
@@ -190,7 +190,7 @@ namespace KHRMS.UnitTest.ServiceTests
             {
                 Id = 1,
                 HolidayName = "",
-                Description = new DateTime(2024, 10, 16, 9, 44, 16),
+                Description = new DateTime(2024, 10, 16, 9, 44, 16).ToString("yyyy-MM-dd HH:mm:ss"),
             };
             mock.Setup(x => x.GetHolidayById(1));
             var result = holidayeservice.GetHolidayById(1);
@@ -236,13 +236,13 @@ namespace KHRMS.UnitTest.ServiceTests
             {
                 Id = 1,
                 HolidayName = "",
-                Description = new DateTime(2024, 10, 16, 9, 44, 16),
+                Description = new DateTime(2024, 10, 16, 9, 44, 16).ToString("yyyy-MM-dd HH:mm:ss"),
             };
             Holiday updateholiday = new Holiday()
             {
                 Id = 1,
                 HolidayName = "Raj",
-                Description = new DateTime(2024, 10, 16, 9, 44, 16),
+                Description = new DateTime(2024, 10, 16, 9, 44, 16).ToString("yyyy-MM-dd HH:mm:ss"),
             };
             mock.Setup(x => x.GetHolidayById(1));
             var result = holidayeservice.UpdateHoliday(holiday);
@@ -262,7 +262,7 @@ namespace KHRMS.UnitTest.ServiceTests
             {
                 Id = 1,
                 HolidayName = "",
-                Description = new DateTime(2024, 10, 16, 9, 44, 16),
+                Description = new DateTime(2024, 10, 16, 9, 44, 16).ToString("yyyy-MM-dd HH:mm:ss"),
             };
             mock.Setup(x => x.GetHolidayById(1));
             var result = holidayeservice.UpdateHoliday(holiday);
@@ -281,7 +281,7 @@ namespace KHRMS.UnitTest.ServiceTests
             {
                 Id = 1,
                 HolidayName = "",
-                Description = new DateTime(2024, 10, 16, 9, 44, 16),
+                Description = new DateTime(2024, 10, 16, 9, 44, 16).ToString("yyyy-MM-dd HH:mm:ss"),
             };
             mock.Setup(x => x.GetHolidayById(1));
             var result = holidayeservice.UpdateHoliday(holiday);

@@ -93,11 +93,8 @@ namespace KHRMS.Controllers
                 Data = true
             };
             return Ok(response);
-
-
             
         }
-
 
         [HttpPut]
         [Route("UpdateAttendanceRequest")]

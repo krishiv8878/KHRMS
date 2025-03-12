@@ -1,11 +1,7 @@
 ﻿using KHRMS.Core;
 using KHRMS.Services;
 using Moq;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+
 
 namespace KHRMS.UnitTest.ControllerTests
 {
@@ -27,7 +23,7 @@ namespace KHRMS.UnitTest.ControllerTests
             {
                 Id = 1,
                 HolidayName = "",
-                Description = new DateTime(2024, 10, 16, 9, 44, 16),
+                Description = new DateTime(2024, 10, 16, 9, 44, 16).ToString("yyyy-MM-dd HH:mm:ss"),
             };
             var result = controller.GetHolidays();
             Assert.NotNull(result);
@@ -46,7 +42,7 @@ namespace KHRMS.UnitTest.ControllerTests
             {
                 Id = 1,
                 HolidayName = "",
-                Description = new DateTime(2024, 10, 16, 9, 44, 16),
+                Description = new DateTime(2024, 10, 16, 9, 44, 16).ToString("yyyy-MM-dd HH:mm:ss"),
             };
             var result = controller.AddHoliday(holiday);
             Assert.NotNull(result);
@@ -65,13 +61,13 @@ namespace KHRMS.UnitTest.ControllerTests
             {
                 Id = 1,
                 HolidayName = "",
-                Description = new DateTime(2024, 10, 16, 9, 44, 16),
+                Description = new DateTime(2024, 10, 16, 9, 44, 16).ToString("yyyy-MM-dd HH:mm:ss"),
             };
             Holiday updateholiday = new Holiday()
             {
                 Id = 1,
                 HolidayName = "NewHoliday",
-                Description = new DateTime(2024, 10, 16, 9, 44, 16),
+                Description = new DateTime(2024, 10, 16, 9, 44, 16).ToString("yyyy-MM-dd HH:mm:ss"),
             };
             var result = controller.UpdateHoliday(holiday);
             Assert.NotNull(result);
@@ -90,7 +86,7 @@ namespace KHRMS.UnitTest.ControllerTests
             {
                 Id = 1,
                 HolidayName = "",
-                Description = new DateTime(2024, 10, 16, 9, 44, 16),
+                Description = new DateTime(2024, 10, 16, 9, 44, 16).ToString("yyyy-MM-dd HH:mm:ss"),
             };
             var result = controller.DeleteHoliday(1);
             Assert.NotNull(result);

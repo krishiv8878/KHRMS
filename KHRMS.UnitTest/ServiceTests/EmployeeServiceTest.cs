@@ -1,5 +1,6 @@
 ﻿using KHRMS.Core;
 using KHRMS.Services;
+using KHRMS.Services.Request;
 using Microsoft.AspNetCore.Routing.Matching;
 using Moq;
 using NPOI.SS.Formula.Functions;
@@ -25,10 +26,13 @@ namespace KHRMS.UnitTest.ServiceTests
         public void CreateEmployeeReturnPass()
         {
             var mock = new Mock<IEmployeeService>();
-            List<Employee> employees = new List<Employee>();
-            mock.Setup(x => x.CreateEmployee(It.IsAny<Employee>()))
+           // List<Employee> employees = new List<Employee>();
+            List<EmployeeRequestModel> employeeRequestModels = new List<EmployeeRequestModel>();
+            
+            mock.Setup(x => x.CreateEmployee(It.IsAny<EmployeeRequestModel>()))
                         .Returns(Task.FromResult(true));
-            Employee employee = new Employee()
+            //  Employee employee = new Employee()
+            EmployeeRequestModel employeeRequestModel = new EmployeeRequestModel()
             {
                 Id = 1,
                 EmployeeCode = 0,
@@ -42,7 +46,7 @@ namespace KHRMS.UnitTest.ServiceTests
                 CurrentAddress = "Patan",
                 PermanentAddress = "patan"
             };
-            employees.Add(employee);
+            employeeRequestModels.Add(employeeRequestModel);
             Assert.Equal(1, 1);
         }
 
@@ -50,10 +54,10 @@ namespace KHRMS.UnitTest.ServiceTests
         public void CreateEmployeeReturnFail()
         {
             var mock = new Mock<IEmployeeService>();
-            List<Employee> employees = new List<Employee>();
-            mock.Setup(x => x.CreateEmployee(It.IsAny<Employee>()))
+            List<EmployeeRequestModel> employeeRequestModels = new List<EmployeeRequestModel>();
+            mock.Setup(x => x.CreateEmployee(It.IsAny<EmployeeRequestModel>()))
                         .Returns(Task.FromResult(true));
-            Employee employee = new Employee()
+            EmployeeRequestModel employeeRequestModel = new EmployeeRequestModel()
             {
                 Id = 1,
                 EmployeeCode = 0,
@@ -67,8 +71,8 @@ namespace KHRMS.UnitTest.ServiceTests
                 CurrentAddress = "Patan",
                 PermanentAddress = "patan"
             };
-            employees.Add(employee);
-            var exception = Assert.Throws<InvalidOperationException>(() => employees.Add(employee));
+            employeeRequestModels.Add(employeeRequestModel);
+            var exception = Assert.Throws<InvalidOperationException>(() => employeeRequestModels.Add(employeeRequestModel));
             Assert.Equal("Employee already exists", exception.Message);
         }
 
@@ -77,7 +81,7 @@ namespace KHRMS.UnitTest.ServiceTests
         {
             var mock = new Mock<IEmployeeService>();
             List<Employee> employees = new List<Employee>();
-            mock.Setup(x => x.CreateEmployee(It.IsAny<Employee>()))
+            mock.Setup(x => x.CreateEmployee(It.IsAny<EmployeeRequestModel>()))
                         .Returns(Task.FromResult(true));
             Employee employee = new Employee();
             employees.Add(employee);
@@ -287,8 +291,10 @@ namespace KHRMS.UnitTest.ServiceTests
         {
             var mock = new Mock<IEmployeeService>();
             IEmployeeService employeeservice = mock.Object;
-            List<Employee> employees = new List<Employee>();
-            Employee employee = new Employee()
+            //List<Employee> employees = new List<Employee>();
+            //Employee employee = new Employee()
+            List<EmployeeRequestModel> employeeRequestModels = new List<EmployeeRequestModel>();
+            EmployeeRequestModel employeeRequestModel = new EmployeeRequestModel()
             {
                 Id = 1,
                 EmployeeCode = 0,
@@ -317,7 +323,7 @@ namespace KHRMS.UnitTest.ServiceTests
                 PermanentAddress = "patan"
             };
             mock.Setup(x => x.GetEmployeeById(1));
-            var result = employeeservice.UpdateEmployee(employee);
+            var result = employeeservice.UpdateEmployee(employeeRequestModel);
             Assert.NotNull(result);
             Assert.Equal(1, 1);
         }
@@ -327,8 +333,10 @@ namespace KHRMS.UnitTest.ServiceTests
         {
             var mock = new Mock<IEmployeeService>();
             IEmployeeService employeeservice = mock.Object;
-            List<Employee> employees = new List<Employee>();
-            Employee employee = new Employee()
+            //List<Employee> employees = new List<Employee>();
+            //Employee employee = new Employee()
+            List<EmployeeRequestModel> employeeRequestModels = new List<EmployeeRequestModel>();
+            EmployeeRequestModel employeeRequestModel = new EmployeeRequestModel()
             {
                 Id = 1,
                 EmployeeCode = 0,
@@ -340,11 +348,12 @@ namespace KHRMS.UnitTest.ServiceTests
                 DateOfJoining = new DateTime(2024, 10, 16, 9, 44, 16),
                 Gender = "Male",
                 CurrentAddress = "Patan",
-                PermanentAddress = "patan"
+                PermanentAddress = "patan",
+
             };
             mock.Setup(x => x.GetEmployeeById(1));
-            var result = employeeservice.UpdateEmployee(employee);
-            var exception = await Assert.ThrowsAsync<KeyNotFoundException>(() => employeeservice.UpdateEmployee(employee));
+            var result = employeeservice.UpdateEmployee(employeeRequestModel);
+            var exception = await Assert.ThrowsAsync<KeyNotFoundException>(() => employeeservice.UpdateEmployee(employeeRequestModel));
             Assert.Equal("Update not found", exception.Message);
     }
         [Fact]
@@ -352,8 +361,12 @@ namespace KHRMS.UnitTest.ServiceTests
         {
             var mock = new Mock<IEmployeeService>();
             IEmployeeService employeeservice = mock.Object;
-            List<Employee> employees = new List<Employee>();
-            Employee employee = new Employee()
+            // List<Employee> employees = new List<Employee>();
+            // Employee employee = new Employee()
+
+            List<EmployeeRequestModel> employeeRequestModels  = new List<EmployeeRequestModel>();
+            EmployeeRequestModel employeeRequestModel = new EmployeeRequestModel()
+
             {
                 Id = 1,
                 EmployeeCode = 0,
@@ -365,10 +378,11 @@ namespace KHRMS.UnitTest.ServiceTests
                 DateOfJoining = new DateTime(2024, 10, 16, 9, 44, 16),
                 Gender = "Male",
                 CurrentAddress = "Patan",
-                PermanentAddress = "patan"
+                PermanentAddress = "patan",
+                ManagerId = 0,
             };
             mock.Setup(x => x.GetEmployeeById(1));
-            var result = employeeservice.UpdateEmployee(employee);
+            var result = employeeservice.UpdateEmployee(employeeRequestModel);
             var exception = await Assert.ThrowsAsync<KeyNotFoundException>(() => employeeservice.UpdateEmployee(null));
             Assert.Equal("Update not found", exception.Message);
         }

@@ -1,5 +1,6 @@
 ﻿using KHRMS.Core;
 using KHRMS.Services;
+using KHRMS.Services.Request;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -48,7 +49,7 @@ namespace KHRMS.UnitTest.ControllerTests
         {
             var Id = 1;
             var mock = new Mock<IEmployeeService>();
-            mock.Setup(x => x.CreateEmployee(It.IsAny<Employee>()));
+            mock.Setup(x => x.CreateEmployee(It.IsAny<EmployeeRequestModel>()));
             var controller = new EmployeeController(mock.Object);
             Employee employee = new Employee()
             {
@@ -75,9 +76,11 @@ namespace KHRMS.UnitTest.ControllerTests
         {
             var Id = 1;
             var mock = new Mock<IEmployeeService>();
-            mock.Setup(x => x.UpdateEmployee(It.IsAny<Employee>()));
+            mock.Setup(x => x.UpdateEmployee(It.IsAny<EmployeeRequestModel>()));
             var controller = new EmployeeController(mock.Object);
-            Employee employee = new Employee()
+          //  Employee employee = new Employee();
+             //List<Employee> employees = new List<Employee>();
+            EmployeeRequestModel employeeRequestModel = new EmployeeRequestModel()
             {
                 Id = 1,
                 EmployeeCode = 0,
@@ -105,10 +108,10 @@ namespace KHRMS.UnitTest.ControllerTests
                 CurrentAddress = "Patan",
                 PermanentAddress = "patan"
             };
-            var result = controller.UpdateEmployee(employee);
+            var result = controller.UpdateEmployee(employeeRequestModel);
             Assert.NotNull(result);
             Assert.Equal(1, 1);
-            Assert.Equal("Raj", employee.FirstName);
+            Assert.Equal("Raj", employeeRequestModel.FirstName);
         }
 
         [Fact]
