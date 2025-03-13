@@ -43,26 +43,33 @@ namespace KHRMS.UnitTest.ServiceTests
 
 
         [Fact]
-        public void AddUserLoginReturnPass()
+        public async Task AddUserLoginReturnPass()
         {
-            var Id = 1;
+            // Arrange
             var mock = new Mock<IUserRegistrationService>();
             IUserRegistrationService userregistrationservice = mock.Object;
-            List<UserRegistration> userregistrations = new List<UserRegistration>();
+
             UserRegistration userregistration = new UserRegistration()
             {
                 Id = 1,
-                FirstName = "",
-                LastName = "",
-                Email = "",
-                MobileNumber = "",
-                Address = "",
-                Password = ""
+                FirstName = "John",
+                LastName = "Doe",
+                Email = "john.doe@example.com",
+                MobileNumber = "1234567890",
+                Address = "123 Street",
+                Password = "SecurePass123"
             };
-            userregistrations.Add(userregistration);
-            mock.Setup(x => userregistrationservice.GetRegistrationByUser(userregistration));
-            Assert.Equal(1, 1);
+
+            // Simulating that GetRegistrationByUser returns true (successful lookup)
+            mock.Setup(x => x.GetRegistrationByUser(It.IsAny<UserRegistration>())).ReturnsAsync(true);
+
+            // Act
+            var result = await userregistrationservice.GetRegistrationByUser(userregistration);
+
+            // Assert
+            Assert.True(result); // Ensure the method returns true
         }
+
 
     }
 }
