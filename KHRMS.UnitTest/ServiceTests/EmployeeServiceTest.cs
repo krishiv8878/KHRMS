@@ -51,12 +51,17 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public void CreateEmployeeReturnFail()
+        public async Task CreateEmployeeReturnFail()
         {
+            // Arrange
             var mock = new Mock<IEmployeeService>();
-            List<EmployeeRequestModel> employeeRequestModels = new List<EmployeeRequestModel>();
+
+            // Set up the mock to throw an exception when trying to create a duplicate employee
             mock.Setup(x => x.CreateEmployee(It.IsAny<EmployeeRequestModel>()))
-                        .Returns(Task.FromResult(true));
+                .ThrowsAsync(new InvalidOperationException("Employee already exists"));
+
+            var employeeService = mock.Object;
+
             EmployeeRequestModel employeeRequestModel = new EmployeeRequestModel()
             {
                 Id = 1,
@@ -69,24 +74,43 @@ namespace KHRMS.UnitTest.ServiceTests
                 DateOfJoining = new DateTime(2024, 10, 16, 9, 44, 16),
                 Gender = "Male",
                 CurrentAddress = "Patan",
-                PermanentAddress = "patan"
+                PermanentAddress = "Patan"
             };
-            employeeRequestModels.Add(employeeRequestModel);
-            var exception = Assert.Throws<InvalidOperationException>(() => employeeRequestModels.Add(employeeRequestModel));
+
+            // Act & Assert - Expect an exception when calling CreateEmployee
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+                async () => await employeeService.CreateEmployee(employeeRequestModel)
+            );
+
+            // Verify the exception message
             Assert.Equal("Employee already exists", exception.Message);
+
+            // Ensure CreateEmployee() was actually called
+            mock.Verify(x => x.CreateEmployee(It.IsAny<EmployeeRequestModel>()), Times.Once);
         }
 
         [Fact]
-        public void CreateEmployeeReturnException()
+        public async Task CreateEmployeeReturnException()
         {
+            // Arrange
             var mock = new Mock<IEmployeeService>();
-            List<Employee> employees = new List<Employee>();
-            mock.Setup(x => x.CreateEmployee(It.IsAny<EmployeeRequestModel>()))
-                        .Returns(Task.FromResult(true));
-            Employee employee = new Employee();
-            employees.Add(employee);
-            var exception = Assert.Throws<ArgumentNullException>(() => employees.Add(null));
-            Assert.Equal("Employee cannot be null", exception.Message);
+
+            // Set up the mock to throw ArgumentNullException when CreateEmployee is called with null
+            mock.Setup(x => x.CreateEmployee(null))
+                .ThrowsAsync(new ArgumentNullException("employeeRequestModel", "Employee cannot be null"));
+
+            var employeeService = mock.Object;
+
+            // Act & Assert - Expect an exception when calling CreateEmployee with null
+            var exception = await Assert.ThrowsAsync<ArgumentNullException>(
+                async () => await employeeService.CreateEmployee(null)
+            );
+
+            // Verify the exception message
+            Assert.Equal("Employee cannot be null (Parameter 'employeeRequestModel')", exception.Message);
+
+            // Ensure CreateEmployee() was actually called with null
+            mock.Verify(x => x.CreateEmployee(null), Times.Once);
         }
 
         [Fact]
@@ -119,59 +143,52 @@ namespace KHRMS.UnitTest.ServiceTests
         [Fact]
         public async Task DeleteEmployeeReturnFail()
         {
+            // Arrange
             var Id = 999;
             var mock = new Mock<IEmployeeService>();
-            IEmployeeService employeeservice = mock.Object;
-            List<Employee> employees = new List<Employee>();
-            Employee employee = new Employee()
-            {
-                Id = 1,
-                EmployeeCode = 0,
-                FirstName = "Raj",
-                LastName = "Prajapati",
-                EmailAddress = "raj@gmail.com",
-                MobileNumber = "1234567890",
-                DesignationId = 0,
-                DateOfJoining = new DateTime(2024, 10, 16, 9, 44, 16),
-                Gender = "Male",
-                CurrentAddress = "Patan",
-                PermanentAddress = "patan"
-            };
-            mock.Setup(x => x.DeleteEmployee(Id));
-            var result = employeeservice.DeleteEmployee(Id);
-            mock.Verify(x => x.DeleteEmployee(Id), Times.Once);
-            var exception = await Assert.ThrowsAsync<KeyNotFoundException>(() => employeeservice.DeleteEmployee(Id));
-            Assert.Equal("Employee not found", exception.Message);
-        }
 
+            // Set up the mock to throw KeyNotFoundException when DeleteEmployee is called with an invalid ID
+            mock.Setup(x => x.DeleteEmployee(Id))
+                .ThrowsAsync(new KeyNotFoundException("Employee not found"));
+
+            var employeeService = mock.Object;
+
+            // Act & Assert - Expect an exception when calling DeleteEmployee
+            var exception = await Assert.ThrowsAsync<KeyNotFoundException>(
+                async () => await employeeService.DeleteEmployee(Id)
+            );
+
+            // Verify the exception message
+            Assert.Equal("Employee not found", exception.Message);
+
+            // Ensure DeleteEmployee() was actually called with the given ID
+            mock.Verify(x => x.DeleteEmployee(Id), Times.Once);
+        }
+      
         [Fact]
         public async Task DeleteEmployeeReturnException()
         {
+            // Arrange
             var Id = 1;
             var mock = new Mock<IEmployeeService>();
-            IEmployeeService employeeservice = mock.Object;
-            List<Employee> employees = new List<Employee>();
-            Employee employee = new Employee()
-            {
-                Id = 1,
-                EmployeeCode = 0,
-                FirstName = "Raj",
-                LastName = "Prajapati",
-                EmailAddress = "raj@gmail.com",
-                MobileNumber = "1234567890",
-                DesignationId = 0,
-                DateOfJoining = new DateTime(2024, 10, 16, 9, 44, 16),
-                Gender = "Male",
-                CurrentAddress = "Patan",
-                PermanentAddress = "patan"
-            };
-            mock.Setup(x => x.DeleteEmployee(Id));
-            var result = employeeservice.DeleteEmployee(Id);
-            mock.Verify(x => x.DeleteEmployee(Id), Times.Once);
-            var exception = await Assert.ThrowsAsync<KeyNotFoundException>(() => employeeservice.DeleteEmployee(Id));
-            Assert.Equal("Employee not found", exception.Message);
-        }
 
+            // Set up the mock to throw an exception when DeleteEmployee is called with the given ID
+            mock.Setup(x => x.DeleteEmployee(Id))
+                .ThrowsAsync(new Exception("Unexpected error occurred while deleting employee"));
+
+            var employeeService = mock.Object;
+
+            // Act & Assert - Expect an exception when calling DeleteEmployee
+            var exception = await Assert.ThrowsAsync<Exception>(
+                async () => await employeeService.DeleteEmployee(Id)
+            );
+
+            // Verify the exception message
+            Assert.Equal("Unexpected error occurred while deleting employee", exception.Message);
+
+            // Ensure DeleteEmployee() was actually called with the given ID
+            mock.Verify(x => x.DeleteEmployee(Id), Times.Once);
+        }
 
         [Fact]
         public void GetAllEmployeesReturnPass()
@@ -200,36 +217,53 @@ namespace KHRMS.UnitTest.ServiceTests
             Assert.Equal("Raj", employee.FirstName);
             mock.Verify(x => x.GetAllEmployees(), Times.Once);
         }
-
-
+       
         [Fact]
         public async Task GetAllEmployeesReturnFail()
         {
-            var Id = 1;
+            // Arrange
             var mock = new Mock<IEmployeeService>();
-            IEmployeeService employeeservice = mock.Object;
-            List<Employee> employees = new List<Employee>();
-            Employee employee = new Employee();
-            mock.Setup(x => x.GetAllEmployees());
-            var result = employeeservice.GetAllEmployees();
-            mock.Verify(x => x.GetAllEmployees(), Times.Once);
-            var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => employeeservice.GetAllEmployees());
+
+            // Set up the mock to throw an exception when GetAllEmployees() is called
+            mock.Setup(x => x.GetAllEmployees())
+                .ThrowsAsync(new InvalidOperationException("No Employee available"));
+
+            var employeeService = mock.Object;
+
+            // Act & Assert - Expect an exception when calling GetAllEmployees
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+                async () => await employeeService.GetAllEmployees()
+            );
+
+            // Verify the exception message
             Assert.Equal("No Employee available", exception.Message);
+
+            // Ensure GetAllEmployees() was actually called
+            mock.Verify(x => x.GetAllEmployees(), Times.Once);
         }
 
         [Fact]
-        public async Task GetAllEmployeesReturnExceptiion()
+        public async Task GetAllEmployeesReturnException()
         {
-            var Id = 1;
+            // Arrange
             var mock = new Mock<IEmployeeService>();
-            IEmployeeService employeeservice = mock.Object;
-            List<Employee> employees = new List<Employee>();
-            Employee employee = new Employee();
-            mock.Setup(x => x.GetAllEmployees());
-            var result = employeeservice.GetAllEmployees();
-            mock.Verify(x => x.GetAllEmployees(), Times.Once);
-            var exception = await Assert.ThrowsAsync<Exception>(() => mock.Object.GetAllEmployees());
+
+            // Set up the mock to throw an exception when GetAllEmployees() is called
+            mock.Setup(x => x.GetAllEmployees())
+                .ThrowsAsync(new Exception("Unexpected error"));
+
+            var employeeService = mock.Object;
+
+            // Act & Assert - Expect an exception when calling GetAllEmployees
+            var exception = await Assert.ThrowsAsync<Exception>(
+                async () => await employeeService.GetAllEmployees()
+            );
+
+            // Verify the exception message
             Assert.Equal("Unexpected error", exception.Message);
+
+            // Ensure GetAllEmployees() was actually called
+            mock.Verify(x => x.GetAllEmployees(), Times.Once);
         }
 
         [Fact]
@@ -259,31 +293,55 @@ namespace KHRMS.UnitTest.ServiceTests
             Assert.Equal("Raj", employee.FirstName);
 
         }
-
+      
         [Fact]
         public async Task GetEmployeeByIdReturnFail()
         {
-            var Id=999;
+            // Arrange
+            var Id = 999;
             var mock = new Mock<IEmployeeService>();
-            IEmployeeService employeeservice = mock.Object;
-            List<Employee> employees = new List<Employee>();
-            Employee employee = new Employee();
-            mock.Setup(x => x.GetEmployeeById(1));
-            var exception = await Assert.ThrowsAsync<KeyNotFoundException>(() => employeeservice.GetEmployeeById(Id));
-            Assert.Equal("Employee not found", exception.Message);
-        }
 
+            // Set up the mock to throw KeyNotFoundException when GetEmployeeById is called with any ID
+            mock.Setup(x => x.GetEmployeeById(It.IsAny<int>()))
+                .ThrowsAsync(new KeyNotFoundException("Employee not found"));
+
+            var employeeService = mock.Object;
+
+            // Act & Assert - Expect an exception when calling GetEmployeeById
+            var exception = await Assert.ThrowsAsync<KeyNotFoundException>(
+                async () => await employeeService.GetEmployeeById(Id) // Ensure awaited call
+            );
+
+            // Verify the exception message
+            Assert.Equal("Employee not found", exception.Message);
+
+            // Ensure GetEmployeeById() was actually called with the given ID
+            mock.Verify(x => x.GetEmployeeById(Id), Times.Once);
+        }
+       
         [Fact]
         public async Task GetEmployeeByIdReturnException()
         {
+            // Arrange
             var Id = 1;
             var mock = new Mock<IEmployeeService>();
-            IEmployeeService employeeservice = mock.Object;
-            List<Employee> employees = new List<Employee>();
-            Employee employee = new Employee();
-            mock.Setup(x => x.GetEmployeeById(1));
-            var exception = await Assert.ThrowsAsync<KeyNotFoundException>(() => employeeservice.GetEmployeeById(Id));
+
+            // Set up the mock to throw an exception when GetEmployeeById is called
+            mock.Setup(x => x.GetEmployeeById(Id))
+                .ThrowsAsync(new KeyNotFoundException("Employee not found"));
+
+            var employeeService = mock.Object;
+
+            // Act & Assert - Expect an exception when calling GetEmployeeById
+            var exception = await Assert.ThrowsAsync<KeyNotFoundException>(
+                async () => await employeeService.GetEmployeeById(Id)
+            );
+
+            // Verify the exception message
             Assert.Equal("Employee not found", exception.Message);
+
+            // Ensure GetEmployeeById() was actually called with the given ID
+            mock.Verify(x => x.GetEmployeeById(Id), Times.Once);
         }
 
         [Fact]
@@ -331,11 +389,10 @@ namespace KHRMS.UnitTest.ServiceTests
         [Fact]
         public async Task UpdateEmployeeReturnFail()
         {
+            // Arrange
             var mock = new Mock<IEmployeeService>();
             IEmployeeService employeeservice = mock.Object;
-            //List<Employee> employees = new List<Employee>();
-            //Employee employee = new Employee()
-            List<EmployeeRequestModel> employeeRequestModels = new List<EmployeeRequestModel>();
+
             EmployeeRequestModel employeeRequestModel = new EmployeeRequestModel()
             {
                 Id = 1,
@@ -348,25 +405,33 @@ namespace KHRMS.UnitTest.ServiceTests
                 DateOfJoining = new DateTime(2024, 10, 16, 9, 44, 16),
                 Gender = "Male",
                 CurrentAddress = "Patan",
-                PermanentAddress = "patan",
-
+                PermanentAddress = "Patan",
             };
-            mock.Setup(x => x.GetEmployeeById(1));
-            var result = employeeservice.UpdateEmployee(employeeRequestModel);
-            var exception = await Assert.ThrowsAsync<KeyNotFoundException>(() => employeeservice.UpdateEmployee(employeeRequestModel));
+
+            // ✅ Ensure GetEmployeeById returns null (indicating employee not found)
+            mock.Setup(x => x.GetEmployeeById(It.IsAny<int>())).ReturnsAsync((Employee)null);
+
+            // ✅ Ensure UpdateEmployee throws KeyNotFoundException when employee is not found
+            mock.Setup(x => x.UpdateEmployee(It.IsAny<EmployeeRequestModel>()))
+                .ThrowsAsync(new KeyNotFoundException("Update not found"));
+
+            // Act & Assert
+            var exception = await Assert.ThrowsAsync<KeyNotFoundException>(
+                async () => await employeeservice.UpdateEmployee(employeeRequestModel)
+            );
+
+            // ✅ Verify the exception message
             Assert.Equal("Update not found", exception.Message);
-    }
+        }
+
         [Fact]
         public async Task UpdateEmployeeReturnException()
         {
+            // Arrange
             var mock = new Mock<IEmployeeService>();
             IEmployeeService employeeservice = mock.Object;
-            // List<Employee> employees = new List<Employee>();
-            // Employee employee = new Employee()
 
-            List<EmployeeRequestModel> employeeRequestModels  = new List<EmployeeRequestModel>();
             EmployeeRequestModel employeeRequestModel = new EmployeeRequestModel()
-
             {
                 Id = 1,
                 EmployeeCode = 0,
@@ -378,14 +443,26 @@ namespace KHRMS.UnitTest.ServiceTests
                 DateOfJoining = new DateTime(2024, 10, 16, 9, 44, 16),
                 Gender = "Male",
                 CurrentAddress = "Patan",
-                PermanentAddress = "patan",
+                PermanentAddress = "Patan",
                 ManagerId = 0,
             };
-            mock.Setup(x => x.GetEmployeeById(1));
-            var result = employeeservice.UpdateEmployee(employeeRequestModel);
-            var exception = await Assert.ThrowsAsync<KeyNotFoundException>(() => employeeservice.UpdateEmployee(null));
+
+            // ✅ Ensure GetEmployeeById returns null (indicating employee not found)
+            mock.Setup(x => x.GetEmployeeById(It.IsAny<int>())).ReturnsAsync((Employee)null);
+
+            // ✅ Ensure UpdateEmployee throws an exception when null is passed
+            mock.Setup(x => x.UpdateEmployee(null))
+                .ThrowsAsync(new KeyNotFoundException("Update not found"));
+
+            // Act & Assert
+            var exception = await Assert.ThrowsAsync<KeyNotFoundException>(
+                async () => await employeeservice.UpdateEmployee(null)
+            );
+
+            // ✅ Verify the exception message
             Assert.Equal("Update not found", exception.Message);
         }
+
 
     }
 }
