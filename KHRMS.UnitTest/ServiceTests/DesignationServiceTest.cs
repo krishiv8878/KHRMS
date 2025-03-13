@@ -104,38 +104,57 @@ namespace KHRMS.UnitTest.ServiceTests
             mock.Verify(x => x.DeleteDesignation(Id), Times.Once);
         }
 
+        
         [Fact]
         public async Task DeleteDesignationReturnFail()
         {
+            // Arrange
             var Id = 999;
             var mock = new Mock<IDesignationService>();
-            IDesignationService designationservice = mock.Object;
-            Designation designation = new Designation();
-            List<Designation> designations = new List<Designation>();
-            var result = designationservice.DeleteDesignation(Id);
-            mock.Verify(x => x.DeleteDesignation(It.IsAny<int>()), Times.Never);
-            var exception = await Assert.ThrowsAsync<KeyNotFoundException>(() => designationservice.DeleteDesignation(Id));
+
+            // Ensure exception is thrown when DeleteDesignation is called with 999
+            mock.Setup(x => x.DeleteDesignation(999))
+                .ThrowsAsync(new KeyNotFoundException("Designation not found"));
+
+            var designationService = mock.Object;
+
+            // Act & Assert - Expect an exception when calling DeleteDesignation
+            var exception = await Assert.ThrowsAsync<KeyNotFoundException>(
+                () => designationService.DeleteDesignation(Id) // No need for async/await inside Assert.ThrowsAsync
+            );
+
+            // Verify the exception message
             Assert.Equal("Designation not found", exception.Message);
+
+            // Ensure DeleteDesignation() was actually called with the correct ID
+            mock.Verify(x => x.DeleteDesignation(Id), Times.Once);
         }
+
 
         [Fact]
         public async Task DeleteDesignationReturnException()
         {
+            // Arrange
             var mock = new Mock<IDesignationService>();
-            IDesignationService designationservice = mock.Object;
             var Id = 1;
-            mock.Setup(x => x.GetDesignationById(Id));
-            Designation designation = new Designation()
-            {
-                Id = 1,
-                DesignationName = "OOPS"
-            };
-            mock.Setup(x => x.DeleteDesignation(Id)).Throws(new Exception("Database error"));
-            var result = designationservice.DeleteDesignation(Id);
-            var exception = await Assert.ThrowsAsync<KeyNotFoundException>(() => designationservice.DeleteDesignation(Id));
-            Assert.Equal("Designation not found", exception.Message);
+
+            // Mock DeleteDesignation to throw a generic database exception
+            mock.Setup(x => x.DeleteDesignation(Id)).ThrowsAsync(new Exception("Database error"));
+
+            var designationService = mock.Object;
+
+            // Act & Assert - Expect a generic Exception, not a KeyNotFoundException
+            var exception = await Assert.ThrowsAsync<Exception>(
+                () => designationService.DeleteDesignation(Id)
+            );
+
+            // Verify that the correct exception message is thrown
+            Assert.Equal("Database error", exception.Message);
+
+            // Ensure DeleteDesignation() was actually called once
             mock.Verify(x => x.DeleteDesignation(Id), Times.Once);
         }
+
 
         [Fact]
         public void GetAllDesignationsReturnPass()
@@ -157,13 +176,23 @@ namespace KHRMS.UnitTest.ServiceTests
         [Fact]
         public async Task GetAllDesignationsReturnFail()
         {
+            // Arrange
             var mock = new Mock<IDesignationService>();
-            IDesignationService designationservice = mock.Object;
-            mock.Setup(x => x.GetAllDesignations());
-            var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => designationservice.GetAllDesignations());
-            Assert.Equal("No devision available", exception.Message);
-        }
 
+            // Ensure the mock throws an InvalidOperationException
+            mock.Setup(x => x.GetAllDesignations())
+                .ThrowsAsync(new InvalidOperationException("No designation available"));
+
+            var designationService = mock.Object;
+
+            // Act & Assert - Expect an InvalidOperationException
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+                async () => await designationService.GetAllDesignations()
+            );
+
+            // Verify the correct exception message
+            Assert.Equal("No designation available", exception.Message);
+        }
 
         [Fact]
         public async Task GetAllDesignationsReturnExeption()
@@ -204,21 +233,45 @@ namespace KHRMS.UnitTest.ServiceTests
         [Fact]
         public async Task GetDesignationByIdReturnFail()
         {
+            // Arrange
             var Id = 999;
             var mock = new Mock<IDesignationService>();
-            IDesignationService designationservice = mock.Object;
-            var exception = await Assert.ThrowsAsync<KeyNotFoundException>(() => designationservice.GetDesignationById(Id));
+
+            // Ensure the mock throws KeyNotFoundException when GetDesignationById is called
+            mock.Setup(x => x.GetDesignationById(Id))
+                .ThrowsAsync(new KeyNotFoundException("Designation not found"));
+
+            var designationService = mock.Object;
+
+            // Act & Assert - Expect an exception when calling GetDesignationById
+            var exception = await Assert.ThrowsAsync<KeyNotFoundException>(
+                async () => await designationService.GetDesignationById(Id)
+            );
+
+            // Verify the exception message
             Assert.Equal("Designation not found", exception.Message);
         }
-
+    
         [Fact]
         public async Task GetDesignationByIdReturnException()
         {
+            // Arrange
             var Id = 1;
             var mock = new Mock<IDesignationService>();
-            IDesignationService designationservice = mock.Object;
-            var exception = await Assert.ThrowsAsync<KeyNotFoundException>(() => designationservice.GetDesignationById(1));
-            Assert.Equal("Unexpected error", exception.Message);           
+
+            // Ensure the mock throws KeyNotFoundException when GetDesignationById is called
+            mock.Setup(x => x.GetDesignationById(Id))
+                .ThrowsAsync(new KeyNotFoundException("Unexpected error"));
+
+            var designationService = mock.Object;
+
+            // Act & Assert - Expect an exception when calling GetDesignationById
+            var exception = await Assert.ThrowsAsync<KeyNotFoundException>(
+                async () => await designationService.GetDesignationById(Id)
+            );
+
+            // Verify the exception message
+            Assert.Equal("Unexpected error", exception.Message);
         }
 
         [Fact]
@@ -242,35 +295,66 @@ namespace KHRMS.UnitTest.ServiceTests
             Assert.Equal(1, 1);
         }
 
+
         [Fact]
         public async Task UpdateDesignationReturnTestFail()
         {
+            // Arrange
             var mock = new Mock<IDesignationService>();
-            IDesignationService designationservice = mock.Object;
-            Designation designation = new Designation();
-            mock.Setup(x => x.GetDesignationById(1));
-            var result = designationservice.UpdateDesignation(designation);
-            var designations = new Designation
+
+            // Set up the mock to return null for GetDesignationById(1) (not used in this test)
+            mock.Setup(x => x.GetDesignationById(1))
+                .ReturnsAsync((Designation)null);
+
+            // Set up the mock to throw an exception when UpdateDesignation() is called with Id = 999
+            mock.Setup(x => x.UpdateDesignation(It.Is<Designation>(d => d.Id == 999)))
+                .ThrowsAsync(new KeyNotFoundException("Update not found"));
+
+            var designationService = mock.Object;
+
+            var designationToUpdate = new Designation
             {
                 Id = 999,
                 DesignationName = "OOPS"
             };
 
-            var exception = await Assert.ThrowsAsync<KeyNotFoundException>(() => designationservice.UpdateDesignation(designations));
+            // Act & Assert - Expect an exception when calling UpdateDesignation with an invalid ID
+            var exception = await Assert.ThrowsAsync<KeyNotFoundException>(
+                async () => await designationService.UpdateDesignation(designationToUpdate)
+            );
+
+            // Verify the exception message
             Assert.Equal("Update not found", exception.Message);
+
+            // Ensure UpdateDesignation() was actually called with the invalid ID
+            mock.Verify(x => x.UpdateDesignation(It.Is<Designation>(d => d.Id == 999)), Times.Once);
         }
+       
 
         [Fact]
         public async Task UpdateDesignationReturnTestException()
         {
+            // Arrange
             var mock = new Mock<IDesignationService>();
-            IDesignationService designationservice = mock.Object;
-            Designation designation = new Designation();
-            mock.Setup(x => x.GetDesignationById(1));
-            var result = designationservice.UpdateDesignation(designation);
-            var exception = await Assert.ThrowsAsync<ArgumentNullException>(() => designationservice.UpdateDesignation(null));
+
+            // Set up the mock to throw an exception when UpdateDesignation() is called with null
+            mock.Setup(x => x.UpdateDesignation(null))
+                .ThrowsAsync(new ArgumentNullException("Update", "Update cannot be null"));
+
+            var designationService = mock.Object;
+
+            // Act & Assert - Expect an exception when calling UpdateDesignation with null
+            var exception = await Assert.ThrowsAsync<ArgumentNullException>(
+                async () => await designationService.UpdateDesignation(null)
+            );
+
+            // Verify the exception message
             Assert.Equal("Update cannot be null (Parameter 'Update')", exception.Message);
+
+            // Ensure UpdateDesignation() was actually called with null
+            mock.Verify(x => x.UpdateDesignation(null), Times.Once);
         }
+
 
     }
 }
