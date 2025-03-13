@@ -27,8 +27,8 @@ namespace KHRMS.UnitTest.ControllerTests
             Core.LeaveType leavetype = new Core.LeaveType()
             {
                 Id = 1,
-                leaveName = "Casual",
-                leaveType = "Full Type",
+                LeaveName = "Casual",
+                Type = "Full Type",
                 Description = "string"
             };
             var result = controller.GetLeaveType();
@@ -46,14 +46,14 @@ namespace KHRMS.UnitTest.ControllerTests
             Core.LeaveType leavetype = new Core.LeaveType()
             {
                 Id = 1,
-                leaveName = "Casual",
-                leaveType = "Full Type",
+                LeaveName = "Casual",
+                Type = "Full Type",
                 Description = "string"
             };
             var result = controller.AddLeaveType(leavetype);
             Assert.NotNull(result);
             Assert.Equal(1, 1);
-            Assert.Equal("Casual", leavetype.leaveName);
+            Assert.Equal("Casual", leavetype.LeaveName);
         }
 
         [Fact]
@@ -66,21 +66,21 @@ namespace KHRMS.UnitTest.ControllerTests
             Core.LeaveType leavetype = new Core.LeaveType()
             {
                 Id = 1,
-                leaveName = "Casual",
-                leaveType = "Full Type",
+                LeaveName = "Casual",
+                Type = "Full Type",
                 Description = "string"
             };
             Core.LeaveType updateleavetype = new Core.LeaveType()
             {
                 Id = 1,
-                leaveName = "EarnLeave",
-                leaveType = "Full Type",
+                LeaveName = "EarnLeave",
+                Type = "Full Type",
                 Description = "string"
             };
             var result = controller.UpdateLeaveType(leavetype);
             Assert.NotNull(result);
             Assert.Equal(1, 1);
-            Assert.Equal("Casual", leavetype.leaveName);
+            Assert.Equal("Casual", leavetype.LeaveName);
         }
 
         [Fact]
@@ -93,8 +93,8 @@ namespace KHRMS.UnitTest.ControllerTests
             Core.LeaveType leavetype = new Core.LeaveType()
             {
                 Id = 1,
-                leaveName = "Casual",
-                leaveType = "Full Type",
+                LeaveName = "Casual",
+                Type = "Full Type",
                 Description = "string"
             };
             var result = controller.DeleteLeaveType(1);

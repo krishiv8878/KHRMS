@@ -23,7 +23,7 @@ namespace KHRMS.UnitTest.ControllerTests
             {
                 Id = 1,
                 AssetsMasterName = "Java",
-                Description = new DateTime(2024, 11, 26, 12, 0, 0),
+                Description = new DateTime(2024, 11, 26, 12, 0, 0).ToString("yyyy-MM-dd HH:mm:ss"),
                 SerialNumber = "string",
                 DateOfPurchase = new DateTime(2024, 11, 26, 12, 0, 0)
             };
@@ -44,7 +44,7 @@ namespace KHRMS.UnitTest.ControllerTests
             {
                 Id = 1,
                 AssetsMasterName = "Java",
-                Description = new DateTime(2024, 11, 26, 12, 0, 0),
+                Description = new DateTime(2024, 11, 26, 12, 0, 0).ToString("yyyy-MM-dd HH:mm:ss"),
                 SerialNumber = "string",
                 DateOfPurchase = new DateTime(2024, 11, 26, 12, 0, 0)
             };
@@ -64,7 +64,7 @@ namespace KHRMS.UnitTest.ControllerTests
             {
                 Id = 1,
                 AssetsMasterName = "Java",
-                Description = new DateTime(2024, 11, 26, 12, 0, 0),
+                Description = new DateTime(2024, 11, 26, 12, 0, 0).ToString("yyyy-MM-dd HH:mm:ss"),
                 SerialNumber = "string",
                 DateOfPurchase = new DateTime(2024, 11, 26, 12, 0, 0)
             };
@@ -72,7 +72,7 @@ namespace KHRMS.UnitTest.ControllerTests
             {
                 Id = 1,
                 AssetsMasterName = "C#",
-                Description = new DateTime(2024, 11, 26, 12, 0, 0),
+                Description = new DateTime(2024, 11, 26, 12, 0, 0).ToString("yyyy-MM-dd HH:mm:ss"),
                 SerialNumber = "string",
                 DateOfPurchase = new DateTime(2024, 11, 26, 12, 0, 0)
             };
@@ -94,7 +94,7 @@ namespace KHRMS.UnitTest.ControllerTests
             {
                 Id = 1,
                 AssetsMasterName = "Java",
-                Description = new DateTime(2024, 11, 26, 12, 0, 0),
+                Description = new DateTime(2024, 11, 26, 12, 0, 0).ToString("yyyy-MM-dd HH:mm:ss"),
                 SerialNumber = "string",
                 DateOfPurchase = new DateTime(2024, 11, 26, 12, 0, 0)
             };

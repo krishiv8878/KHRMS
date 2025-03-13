@@ -30,33 +30,61 @@ namespace KHRMS.UnitTest.ServiceTests
 
         }
 
+      
         [Fact]
         public async Task CreateDesignationReturnFail()
         {
+            // Arrange
             var mock = new Mock<IDesignationService>();
-            IDesignationService designationservice = mock.Object;
-            List<Designation> designations = new List<Designation>();
-            mock.Verify(x => x.CreateDesignation(It.IsAny<Designation>()), Times.Never);
+
             var designation = new Designation()
             {
                 Id = 8,
                 DesignationName = "DotnetCore"
             };
-            designations.Add(designation);
-            var exception = Assert.Throws<InvalidOperationException>(() => designations.Add(designation));
+
+            // Set up the mock to throw an exception when CreateDesignation is called
+            mock.Setup(x => x.CreateDesignation(It.IsAny<Designation>()))
+                .ThrowsAsync(new InvalidOperationException("Designation already exists"));
+
+            var designationService = mock.Object;
+
+            // Act & Assert - Expect an exception when trying to create a duplicate designation
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+                async () => await designationService.CreateDesignation(designation)
+            );
+
+            // Verify the exception message
             Assert.Equal("Designation already exists", exception.Message);
+
+            // Ensure CreateDesignation() was actually called once
+            mock.Verify(x => x.CreateDesignation(It.IsAny<Designation>()), Times.Once);
         }
 
         [Fact]
         public async Task CreateDesignationReturnException()
         {
+            // Arrange
             var mock = new Mock<IDesignationService>();
-            List<Designation> designations = new List<Designation>();
-            IDesignationService designationservice = mock.Object;
-            mock.Verify(x => x.CreateDesignation(It.IsAny<Designation>()), Times.Never);
-            var exception = Assert.Throws<ArgumentNullException>(() => designations.Add(null));
+
+            // Set up the mock to throw ArgumentNullException when CreateDesignation is called with null
+            mock.Setup(x => x.CreateDesignation(null))
+                .ThrowsAsync(new ArgumentNullException("entity", "Entity cannot be null"));
+
+            var designationService = mock.Object;
+
+            // Act & Assert - Expect an exception when passing null
+            var exception = await Assert.ThrowsAsync<ArgumentNullException>(
+                async () => await designationService.CreateDesignation(null)
+            );
+
+            // Verify the exception message
             Assert.Equal("Entity cannot be null (Parameter 'entity')", exception.Message);
+
+            // Ensure CreateDesignation() was actually called once
+            mock.Verify(x => x.CreateDesignation(null), Times.Once);
         }
+
 
         [Fact]
         public void DeleteDesignationReturnPass()

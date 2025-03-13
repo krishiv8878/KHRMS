@@ -22,7 +22,7 @@ namespace KHRMS.Services.Request
 
         public string? ShiftId { get; set; }
 
-        public int ManagerId { get; set; }
+        public long ManagerId { get; set; }
         public string ManagerName { get; set; }
     }
 }
