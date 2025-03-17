@@ -3,19 +3,15 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace KHRMS.Core
 {
-    public class ShiftMaster
+    public class ShiftMaster : KHRMSBase
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public long Id { get; set; }
         public string ShiftName { get; set; } = string.Empty;
-        public string? StartTime { get; set; }
-        public string? EndTime { get; set; }
-        public bool IsActive { get; set; }
-        public bool IsDeleted { get; set; }
-        public int CreatedBy { get; set; }
-        public DateTime CreatedDate { get; set; }
-        public int? UpdatedBy { get; set; }
-        public DateTime? UpdatedDate { get; set; }
+        public TimeOnly? StartTime { get; set; } //change type to TimeOnly from String
+        public TimeOnly? EndTime { get; set; }// change type to TimeOnly from String
+
+        //remove columns IsActive,IsDeleted,UpdatedBy,UpdatedDate
     }
 }

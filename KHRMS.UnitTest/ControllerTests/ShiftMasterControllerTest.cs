@@ -1,0 +1,97 @@
+﻿using KHRMS.Core;
+using KHRMS.Services;
+using Microsoft.AspNetCore.Mvc;
+using Moq;
+
+namespace KHRMS.UnitTest.ControllerTests
+{
+    public class ShiftMasterControllerTest
+    {
+        private readonly Mock<IShiftService> _mock;
+        private readonly ShiftController _controller;
+        public ShiftMasterControllerTest()
+        {
+            _mock = new Mock<IShiftService>();
+            _controller = new ShiftController(_mock.Object);
+        }
+        [Fact]
+        public async Task ShiftMaster_AddSuccessfully()
+        {
+            ShiftMaster shiftMaster = new ShiftMaster()
+            {
+                Id = 1,
+                ShiftName = "Night",
+                StartTime = new TimeOnly(10, 0),
+                EndTime = new TimeOnly(6, 0)
+            };
+            _mock.Setup(x => x.AddShiftAsync(It.IsAny<ShiftMaster>())).Returns(Task.CompletedTask);
+
+            var result = _controller.AddShift(shiftMaster);
+            Assert.NotNull(result);
+            _mock.Verify(x => x.AddShiftAsync(It.IsAny<ShiftMaster>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task ShiftMaster_GetSuccessfully()
+        {
+            var shiftMaster = new List<ShiftMaster>()
+            {
+                new ShiftMaster{Id=1,ShiftName="Night",StartTime = new TimeOnly(1, 0),EndTime = new TimeOnly(6, 0)},
+                new ShiftMaster{Id=2,ShiftName="Day",StartTime = new TimeOnly(10, 0),EndTime = new TimeOnly(6, 0)},
+            };
+            _mock.Setup(x => x.GetAllShiftsAsync()).ReturnsAsync(shiftMaster);
+            var result = await _controller.GetAllShifts();
+
+            var okResult = Assert.IsType<OkObjectResult>(result);
+
+            var returnValue = Assert.IsType<KHRMS.Infrastructure.ApiResponse<IEnumerable<ShiftMaster>>>(okResult.Value);
+            Assert.NotNull(result);
+            Assert.Equal(shiftMaster.Count(), returnValue.Data.Count());
+            Assert.Contains(returnValue.Data, r => r.Id == 1);
+            Assert.Contains(returnValue.Data, r => r.Id == 2);
+            _mock.Verify(x => x.GetAllShiftsAsync(), Times.Once);
+
+        }
+
+        [Fact]
+        public async Task ShiftMaster_DeleteSuccessfully()
+        {
+            var shiftMasterId = 1;
+            var shiftMaster = new ShiftMaster { Id = shiftMasterId };
+            _mock.Setup(x => x.GetShiftByIdAsync(shiftMasterId)).ReturnsAsync(shiftMaster);
+            _mock.Setup(x => x.DeleteShiftAsync(shiftMasterId)).Returns(Task.CompletedTask);
+            var result = await _controller.DeleteShift(shiftMasterId);
+            Assert.NotNull(result);
+            _mock.Verify(x => x.DeleteShiftAsync(shiftMasterId), Times.Once);
+        }
+
+        [Fact]
+        public async Task ShiftMaster_UpdateSuccessfully()
+        {
+            var shiftMaster = new ShiftMaster
+            {
+                Id = 1,
+                ShiftName = "Night",
+                StartTime = new TimeOnly(10, 0),
+                EndTime = new TimeOnly(6, 0)
+            };
+            var UpdateashiftMaster = new ShiftMaster
+            {
+                Id = 1,
+                ShiftName = "Day",//update shiftname
+                StartTime = new TimeOnly(10, 0),
+                EndTime = new TimeOnly(6, 0)
+            };
+
+            _mock.Setup(x => x.UpdateShiftAsync(It.IsAny<ShiftMaster>())).Returns(Task.CompletedTask);
+
+            var result = await _controller.Update(UpdateashiftMaster);
+            Assert.NotNull(result);
+
+            _mock.Verify(x => x.UpdateShiftAsync(It.Is<ShiftMaster>(r =>
+                r.Id == UpdateashiftMaster.Id &&
+                r.ShiftName == UpdateashiftMaster.ShiftName)), Times.Once());
+        }
+    }
+}
+
