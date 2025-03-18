@@ -187,18 +187,13 @@ namespace KHRMS.Services
 
         public async Task<IEnumerable<EmployeeRequestModel>> GetAllManagers()
         {
-            var employees = await _unitOfWork.Employees.GetAll();
-
-            // Get employees who are assigned as managers by other employees
-            var managerIds = employees
-                .Where(emp => emp.ManagerId > 0) // Employees who have a manager assigned
-                .Select(emp => emp.ManagerId)
-                .Distinct()
-                .ToList();
-
-            // Get manager details
-            var managers = employees
-                .Where(emp => managerIds.Contains(emp.Id))
+            var managerRole = (await _unitOfWork.RoleMaster.GetAll()).FirstOrDefault(r => r.RoleName.Equals("Manager", StringComparison.OrdinalIgnoreCase));
+            if (managerRole == null)
+                return Enumerable.Empty<EmployeeRequestModel>();
+            var employeeRoleMapping = (await _unitOfWork.EmployeeRoleMappings.GetAll()).Where(mapping => mapping.RoleId == managerRole.Id).ToList();
+            var manageids = employeeRoleMapping.Select(mapping => mapping.EmployeeId).ToList();
+            var employees = (await _unitOfWork.Employees.GetAll())
+                .Where(emp => manageids.Contains(emp.Id))
                 .Select(emp => new EmployeeRequestModel
                 {
                     Id = emp.Id,
@@ -214,11 +209,12 @@ namespace KHRMS.Services
                     PermanentAddress = emp.PermanentAddress,
                     IsActive = emp.IsActive,
                     CreatedDate = emp.CreatedDate,
-                    ShiftId = emp.ShiftIds
+                    ShiftId = emp.ShiftIds,
+                    ManagerId = emp.ManagerId,
                 })
                 .ToList();
 
-            return managers;
+            return employees;
         }
 
     }

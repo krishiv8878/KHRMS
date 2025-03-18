@@ -113,7 +113,9 @@ namespace KHRMS
                 };
 
                 await _employeeDocumentService.AddAsync(document);
-                return CreatedAtAction(nameof(GetDocument), new { id = _document.Id }, _document);
+                //  return CreatedAtAction(nameof(GetDocument), new { id = _document.Id }, _document);
+                return CreatedAtAction(nameof(GetDocument), new { id = document.Id }, document);
+
             }
             catch (Exception ex)
             {
