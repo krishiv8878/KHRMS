@@ -1,11 +1,7 @@
 ﻿using KHRMS.Core;
 using KHRMS.Services;
 using Moq;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+
 
 namespace KHRMS.UnitTest.ControllerTests
 {
@@ -13,12 +9,12 @@ namespace KHRMS.UnitTest.ControllerTests
     {
         public LeaveTypeControllerTest()
         {
-                
+
         }
 
 
         [Fact]
-        public void GetLeaveTypeReturnPass()
+        public void Get_AllLeaveTypes_WhenCalled_ShouldReturnSuccess()
         {
             var Id = 1;
             var mock = new Mock<ILeaveTypeService>();
@@ -37,7 +33,7 @@ namespace KHRMS.UnitTest.ControllerTests
         }
 
         [Fact]
-        public void AddLeaveTypeReturnPass()
+        public void Add_LeaveType_WhenValidInputProvided_ShouldReturnSuccess()
         {
             var Id = 1;
             var mock = new Mock<ILeaveTypeService>();
@@ -57,7 +53,7 @@ namespace KHRMS.UnitTest.ControllerTests
         }
 
         [Fact]
-        public void UpdateLeaveTypeReturnPass()
+        public void Update_LeaveType_WhenExistingLeaveTypeUpdated_ShouldReturnSuccess()
         {
             var Id = 1;
             var mock = new Mock<ILeaveTypeService>();
@@ -84,7 +80,7 @@ namespace KHRMS.UnitTest.ControllerTests
         }
 
         [Fact]
-        public void DeleteLeaveTypeReturnPass()
+        public void Delete_LeaveType_WhenExistingLeaveTypeDeleted_ShouldReturnSuccess()
         {
             var Id = 1;
             var mock = new Mock<ILeaveTypeService>();
@@ -100,7 +96,7 @@ namespace KHRMS.UnitTest.ControllerTests
             var result = controller.DeleteLeaveType(1);
             Assert.NotNull(result);
             Assert.Equal(1, 1);
-            mock.Verify(x=>x.DeleteLeaveType(1),Times.Once);
+            mock.Verify(x => x.DeleteLeaveType(1), Times.Once);
         }
     }
 }

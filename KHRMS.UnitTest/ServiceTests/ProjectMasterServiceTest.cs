@@ -18,7 +18,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public void AddProjectMasterReturnPass()
+        public void Add_ProjectMaster_ValidProject_ReturnsPass()
         {
             var mock = new Mock<IProjectMasterService>();
             List<ProjectMaster> projectmasters = new List<ProjectMaster>();
@@ -36,7 +36,7 @@ namespace KHRMS.UnitTest.ServiceTests
             Assert.Equal(1, 1);
         }
         [Fact]
-        public void AddProjectMasterReturnFail()
+        public void Add_ProjectMaster_DuplicateProject_ReturnsFail()
         {
             // Arrange
             var mock = new Mock<IProjectMasterService>();
@@ -71,7 +71,7 @@ namespace KHRMS.UnitTest.ServiceTests
             Assert.Equal("ProjectMaster already exists", exception.Message);
         }     
         [Fact]
-        public async Task AddProjectMasterReturnException()
+        public async Task Add_ProjectMaster_NullProject_ThrowsArgumentNullException()
         {
             // Arrange
             var mock = new Mock<IProjectMasterService>();
@@ -91,7 +91,7 @@ namespace KHRMS.UnitTest.ServiceTests
             Assert.Equal("ProjectMaster cannot be null (Parameter 'ProjectMaster')", exception.Message);
         }
         [Fact]
-        public void DeleteProjectMasterReturnPass()
+        public void Delete_ProjectMaster_ValidId_ReturnsPass()
         {
             var Id = 1;
             var mock = new Mock<IProjectMasterService>();
@@ -111,7 +111,7 @@ namespace KHRMS.UnitTest.ServiceTests
             mock.Verify(x => x.DeleteProjectMaster(1), Times.Once);
         }       
         [Fact]
-        public async Task DeleteProjectMasterReturnFail()
+        public async Task Delete_ProjectMaster_InvalidId_ThrowsKeyNotFoundException()
         {
             // Arrange
             var Id = 999;
@@ -135,7 +135,7 @@ namespace KHRMS.UnitTest.ServiceTests
             mock.Verify(x => x.DeleteProjectMaster(Id), Times.Once);
         }
         [Fact]
-        public async Task DeleteProjectMasterReturnException()
+        public async Task Delete_ProjectMaster_Exception_ThrowsKeyNotFoundException()
         {
             // Arrange
             var Id = 1;
@@ -159,7 +159,7 @@ namespace KHRMS.UnitTest.ServiceTests
             mock.Verify(x => x.DeleteProjectMaster(Id), Times.Once);
         }
         [Fact]
-        public void GetAllProjectMasterReturnPass()
+        public void Get_AllProjectMasters_ValidData_ReturnsList()
         {
             var Id = 1;
             var mock = new Mock<IProjectMasterService>();
@@ -180,7 +180,7 @@ namespace KHRMS.UnitTest.ServiceTests
             Assert.Equal("HRMS", projectmaster.ProjectName);
         }      
         [Fact]
-        public async Task GetAllProjectMasterReturnFail()
+        public async Task Get_AllProjectMasters_NoData_ThrowsInvalidOperationException()
         {
             // Arrange
             var mock = new Mock<IProjectMasterService>();
@@ -201,7 +201,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task GetAllProjectMasterReturnException()
+        public async Task Get_AllProjectMasters_Exception_ThrowsException()
         {
             // Arrange
             var mock = new Mock<IProjectMasterService>();
@@ -222,7 +222,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public void GetProjectMasterByIdReturnPass()
+        public void Get_ProjectMasterById_ValidId_ReturnsProjectMaster()
         {
             var Id = 1;
             var mock = new Mock<IProjectMasterService>();
@@ -244,7 +244,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task GetProjectMasterByIdReturnFail()
+        public async Task Get_ProjectMasterById_InvalidId_ThrowsKeyNotFoundException()
         {
             // Arrange
             var Id = 999;
@@ -266,7 +266,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
        
         [Fact]
-        public async Task GetProjectMasterByIdReturnException()
+        public async Task Get_ProjectMasterById_Exception_ThrowsKeyNotFoundException()
         {
             // Arrange
             var Id = 1;
@@ -288,7 +288,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public void UpdateProjectMasterReturnPass()
+        public void Update_ProjectMaster_ValidProject_ReturnsPass()
         {
             var Id = 1;
             var mock = new Mock<IProjectMasterService>();
@@ -317,7 +317,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task UpdateProjectMasterReturnFail()
+        public async Task Update_ProjectMaster_ProjectNotFound_ThrowsKeyNotFoundException()
         {
             // Arrange
             var Id = 1;
@@ -351,7 +351,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
     
         [Fact]
-        public async Task UpdateProjectMasterReturnException()
+        public async Task Update_ProjectMaster_NullProject_ThrowsKeyNotFoundException()
         {
             // Arrange
             var mock = new Mock<IProjectMasterService>();

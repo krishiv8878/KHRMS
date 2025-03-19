@@ -13,12 +13,12 @@ namespace KHRMS.UnitTest.ServiceTests
     {
         public SkillServiceTest()
         {
-            
+
         }
 
 
         [Fact]
-        public void AddSkillReturnPass()
+        public void Add_Skill_ShouldReturnPass()
         {
             var mock = new Mock<ISkillService>();
             List<Skill> skills = new List<Skill>();
@@ -34,7 +34,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task AddSkillReturnFail()
+        public async Task Add_Skill_ShouldReturnFail_WhenSkillAlreadyExists()
         {
             // Arrange
             var mock = new Mock<ISkillService>();
@@ -61,7 +61,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task AddSkillReturnException()
+        public async Task Add_Skill_ShouldThrowException_WhenUnexpectedErrorOccurs()
         {
             // Arrange
             var mock = new Mock<ISkillService>();
@@ -88,7 +88,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public void DeleteSkillReturnPass()
+        public void Delete_Skill_ShouldReturnPass()
         {
             var Id = 1;
             var mock = new Mock<ISkillService>();
@@ -107,7 +107,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task DeleteSkillReturnFail()
+        public async Task Delete_Skill_ShouldReturnFail_WhenSkillNotFound()
         {
             // Arrange
             var Id = 999;
@@ -131,7 +131,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task DeleteSkillReturnException()
+        public async Task Delete_Skill_ShouldThrowException_WhenUnexpectedErrorOccurs()
         {
             // Arrange
             var Id = 1;
@@ -155,7 +155,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public void GetAllSkillsReturnPass()
+        public void Get_AllSkills_ShouldReturnPass()
         {
             var Id = 1;
             var mock = new Mock<ISkillService>();
@@ -173,9 +173,9 @@ namespace KHRMS.UnitTest.ServiceTests
             Assert.Equal("Java Developer", skill.SkillName);
         }
 
-        
+
         [Fact]
-        public async Task GetAllSkillsReturnFail()
+        public async Task Get_AllSkills_ShouldReturnFail_WhenNoSkillsAvailable()
         {
             // Arrange
             var mock = new Mock<ISkillService>();
@@ -199,7 +199,7 @@ namespace KHRMS.UnitTest.ServiceTests
 
 
         [Fact]
-        public async Task GetAllSkillsReturnException()
+        public async Task Get_AllSkills_ShouldThrowException_WhenUnexpectedErrorOccurs()
         {
             // Arrange
             var mock = new Mock<ISkillService>();
@@ -222,7 +222,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public void GetSkillByIdReturnPass()
+        public void Get_SkillById_ShouldReturnPass()
         {
             var Id = 1;
             var mock = new Mock<ISkillService>();
@@ -239,9 +239,9 @@ namespace KHRMS.UnitTest.ServiceTests
             Assert.Equal(1, skill.Id);
             Assert.Equal("Java Developer", skill.SkillName);
         }
-      
+
         [Fact]
-        public async Task GetSkillByIdReturnFail()
+        public async Task Get_SkillById_ShouldReturnFail_WhenSkillNotFound()
         {
             // Arrange
             var Id = 999;
@@ -266,7 +266,7 @@ namespace KHRMS.UnitTest.ServiceTests
 
 
         [Fact]
-        public async Task GetSkillByIdReturnException()
+        public async Task Get_SkillById_ShouldThrowException_WhenUnexpectedErrorOccurs()
         {
             // Arrange
             var Id = 1;
@@ -290,7 +290,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public void UpdateSkillReturnPass()
+        public void Update_Skill_ShouldReturnPass()
         {
             var Id = 1;
             var mock = new Mock<ISkillService>();
@@ -309,11 +309,11 @@ namespace KHRMS.UnitTest.ServiceTests
             mock.Setup(x => x.GetSkillById(1));
             var result = skillService.UpdateSkill(skill);
             Assert.NotNull(result);
-            Assert.Equal(1,1);
+            Assert.Equal(1, 1);
         }
-        
+
         [Fact]
-        public async Task UpdateSkillReturnFail()
+        public async Task Update_Skill_ShouldReturnFail_WhenSkillNotFound()
         {
             // Arrange
             var Id = 1;
@@ -337,7 +337,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task UpdateSkillReturnException()
+        public async Task Update_Skill_ShouldThrowException_WhenUnexpectedErrorOccurs()
         {
             // Arrange
             var Id = 1;

@@ -20,7 +20,7 @@ namespace KHRMS.UnitTest.ControllerTests
         }
 
         [Fact]
-        public async Task GetAllDocuments_ReturnsSuccess()
+        public async Task Get_AllDocuments_WhenCalled_ReturnsOkResult()
         {
             var documents = new List<EmployeeDocumentInfo>
             {
@@ -35,7 +35,7 @@ namespace KHRMS.UnitTest.ControllerTests
         }
 
         [Fact]
-        public async Task GetDocumentById_ReturnsSuccess()
+        public async Task Get_DocumentById_WhenDocumentExists_Returns_OkResult()
         {
             var document = new EmployeeDocumentInfo { Id = 1, EmployeeId = 1001, FilePath = "path1.pdf" };
             _mockService.Setup(x => x.GetByIdAsync(1)).ReturnsAsync(document);
@@ -46,7 +46,7 @@ namespace KHRMS.UnitTest.ControllerTests
         }
 
         [Fact]
-        public async Task GetDocumentById_ReturnsNotFound()
+        public async Task Get_DocumentById_WhenDocumentDoesNotExist_Returns_NotFoundResult()
         {
             _mockService.Setup(x => x.GetByIdAsync(999)).ReturnsAsync((EmployeeDocumentInfo)null);
 
@@ -55,7 +55,7 @@ namespace KHRMS.UnitTest.ControllerTests
         }
 
         [Fact]
-        public async Task UploadDocument_ReturnsSuccess()
+        public async Task UploadDocument_WhenValidFileProvided_Returns_CreatedAtActionResult()
         {
             var mockFile = new Mock<IFormFile>();
             var content = new MemoryStream();
@@ -84,10 +84,8 @@ namespace KHRMS.UnitTest.ControllerTests
             Assert.Equal(1, returnedDocument.Id);
         }
 
-
-
         [Fact]
-        public async Task DeleteDocument_ReturnsSuccess()
+        public async Task DeleteDocument_WhenDocumentExists_Returns_OkResult()
         {
             var id = 1;
             _mockService.Setup(x => x.GetByIdAsync(id)).ReturnsAsync(new EmployeeDocumentInfo { Id = id });
@@ -99,7 +97,7 @@ namespace KHRMS.UnitTest.ControllerTests
         }
 
         [Fact]
-        public async Task DeleteDocument_ReturnsNotFound()
+        public async Task DeleteDocument_WhenDocumentDoesNotExist_Returns_NotFoundResult()
         {
             var id = 999;
             _mockService.Setup(x => x.GetByIdAsync(id)).ReturnsAsync((EmployeeDocumentInfo)null);

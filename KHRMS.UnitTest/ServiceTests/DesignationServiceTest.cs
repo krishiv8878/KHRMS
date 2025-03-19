@@ -13,7 +13,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public void CreateDesignationReturnPass()
+        public void Create_Designation_ShouldReturnSuccess_WhenValidDesignationIsProvided()
         {
             var mock = new Mock<IDesignationService>();
             List<Designation> designations = new List<Designation>();
@@ -23,16 +23,16 @@ namespace KHRMS.UnitTest.ServiceTests
             {
                 Id = 8,
                 DesignationName = "DotnetCore"
-                               
+
             };
             designations.Add(designation);
             Assert.Equal(1, 1);
 
         }
 
-      
+
         [Fact]
-        public async Task CreateDesignationReturnFail()
+        public async Task Create_Designation_ShouldThrowInvalidOperationException_WhenDesignationAlreadyExists()
         {
             // Arrange
             var mock = new Mock<IDesignationService>();
@@ -62,7 +62,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task CreateDesignationReturnException()
+        public async Task Create_Designation_ShouldThrowArgumentNullException_WhenNullDesignationIsProvided()
         {
             // Arrange
             var mock = new Mock<IDesignationService>();
@@ -87,7 +87,7 @@ namespace KHRMS.UnitTest.ServiceTests
 
 
         [Fact]
-        public void DeleteDesignationReturnPass()
+        public void Delete_Designation_ShouldReturnSuccess_WhenDesignationExists()
         {
             var mock = new Mock<IDesignationService>();
             IDesignationService designationservice = mock.Object;
@@ -100,13 +100,13 @@ namespace KHRMS.UnitTest.ServiceTests
             };
             mock.Setup(x => x.DeleteDesignation(Id));
             var result = designationservice.DeleteDesignation(Id);
-            Assert.Equal(1,1);
+            Assert.Equal(1, 1);
             mock.Verify(x => x.DeleteDesignation(Id), Times.Once);
         }
 
-        
+
         [Fact]
-        public async Task DeleteDesignationReturnFail()
+        public async Task Delete_Designation_ShouldThrowKeyNotFoundException_WhenDesignationDoesNotExist()
         {
             // Arrange
             var Id = 999;
@@ -132,7 +132,7 @@ namespace KHRMS.UnitTest.ServiceTests
 
 
         [Fact]
-        public async Task DeleteDesignationReturnException()
+        public async Task Delete_Designation_ShouldThrowException_WhenDatabaseErrorOccurs()
         {
             // Arrange
             var mock = new Mock<IDesignationService>();
@@ -157,7 +157,7 @@ namespace KHRMS.UnitTest.ServiceTests
 
 
         [Fact]
-        public void GetAllDesignationsReturnPass()
+        public void Get_AllDesignations_ShouldReturnList_WhenDesignationsExist()
         {
             var mock = new Mock<IDesignationService>();
             IDesignationService designationservice = mock.Object;
@@ -174,7 +174,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task GetAllDesignationsReturnFail()
+        public async Task Get_AllDesignations_ShouldThrowInvalidOperationException_WhenNoDesignationsAvailable()
         {
             // Arrange
             var mock = new Mock<IDesignationService>();
@@ -195,12 +195,12 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task GetAllDesignationsReturnExeption()
+        public async Task Get_AllDesignations_ShouldThrowException_WhenUnexpectedErrorOccurs()
         {
             var Id = 1;
             var mock = new Mock<IDesignationService>();
             IDesignationService designationservice = mock.Object;
-            mock.Setup(x => x.GetAllDesignations()).Returns(()=>null); ;
+            mock.Setup(x => x.GetAllDesignations()).Returns(() => null); ;
             //Assert.Throws<NullReferenceException>(() =>
             //{
             //    var result = mock.Object.GetAllDesignations();
@@ -213,7 +213,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public void GetDesignationByIdReturnPass()
+        public void Get_DesignationById_ShouldReturnDesignation_WhenValidIdIsProvided()
         {
             var Id = 1;
             var mock = new Mock<IDesignationService>();
@@ -231,7 +231,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task GetDesignationByIdReturnFail()
+        public async Task Get_DesignationById_ShouldThrowKeyNotFoundException_WhenDesignationDoesNotExist()
         {
             // Arrange
             var Id = 999;
@@ -251,9 +251,9 @@ namespace KHRMS.UnitTest.ServiceTests
             // Verify the exception message
             Assert.Equal("Designation not found", exception.Message);
         }
-    
+
         [Fact]
-        public async Task GetDesignationByIdReturnException()
+        public async Task Get_DesignationById_ShouldThrowKeyNotFoundException_WhenUnexpectedErrorOccurs()
         {
             // Arrange
             var Id = 1;
@@ -275,7 +275,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public void UpdateDesignationReturnTest()
+        public void Update_Designation_ShouldReturnSuccess_WhenValidDesignationIsProvided()
         {
             var mock = new Mock<IDesignationService>();
             IDesignationService designationservice = mock.Object;
@@ -284,11 +284,11 @@ namespace KHRMS.UnitTest.ServiceTests
                 Id = 1,
                 DesignationName = "OOPS"
             };
-             Designation updatedesignation = new Designation()
-             {
-                 Id = 1,
-                 DesignationName = "dotnetcore"
-             };
+            Designation updatedesignation = new Designation()
+            {
+                Id = 1,
+                DesignationName = "dotnetcore"
+            };
             mock.Setup(x => x.GetDesignationById(1));
             var result = designationservice.UpdateDesignation(designation);
             Assert.NotNull(result);
@@ -297,7 +297,7 @@ namespace KHRMS.UnitTest.ServiceTests
 
 
         [Fact]
-        public async Task UpdateDesignationReturnTestFail()
+        public async Task Update_Designation_ShouldThrowKeyNotFoundException_WhenDesignationDoesNotExist()
         {
             // Arrange
             var mock = new Mock<IDesignationService>();
@@ -329,10 +329,10 @@ namespace KHRMS.UnitTest.ServiceTests
             // Ensure UpdateDesignation() was actually called with the invalid ID
             mock.Verify(x => x.UpdateDesignation(It.Is<Designation>(d => d.Id == 999)), Times.Once);
         }
-       
+
 
         [Fact]
-        public async Task UpdateDesignationReturnTestException()
+        public async Task Update_Designation_ShouldThrowArgumentNullException_WhenNullDesignationIsProvided()
         {
             // Arrange
             var mock = new Mock<IDesignationService>();

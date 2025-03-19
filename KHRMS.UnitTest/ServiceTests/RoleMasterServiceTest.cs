@@ -16,7 +16,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task AddRoleMaster_ReturnsSuccess()
+        public async Task Add_RoleMaster_ShouldReturnSuccess()
         {
             var roleMaster = new RoleMaster { Id = 1, RoleName = "Admin" };
             _mockService.Setup(x => x.AddRoleMaster(roleMaster)).ReturnsAsync(true);
@@ -27,7 +27,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task GetAllRoleMasters_ReturnsSuccess()
+        public async Task Get_AllRoleMasters_ShouldReturnAllRoles()
         {
             var roleMasters = new List<RoleMaster>
             {
@@ -42,7 +42,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task GetRoleMasterById_ReturnsSuccess()
+        public async Task Get_RoleMasterById_ShouldReturnRole()
         {
             var roleMaster = new RoleMaster { Id = 1, RoleName = "Admin" };
             _mockService.Setup(x => x.GetRoleMasterById(1)).ReturnsAsync(roleMaster);
@@ -53,7 +53,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task GetRoleMasterById_ReturnsNotFound()
+        public async Task Get_RoleMasterById_ShouldReturnNull_WhenNotFound()
         {
             _mockService.Setup(x => x.GetRoleMasterById(999)).ReturnsAsync((RoleMaster)null);
 
@@ -62,7 +62,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task UpdateRoleMaster_ReturnsSuccess()
+        public async Task Update_RoleMaster_ShouldReturnSuccess()
         {
             var roleMaster = new RoleMaster { Id = 1, RoleName = "Admin" };
             _mockService.Setup(x => x.UpdateRoleMaster(roleMaster)).ReturnsAsync(true);
@@ -73,7 +73,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task DeleteRoleMaster_ReturnsSuccess()
+        public async Task DeleteRoleMaster_ShouldReturnSuccess()
         {
             var Id = 1;
             _mockService.Setup(x => x.DeleteRoleMaster(Id)).ReturnsAsync(true);
@@ -84,7 +84,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task DeleteRoleMaster_ReturnsNotFound()
+        public async Task Delete_RoleMaster_ShouldReturnFalse_WhenNotFound()
         {
             var Id = 999;
             _mockService.Setup(x => x.DeleteRoleMaster(Id)).ReturnsAsync(false);

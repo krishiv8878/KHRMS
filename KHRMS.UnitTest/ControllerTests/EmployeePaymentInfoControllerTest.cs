@@ -19,7 +19,7 @@ namespace KHRMS.UnitTest.ControllerTests
         }
 
         [Fact]
-        public async Task GetAll_ShouldReturnOkWithList()
+        public async Task Get_All_ShouldReturnOkWithList()
         {
             // Arrange
             var paymentInfos = new List<EmployeePaymentInfo> { new EmployeePaymentInfo { Id = 1 } };
@@ -35,7 +35,7 @@ namespace KHRMS.UnitTest.ControllerTests
         }
 
         [Fact]
-        public async Task GetById_ShouldReturnOk_WhenEntityExists()
+        public async Task Get_ById_ShouldReturnOk_WhenEntityExists()
         {
             // Arrange
             var paymentInfo = new EmployeePaymentInfo { Id = 1 };
@@ -51,7 +51,7 @@ namespace KHRMS.UnitTest.ControllerTests
         }
 
         [Fact]
-        public async Task GetById_ShouldReturnNotFound_WhenEntityDoesNotExist()
+        public async Task Get_ById_ShouldReturnNotFound_WhenEntityDoesNotExist()
         {
             // Arrange
             _mockService.Setup(service => service.GetByIdAsync(1)).ReturnsAsync((EmployeePaymentInfo)null);

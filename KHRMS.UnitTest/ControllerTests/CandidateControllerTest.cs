@@ -2,11 +2,6 @@
 using KHRMS.Core;
 using KHRMS.Services;
 using Moq;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace KHRMS.UnitTest.ControllerTests
 {
@@ -16,10 +11,10 @@ namespace KHRMS.UnitTest.ControllerTests
         {
 
         }
-    
 
-     [Fact]
-        public void AddCandidateReturnPass()
+
+        [Fact]
+        public void Add_Candidate_WhenValidCandidateProvided_ReturnsSuccess()
         {
             var mock = new Mock<ICandidateService>();
             mock.Setup(x => x.CreateCandidate(It.IsAny<Candidate>()));
@@ -45,7 +40,7 @@ namespace KHRMS.UnitTest.ControllerTests
         }
 
         [Fact]
-        public void GetCandidatesReturnPass()
+        public void Get_Candidates_WhenCalled_ReturnsCandidateList()
         {
             var Id = 1;
             var mock = new Mock<ICandidateService>();
@@ -71,11 +66,11 @@ namespace KHRMS.UnitTest.ControllerTests
         }
 
         [Fact]
-        public void UpdateCandidateReturnPass()
+        public void Update_Candidate_WhenValidCandidateProvided_UpdatesSuccessfully()
         {
             var Id = 1;
             var mock = new Mock<ICandidateService>();
-           // mock.Setup(x => x.UpdateCandidate());
+            // mock.Setup(x => x.UpdateCandidate());
             var controller = new CandidateController(mock.Object);
             var candidate = new Candidate
             {
@@ -111,7 +106,7 @@ namespace KHRMS.UnitTest.ControllerTests
         }
 
         [Fact]
-        public void DeleteCandidateReturnPass()
+        public void Delete_Candidate_WhenCandidateExists_DeletesSuccessfully()
         {
             var Id = 1;
             var mock = new Mock<ICandidateService>();

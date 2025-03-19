@@ -17,7 +17,7 @@ public class RoleMasterControllerTests
     }
 
     [Fact]
-    public async Task GetRoles_ShouldReturnOk_WithListOfRoles()
+    public async Task Get_Roles_ShouldReturnOk_WhenRolesExist()
     {
         // Arrange
         var roles = new List<RoleMaster> { new RoleMaster { Id = 1, RoleName = "Admin" } };
@@ -33,7 +33,7 @@ public class RoleMasterControllerTests
     }
 
     [Fact]
-    public async Task GetRoles_ShouldReturnNotFound_WhenNoRolesExist()
+    public async Task Get_Roles_ShouldReturnNotFound_WhenNoRolesExist()
     {
         // Arrange
         _mockService.Setup(service => service.GetAllRoleMaster()).ReturnsAsync(new List<RoleMaster>());
@@ -48,7 +48,7 @@ public class RoleMasterControllerTests
     }
 
     [Fact]
-    public async Task AddRole_ShouldReturnOk_WhenRoleIsAdded()
+    public async Task Add_Role_ShouldReturnOk_WhenRoleIsAdded()
     {
         // Arrange
         var role = new RoleMaster { Id = 1, RoleName = "Manager" };
@@ -64,7 +64,7 @@ public class RoleMasterControllerTests
     }
 
     [Fact]
-    public async Task AddRole_ShouldReturnBadRequest_WhenRoleIsNotAdded()
+    public async Task Add_Role_ShouldReturnBadRequest_WhenRoleIsNotAdded()
     {
         // Arrange
         var role = new RoleMaster { Id = 1, RoleName = "Manager" };

@@ -16,7 +16,7 @@ namespace KHRMS.UnitTest.ControllerTests
         }
 
         [Fact]
-        public async Task Attendance_AddSuccessfully()
+        public async Task Add_EmployeeAttendance_WhenValidAttendanceProvided_ShouldAddSuccessfully()
         {
             EmployeeAttendance employeeAttendance = new EmployeeAttendance()
             {
@@ -34,7 +34,7 @@ namespace KHRMS.UnitTest.ControllerTests
         }
 
         [Fact]
-        public async Task Attendance_GetSuccessfully()
+        public async Task Get_AllEmployeeAttendances_WhenCalled_ShouldReturnListOfAttendances()
         {
             var employeeAttendance = new List<EmployeeAttendance>
             {
@@ -57,10 +57,10 @@ namespace KHRMS.UnitTest.ControllerTests
         }
 
         [Fact]
-        public async Task Attendance_DeleteSuccessfully()
+        public async Task Delete_EmployeeAttendance_WhenAttendanceExists_ShouldDeleteSuccessfully()
         {
             var attendanceid = 1;
-            var employeeAttendance = new EmployeeAttendance {Id = attendanceid};
+            var employeeAttendance = new EmployeeAttendance { Id = attendanceid };
             _mock.Setup(x => x.GetByIdAsync(attendanceid)).ReturnsAsync(employeeAttendance);
             _mock.Setup(x => x.DeleteAsync(attendanceid)).Returns(Task.CompletedTask);
             var result = await _controller.DeleteEmployeeAttendanceRequest(attendanceid);
@@ -69,7 +69,7 @@ namespace KHRMS.UnitTest.ControllerTests
         }
 
         [Fact]
-        public async Task Attendance_UpdateSuccessfully()
+        public async Task Update_EmployeeAttendance_WhenValidUpdateProvided_ShouldUpdateSuccessfully()
         {
             var employeeAttendance = new EmployeeAttendance()
             {

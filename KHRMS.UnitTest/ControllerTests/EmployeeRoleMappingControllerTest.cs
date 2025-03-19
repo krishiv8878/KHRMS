@@ -16,7 +16,7 @@ namespace KHRMS.UnitTest.ControllerTests
             _controller = new EmployeeRoleMappingController(_mock.Object);
         }
         [Fact]
-        public async Task EmployeeRoleMapping_AddSuccessfully()
+        public async Task Assign_EmployeeRole_WhenValidMappingProvided_ShouldAddSuccessfully()
         {
             var employeeRoleMapping = new EmployeeRoleMapping()
             {
@@ -32,7 +32,7 @@ namespace KHRMS.UnitTest.ControllerTests
         }
 
         [Fact]
-        public async Task EmployeeRoleMapping_GetSuccessfully()
+        public async Task Get_AllEmployeeRoles_WhenCalled_ShouldReturnListOfRoleMappings()
         {
             var employeeRoleMapping = new List<EmployeeRoleMapping>
             {
@@ -56,7 +56,7 @@ namespace KHRMS.UnitTest.ControllerTests
         }
 
         [Fact]
-        public async Task employeeRoleMapping_DeleteSuccessfully()
+        public async Task Delete_EmployeeRoleMapping_WhenMappingExists_ShouldDeleteSuccessfully()
         {
             var employeeRoleMappingid = 1;
             _mock.Setup(x => x.DeleteEmployeeRoleMapping(employeeRoleMappingid)).ReturnsAsync(true);
@@ -66,7 +66,7 @@ namespace KHRMS.UnitTest.ControllerTests
         }
 
         [Fact]
-        public async Task employeeRoleMapping_UpdateSuccessfully()
+        public async Task Update_EmployeeRoleMapping_WhenValidUpdateProvided_ShouldUpdateSuccessfully()
         {
             var employeeRoleMapping = new EmployeeRoleMapping()
             {

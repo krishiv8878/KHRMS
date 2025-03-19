@@ -23,12 +23,12 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public void CreateEmployeeReturnPass()
+        public void Create_Employee_ShouldReturnSuccess_WhenValidInputProvided()
         {
             var mock = new Mock<IEmployeeService>();
-           // List<Employee> employees = new List<Employee>();
+            // List<Employee> employees = new List<Employee>();
             List<EmployeeRequestModel> employeeRequestModels = new List<EmployeeRequestModel>();
-            
+
             mock.Setup(x => x.CreateEmployee(It.IsAny<EmployeeRequestModel>()))
                         .Returns(Task.FromResult(true));
             //  Employee employee = new Employee()
@@ -51,7 +51,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task CreateEmployeeReturnFail()
+        public async Task Create_Employee_ShouldThrowInvalidOperationException_WhenEmployeeAlreadyExists()
         {
             // Arrange
             var mock = new Mock<IEmployeeService>();
@@ -90,7 +90,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task CreateEmployeeReturnException()
+        public async Task Create_Employee_ShouldThrowArgumentNullException_WhenInputIsNull()
         {
             // Arrange
             var mock = new Mock<IEmployeeService>();
@@ -114,7 +114,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public void DeleteEmployeeReturnPass()
+        public void Delete_Employee_ShouldReturnSuccess_WhenEmployeeExists()
         {
             var mock = new Mock<IEmployeeService>();
             IEmployeeService employeeservice = mock.Object;
@@ -141,7 +141,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task DeleteEmployeeReturnFail()
+        public async Task DeleteEmployee_ShouldThrowKeyNotFoundException_WhenEmployeeDoesNotExist()
         {
             // Arrange
             var Id = 999;
@@ -164,9 +164,9 @@ namespace KHRMS.UnitTest.ServiceTests
             // Ensure DeleteEmployee() was actually called with the given ID
             mock.Verify(x => x.DeleteEmployee(Id), Times.Once);
         }
-      
+
         [Fact]
-        public async Task DeleteEmployeeReturnException()
+        public async Task Delete_Employee_ShouldThrowException_WhenUnexpectedErrorOccurs()
         {
             // Arrange
             var Id = 1;
@@ -191,7 +191,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public void GetAllEmployeesReturnPass()
+        public void Get_AllEmployees_ShouldReturnEmployeeList_WhenEmployeesExist()
         {
             var mock = new Mock<IEmployeeService>();
             IEmployeeService employeeservice = mock.Object;
@@ -213,13 +213,13 @@ namespace KHRMS.UnitTest.ServiceTests
             };
             mock.Setup(x => x.GetAllEmployees());
             var result = employeeservice.GetAllEmployees();
-            Assert.Equal(1,employee.Id);
+            Assert.Equal(1, employee.Id);
             Assert.Equal("Raj", employee.FirstName);
             mock.Verify(x => x.GetAllEmployees(), Times.Once);
         }
-       
+
         [Fact]
-        public async Task GetAllEmployeesReturnFail()
+        public async Task Get_AllEmployees_ShouldThrowInvalidOperationException_WhenNoEmployeesAvailable()
         {
             // Arrange
             var mock = new Mock<IEmployeeService>();
@@ -243,7 +243,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task GetAllEmployeesReturnException()
+        public async Task Get_AllEmployees_ShouldThrowException_WhenUnexpectedErrorOccurs()
         {
             // Arrange
             var mock = new Mock<IEmployeeService>();
@@ -267,7 +267,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public void GetEmployeeByIdReturnPass()
+        public void Get_EmployeeById_ShouldReturnEmployee_WhenEmployeeExists()
         {
             var mock = new Mock<IEmployeeService>();
             IEmployeeService employeeservice = mock.Object;
@@ -293,9 +293,9 @@ namespace KHRMS.UnitTest.ServiceTests
             Assert.Equal("Raj", employee.FirstName);
 
         }
-      
+
         [Fact]
-        public async Task GetEmployeeByIdReturnFail()
+        public async Task Get_EmployeeById_ShouldThrowKeyNotFoundException_WhenEmployeeDoesNotExist()
         {
             // Arrange
             var Id = 999;
@@ -318,9 +318,9 @@ namespace KHRMS.UnitTest.ServiceTests
             // Ensure GetEmployeeById() was actually called with the given ID
             mock.Verify(x => x.GetEmployeeById(Id), Times.Once);
         }
-       
+
         [Fact]
-        public async Task GetEmployeeByIdReturnException()
+        public async Task Get_EmployeeById_ShouldThrowException_WhenUnexpectedErrorOccurs()
         {
             // Arrange
             var Id = 1;
@@ -345,7 +345,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public void UpdateEmployeeReturnPass()
+        public void Update_Employee_ShouldReturnSuccess_WhenEmployeeExistsAndValidInputProvided()
         {
             var mock = new Mock<IEmployeeService>();
             IEmployeeService employeeservice = mock.Object;
@@ -387,7 +387,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task UpdateEmployeeReturnFail()
+        public async Task Update_Employee_ShouldThrowKeyNotFoundException_WhenEmployeeDoesNotExist()
         {
             // Arrange
             var mock = new Mock<IEmployeeService>();
@@ -425,7 +425,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task UpdateEmployeeReturnException()
+        public async Task Update_Employee_ShouldThrowException_WhenUnexpectedErrorOccurs()
         {
             // Arrange
             var mock = new Mock<IEmployeeService>();

@@ -2,11 +2,7 @@
 using KHRMS.Core;
 using KHRMS.Services;
 using Moq;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+
 
 namespace KHRMS.UnitTest.ControllerTests
 {
@@ -18,7 +14,7 @@ namespace KHRMS.UnitTest.ControllerTests
         }
 
         [Fact]
-        public void GetProjectMasterReturnPass()
+        public void Get_AllProjectMasters_WhenCalled_ShouldReturnSuccess()
         {
             var Id = 1;
             var mock = new Mock<IProjectMasterService>();
@@ -39,7 +35,7 @@ namespace KHRMS.UnitTest.ControllerTests
         }
 
         [Fact]
-        public void AddProjectMasterReturnPass()
+        public void Add_ProjectMaster_WhenValidInputProvided_ShouldReturnSuccess()
         {
             var Id = 1;
             var mock = new Mock<IProjectMasterService>();
@@ -60,7 +56,7 @@ namespace KHRMS.UnitTest.ControllerTests
         }
 
         [Fact]
-        public void UpdateProjectMasterReturnPass()
+        public void Update_ProjectMaster_WhenExistingProjectUpdated_ShouldReturnSuccess()
         {
             var Id = 1;
             var mock = new Mock<IProjectMasterService>();
@@ -89,7 +85,7 @@ namespace KHRMS.UnitTest.ControllerTests
         }
 
         [Fact]
-        public void DeleteProjectMasterReturnPass()
+        public void Delete_ProjectMaster_WhenExistingProjectDeleted_ShouldReturnSuccess()
         {
             var Id = 1;
             var mock = new Mock<IProjectMasterService>();

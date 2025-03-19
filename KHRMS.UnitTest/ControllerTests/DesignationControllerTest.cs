@@ -1,11 +1,6 @@
 ﻿using KHRMS.Core;
 using KHRMS.Services;
 using Moq;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace KHRMS.UnitTest.ControllerTests
 {
@@ -13,11 +8,11 @@ namespace KHRMS.UnitTest.ControllerTests
     {
         public DesignationControllerTest()
         {
-                
+
         }
 
         [Fact]
-        public void GetDesignationsReturnPass()
+        public void Ge_tDesignations_WhenCalled_ReturnsDesignationList()
         {
             var Id = 1;
             var mock = new Mock<IDesignationService>();
@@ -36,7 +31,7 @@ namespace KHRMS.UnitTest.ControllerTests
         }
 
         [Fact]
-        public void AddDesignationReturnPass()
+        public void Add_Designation_WhenValidDesignationProvided_ReturnsSuccess()
         {
             var Id = 1;
             var mock = new Mock<IDesignationService>();
@@ -55,7 +50,7 @@ namespace KHRMS.UnitTest.ControllerTests
         }
 
         [Fact]
-        public void UpdateDesignationReturnPass()
+        public void Update_Designation_WhenValidDesignationProvided_UpdatesSuccessfully()
         {
             var Id = 1;
             var mock = new Mock<IDesignationService>();
@@ -78,7 +73,7 @@ namespace KHRMS.UnitTest.ControllerTests
         }
 
         [Fact]
-        public void DeleteDesignationReturnPass()
+        public void Delete_Designation_WhenDesignationExists_DeletesSuccessfully()
         {
             var Id = 1;
             var mock = new Mock<IDesignationService>();
