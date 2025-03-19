@@ -9,8 +9,8 @@ namespace KHRMS.Core
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public long Id { get; set; }
         public string ShiftName { get; set; } = string.Empty;
-        public TimeOnly? StartTime { get; set; } //change type to TimeOnly from String
-        public TimeOnly? EndTime { get; set; }// change type to TimeOnly from String
+        public String? StartTime { get; set; } //change type to TimeSpan from String
+        public String? EndTime { get; set; }// change type to TimeSpan from String
 
         //remove columns IsActive,IsDeleted,UpdatedBy,UpdatedDate
     }

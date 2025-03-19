@@ -19,8 +19,8 @@ namespace KHRMS.UnitTest.ServiceTests
             { 
                 Id = 1,
                 ShiftName = "Night",
-                StartTime = new TimeOnly(10,0),
-                EndTime = new TimeOnly(6,0)
+                StartTime = "10:20:00",
+                EndTime = "07:10:00"
             };
             _mock.Setup(x=>x.AddShiftAsync(It.IsAny<ShiftMaster>())).Returns(Task.CompletedTask);
 
@@ -35,8 +35,8 @@ namespace KHRMS.UnitTest.ServiceTests
             {
                 Id = 0, //invalid id
                 ShiftName = "Test",
-                StartTime = new TimeOnly(10, 0),
-                EndTime = new TimeOnly(6, 0)
+                StartTime = "10:20:00",
+                EndTime = "07:10:00"
             };
             _mock.Setup(x => x.AddShiftAsync(It.IsAny<ShiftMaster>())).ThrowsAsync(new ArgumentException("Invalid Data of shiftmaster"));
 
@@ -62,8 +62,8 @@ namespace KHRMS.UnitTest.ServiceTests
         {
             var shiftMaster = new List<ShiftMaster>()
             {
-                new ShiftMaster{Id=1,ShiftName="Night",StartTime = new TimeOnly(1, 0),EndTime = new TimeOnly(6, 0)},
-                new ShiftMaster{Id=2,ShiftName="Day",StartTime = new TimeOnly(10, 0),EndTime = new TimeOnly(6, 0)},
+                new ShiftMaster{Id=1,ShiftName="Night",StartTime = "10:20:00",EndTime = "07:10:10"},
+                new ShiftMaster{Id=2,ShiftName="Day",StartTime = "07:00:00",EndTime = "10:10:00"},
             };
             _mock.Setup(x => x.GetAllShiftsAsync()).ReturnsAsync(shiftMaster);
             var result = await _mock.Object.GetAllShiftsAsync();
@@ -126,15 +126,15 @@ namespace KHRMS.UnitTest.ServiceTests
             {
                 Id = 1,
                 ShiftName = "Night",
-                StartTime = new TimeOnly(10, 0),
-                EndTime = new TimeOnly(6, 0)
+                StartTime = "10:20:00",
+                EndTime = "07:10:00"
             };
             var UpdateashiftMaster = new ShiftMaster
             {
                 Id = 1,
                 ShiftName = "Day",//update shiftname
-                StartTime = new TimeOnly(10, 0),
-                EndTime = new TimeOnly(6, 0)
+                StartTime = "10:20:00",
+                EndTime = "07:10:00"
             };
 
             _mock.Setup(x => x.UpdateShiftAsync(It.IsAny<ShiftMaster>())).Returns(Task.CompletedTask);
@@ -152,8 +152,8 @@ namespace KHRMS.UnitTest.ServiceTests
             {
                 Id = 9999,//id doesnt exists
                 ShiftName = "Night",
-                StartTime = new TimeOnly(10, 0),
-                EndTime = new TimeOnly(6, 0)
+                StartTime = "10:20:00",
+                EndTime = "07:10:00"
             };
 
             _mock.Setup(x => x.UpdateShiftAsync(It.IsAny<ShiftMaster>())).ThrowsAsync(new KeyNotFoundException("Requested id of ShiftMaster not found"));
