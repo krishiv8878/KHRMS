@@ -9,11 +9,11 @@ namespace KHRMS.UnitTest.ControllerTests
     {
         public HolidayControllerTesting()
         {
-            
+
         }
 
         [Fact]
-        public void GetEmployeesReturnPass()
+        public void Get_AllHolidays_WhenCalled_ShouldReturnSuccess()
         {
             var Id = 1;
             var mock = new Mock<IHolidayService>();
@@ -32,7 +32,7 @@ namespace KHRMS.UnitTest.ControllerTests
 
 
         [Fact]
-        public void AddHolidayReturnPass()
+        public void Add_Holiday_WhenValidDataProvided_ShouldReturnSuccess()
         {
             var Id = 1;
             var mock = new Mock<IHolidayService>();
@@ -47,11 +47,11 @@ namespace KHRMS.UnitTest.ControllerTests
             var result = controller.AddHoliday(holiday);
             Assert.NotNull(result);
             Assert.Equal(1, 1);
-            Assert.Equal("",holiday.HolidayName);
+            Assert.Equal("", holiday.HolidayName);
         }
 
         [Fact]
-        public void UpdateHolidayReturnPass()
+        public void Update_Holiday_WhenValidDataProvided_ShouldReturnSuccess()
         {
             var Id = 1;
             var mock = new Mock<IHolidayService>();
@@ -76,7 +76,7 @@ namespace KHRMS.UnitTest.ControllerTests
         }
 
         [Fact]
-        public void DeleteHolidayReturnPass()
+        public void Delete_Holiday_WhenHolidayExists_ShouldReturnSuccess()
         {
             var Id = 1;
             var mock = new Mock<IHolidayService>();

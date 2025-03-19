@@ -1,13 +1,7 @@
 ﻿using KHRMS.Core;
 using KHRMS.Services;
-using KHRMS.Services.Interfaces;
 using Moq;
 using NPOI.SS.Formula.Functions;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace KHRMS.UnitTest.ServiceTests
 {
@@ -15,11 +9,11 @@ namespace KHRMS.UnitTest.ServiceTests
     {
         public UserRegistrationTest()
         {
-            
+
         }
 
         [Fact]
-        public void GetRegistrationByUserReturnPass()
+        public void Get_RegistrationByUser_ShouldReturnPass_WhenValidUserProvided()
         {
             var Id = 1;
             var mock = new Mock<IUserRegistrationService>();
@@ -31,9 +25,9 @@ namespace KHRMS.UnitTest.ServiceTests
                 FirstName = "",
                 LastName = "",
                 Email = "",
-                MobileNumber="",
-                Address="",
-                Password=""
+                MobileNumber = "",
+                Address = "",
+                Password = ""
             };
             mock.Setup(x => x.GetRegistrationByUser(userregistration));
             var result = userregistrationservice.GetRegistrationByUser(userregistration);
@@ -43,7 +37,7 @@ namespace KHRMS.UnitTest.ServiceTests
 
 
         [Fact]
-        public async Task AddUserLoginReturnPass()
+        public async Task Get_RegistrationByUser_ShouldReturnTrue_WhenUserExists()
         {
             // Arrange
             var mock = new Mock<IUserRegistrationService>();

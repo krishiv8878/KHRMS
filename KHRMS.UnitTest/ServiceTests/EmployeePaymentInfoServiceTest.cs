@@ -16,7 +16,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task AddEmployeePayment_ReturnsSuccess()
+        public async Task Add_Async_ShouldSucceed_WhenDataIsValid()
         {
             var employeePayment = new EmployeePaymentInfo { Id = 1, EmployeeId = 1001 };
             _mockService.Setup(x => x.AddAsync(employeePayment)).Returns(Task.CompletedTask);
@@ -26,7 +26,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task AddEmployeePayment_ThrowsException()
+        public async Task Add_Async_ShouldThrowException_WhenUnexpectedErrorOccurs()
         {
             var employeePayment = new EmployeePaymentInfo { Id = 1, EmployeeId = 1001 };
             _mockService.Setup(x => x.AddAsync(employeePayment)).ThrowsAsync(new Exception("Unexpected error"));
@@ -36,12 +36,12 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task GetAllEmployeePayments_ReturnsSuccess()
+        public async Task Get_AllAsync_ShouldReturnEmployeePayments_WhenDataExists()
         {
             var employeePayments = new List<EmployeePaymentInfo>
             {
                 new EmployeePaymentInfo { Id = 1, EmployeeId = 1001 },
-                new EmployeePaymentInfo { Id = 2, EmployeeId = 1002 }   
+                new EmployeePaymentInfo { Id = 2, EmployeeId = 1002 }
             };
             _mockService.Setup(x => x.GetAllAsync()).ReturnsAsync(employeePayments);
 
@@ -50,7 +50,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task GetEmployeePaymentById_ReturnsSuccess()
+        public async Task Get_ByIdAsync_ShouldReturnEmployeePayment_WhenIdIsValid()
         {
             var employeePayment = new EmployeePaymentInfo { Id = 1, EmployeeId = 1001 };
             _mockService.Setup(x => x.GetByIdAsync(1)).ReturnsAsync(employeePayment);
@@ -61,7 +61,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task GetEmployeePaymentById_ReturnsNotFound()
+        public async Task Get_ByIdAsync_ShouldReturnNull_WhenIdNotFound()
         {
             _mockService.Setup(x => x.GetByIdAsync(999)).ReturnsAsync((EmployeePaymentInfo)null);
 
@@ -70,7 +70,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task UpdateEmployeePayment_ReturnsSuccess()
+        public async Task Update_Async_ShouldSucceed_WhenDataIsValid()
         {
             var employeePayment = new EmployeePaymentInfo { Id = 1, EmployeeId = 1001 };
             _mockService.Setup(x => x.UpdateAsync(employeePayment)).Returns(Task.CompletedTask);
@@ -80,7 +80,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task DeleteEmployeePayment_ReturnsSuccess()
+        public async Task Delete_Async_ShouldSucceed_WhenIdIsValid()
         {
             var Id = 1;
             _mockService.Setup(x => x.DeleteAsync(Id)).Returns(Task.CompletedTask);
@@ -90,7 +90,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task DeleteEmployeePayment_ReturnsNotFound()
+        public async Task Delete_Async_ShouldThrowException_WhenIdNotFound()
         {
             var Id = 999;
             _mockService.Setup(x => x.DeleteAsync(Id)).ThrowsAsync(new KeyNotFoundException("Employee payment not found"));

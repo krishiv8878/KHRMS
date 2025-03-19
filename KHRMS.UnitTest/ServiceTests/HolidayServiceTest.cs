@@ -1,11 +1,7 @@
 ﻿using KHRMS.Core;
 using KHRMS.Services;
 using Moq;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+
 
 namespace KHRMS.UnitTest.ServiceTests
 {
@@ -17,7 +13,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public void CreateHolidayReturnPass()
+        public void Create_Holiday_ShouldReturnSuccess_WhenHolidayIsValid()
         {
             var mock = new Mock<IHolidayService>();
             List<Holiday> holidays = new List<Holiday>();
@@ -34,7 +30,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
        
         [Fact]
-        public async Task CreateHolidayReturnFail()
+        public async Task Create_Holiday_ShouldThrowException_WhenHolidayAlreadyExists()
         {
             // Arrange
             var mock = new Mock<IHolidayService>();
@@ -60,7 +56,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task CreateHolidayReturnException()
+        public async Task Create_Holiday_ShouldThrowException_WhenHolidayIsNull()
         {
             // Arrange
             var mock = new Mock<IHolidayService>();
@@ -79,7 +75,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public void DeleteHolidayReturnPass()
+        public void Delete_Holiday_ShouldReturnSuccess_WhenHolidayExists()
         {
             var mock = new Mock<IHolidayService>();
             IHolidayService holidayeservice = mock.Object;
@@ -98,7 +94,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
   
         [Fact]
-        public async Task DeleteHolidayReturnFail()
+        public async Task Delete_Holiday_ShouldThrowException_WhenHolidayDoesNotExist()
         {
             // Arrange
             var Id = 999;
@@ -122,7 +118,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
      
         [Fact]
-        public async Task DeleteHolidayReturnException()
+        public async Task Delete_Holiday_ShouldThrowException_WhenUnexpectedErrorOccurs()
         {
             // Arrange
             var Id = 1;
@@ -146,7 +142,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public void GetAllHolidaysReturnPass()
+        public void Get_AllHolidays_ShouldReturnList_WhenHolidaysExist()
         {
             var mock = new Mock<IHolidayService>();
             IHolidayService holidayeservice = mock.Object;
@@ -167,7 +163,7 @@ namespace KHRMS.UnitTest.ServiceTests
       
 
         [Fact]
-        public async Task GetAllHolidaysReturnFail()
+        public async Task Get_AllHolidays_ShouldThrowException_WhenNoHolidaysAvailable()
         {
             // Arrange
             var mock = new Mock<IHolidayService>();
@@ -191,7 +187,7 @@ namespace KHRMS.UnitTest.ServiceTests
 
 
         [Fact]
-        public async Task GetAllHolidaysReturnException()
+        public async Task Get_AllHolidays_ShouldThrowException_WhenUnexpectedErrorOccurs()
         {
             // Arrange
             var mock = new Mock<IHolidayService>();
@@ -214,7 +210,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public void GetHolidayByIdReturnPass()
+        public void Get_HolidayById_ShouldReturnHoliday_WhenIdIsValid()
         {
             var mock = new Mock<IHolidayService>();
             IHolidayService holidayeservice = mock.Object;
@@ -234,7 +230,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task GetHolidayByIdReturnFail()
+        public async Task Get_HolidayById_ShouldThrowException_WhenHolidayDoesNotExist()
         {
             // Arrange
             var Id = 999;
@@ -258,7 +254,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task GetHolidayByIdReturnException()
+        public async Task Get_HolidayById_ShouldThrowException_WhenUnexpectedErrorOccurs()
         {
             // Arrange
             var Id = 1;
@@ -282,7 +278,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public void UpdateHolidayReturnPass()
+        public void Update_Holiday_ShouldReturnSuccess_WhenHolidayExists()
         {
             var mock = new Mock<IHolidayService>();
             IHolidayService holidayeservice = mock.Object;
@@ -307,7 +303,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task UpdateHolidayReturnFail()
+        public async Task Update_Holiday_ShouldThrowException_WhenHolidayDoesNotExist()
         {
             // Arrange
             var mock = new Mock<IHolidayService>();
@@ -342,7 +338,7 @@ namespace KHRMS.UnitTest.ServiceTests
 
         
         [Fact]
-        public async Task UpdateHolidayReturnException()
+        public async Task Update_Holiday_ShouldThrowException_WhenUnexpectedErrorOccurs()
         {
             // Arrange
             var mock = new Mock<IHolidayService>();

@@ -13,7 +13,7 @@ namespace KHRMS.UnitTest
         }
 
         [Fact]
-        public void CreateCandidateReturnPass()
+        public void Create_Candidate_ShouldReturnSuccess_WhenValidCandidateIsProvided()
         {
             var mock = new Mock<ICandidateService>();
             List<Candidate> candidates = new List<Candidate>();
@@ -36,9 +36,9 @@ namespace KHRMS.UnitTest
             Assert.Equal(1, 1);
         }
 
-       
+
         [Fact]
-        public async Task CreateCandidateReturnFail()
+        public async Task Create_Candidate_ShouldThrowInvalidOperationException_WhenCandidateAlreadyExists()
         {
             // Arrange
             var mock = new Mock<ICandidateService>();
@@ -75,9 +75,9 @@ namespace KHRMS.UnitTest
             mock.Verify(x => x.CreateCandidate(It.IsAny<Candidate>()), Times.Once);
         }
 
-     
+
         [Fact]
-        public async Task CreateCandidateReturnException()
+        public async Task Create_Candidate_ShouldThrowException_WhenUnexpectedErrorOccurs()
         {
             // Arrange
             var mock = new Mock<ICandidateService>();
@@ -115,7 +115,7 @@ namespace KHRMS.UnitTest
         }
 
         [Fact]
-        public void DeleteCandidateReturnsPass()
+        public void Delete_Candidate_ShouldReturnSuccess_WhenCandidateExists()
         {
             var mock = new Mock<ICandidateService>();
             ICandidateService candidateService = mock.Object;
@@ -140,9 +140,9 @@ namespace KHRMS.UnitTest
             mock.Verify(x => x.DeleteCandidate(1), Times.Once);
         }
 
-      
+
         [Fact]
-        public async Task DeleteCandidateReturnsFail()
+        public async Task Delete_Candidate_ShouldThrowKeyNotFoundException_WhenCandidateDoesNotExist()
         {
             // Arrange
             var Id = 999;
@@ -168,7 +168,7 @@ namespace KHRMS.UnitTest
 
 
         [Fact]
-        public async Task DeleteCandidateReturnsException()
+        public async Task Delete_Candidate_ShouldThrowException_WhenUnexpectedErrorOccurs()
         {
             // Arrange
             var Id = 1;
@@ -193,7 +193,7 @@ namespace KHRMS.UnitTest
         }
 
         [Fact]
-        public void GetAllCandidatesReturnPass()
+        public void Get_AllCandidates_ShouldReturnCandidateList_WhenCandidatesExist()
         {
             var mock = new Mock<ICandidateService>();
             ICandidateService candidateService = mock.Object;
@@ -219,9 +219,9 @@ namespace KHRMS.UnitTest
             Assert.Equal("Raj", candidate.FirstName);
         }
 
-        
+
         [Fact]
-        public async Task GetAllCandidatesReturnFail()
+        public async Task Get_AllCandidates_ShouldThrowInvalidOperationException_WhenNoCandidatesAvailable()
         {
             // Arrange
             var mock = new Mock<ICandidateService>();
@@ -244,19 +244,9 @@ namespace KHRMS.UnitTest
             mock.Verify(x => x.GetAllCandidates(), Times.Once);
         }
 
-        //[Fact]
-        //public async Task GetAllCandidatesReturnExcep0tion()
-        //{
-        //    var mock = new Mock<ICandidateService>();
-        //    ICandidateService candidateService = mock.Object;
-        //    List<Candidate> candidates = new List<Candidate>();
-        //    mock.Setup(x => x.GetAllCandidates());
-        //    var result = candidateService.GetAllCandidates();
-        //    var exception = await Assert.ThrowsAsync<Exception>(() => mock.Object.GetAllCandidates());
-        //    Assert.Equal("Unexpected error", exception.Message);
-        //}
+
         [Fact]
-        public async Task GetAllCandidatesReturnException()
+        public async Task Get_AllCandidates_ShouldThrowException_WhenUnexpectedErrorOccurs()
         {
             // Arrange
             var mock = new Mock<ICandidateService>();
@@ -280,7 +270,7 @@ namespace KHRMS.UnitTest
         }
 
         [Fact]
-        public void GetCandidateByIdReturnPass()
+        public void Get_CandidateById_ShouldReturnCandidate_WhenCandidateExists()
         {
             var mock = new Mock<ICandidateService>();
             ICandidateService candidateService = mock.Object;
@@ -305,20 +295,9 @@ namespace KHRMS.UnitTest
             Assert.Equal("Raj", candidate.FirstName);
         }
 
-        //[Fact]
-        //public async Task GetCandidateByIdReturnFail()
-        //{
-        //    var Id = 999;
-        //    var mock = new Mock<ICandidateService>();
-        //    ICandidateService candidateService = mock.Object;
-        //    List<Candidate> candidates = new List<Candidate>();
-        //    mock.Setup(x => x.GetCandidateById(1));
-        //    var result = candidateService.GetCandidateById(1);
-        //    var exception = await Assert.ThrowsAsync<KeyNotFoundException>(() => candidateService.GetCandidateById(Id));
-        //    Assert.Equal("Candidate not found", exception.Message);
-        //}
+
         [Fact]
-        public async Task GetCandidateByIdReturnFail()
+        public async Task Get_CandidateById_ShouldThrowKeyNotFoundException_WhenCandidateDoesNotExist()
         {
             // Arrange
             var Id = 999;
@@ -342,20 +321,9 @@ namespace KHRMS.UnitTest
             mock.Verify(x => x.GetCandidateById(Id), Times.Once);
         }
 
-        //[Fact]
-        //public async Task GetCandidateByIdReturnException()
-        //{
-        //    var Id = 1;
-        //    var mock = new Mock<ICandidateService>();
-        //    ICandidateService candidateService = mock.Object;
-        //    List<Candidate> candidates = new List<Candidate>();
-        //    mock.Setup(x => x.GetCandidateById(1));
-        //    var result = candidateService.GetCandidateById(1);
-        //    var exception = await Assert.ThrowsAsync<KeyNotFoundException>(() => candidateService.GetCandidateById(1));
-        //    Assert.Equal("Candidate not found", exception.Message);
-        //}
+
         [Fact]
-        public async Task GetCandidateByIdReturnException()
+        public async Task Get_CandidateById_ShouldThrowException_WhenUnexpectedErrorOccurs()
         {
             // Arrange
             var Id = 1;
@@ -380,7 +348,7 @@ namespace KHRMS.UnitTest
         }
 
         [Fact]
-        public void UpdateCandidateReturnPass()
+        public void Update_Candidate_ShouldReturnSuccess_WhenCandidateIsUpdatedSuccessfully()
         {
             var mock = new Mock<ICandidateService>();
             ICandidateService candidateService = mock.Object;
@@ -415,38 +383,13 @@ namespace KHRMS.UnitTest
             mock.Setup(x => x.GetCandidateById(1));
             mock.Setup(x => x.UpdateCandidate(candidate));
             var result = candidateService.UpdateCandidate(candidate);
-            Assert.Equal(1,1);
+            Assert.Equal(1, 1);
             Assert.NotNull(result);
         }
 
-        //[Fact]
-        //public async Task UpdateCandidateReturnFail()
-        //{
-        //    var Id = 1;
-        //    var mock = new Mock<ICandidateService>();
-        //    ICandidateService candidateService = mock.Object;
-        //    List<Candidate> candidates = new List<Candidate>();
-        //    var candidate = new Candidate
-        //    {
-        //        Id = 1,
-        //        FirstName = "Raj",
-        //        LastName = "Prajapati",
-        //        EmailAddress = "user@example.com",
-        //        MobileNumber = "9876543210",
-        //        TotalExperience = "string",
-        //        RelevantExperience = "string",
-        //        CurrentSalary = 0,
-        //        ExpectedSalary = 0,
-        //        NoticePeriod = 0
-        //    };
-        //    mock.Setup(x => x.GetCandidateById(1));
-        //    mock.Setup(x => x.UpdateCandidate(candidate));
-        //    var result = candidateService.UpdateCandidate(candidate);
-        //    var exception = await Assert.ThrowsAsync<KeyNotFoundException>(() => candidateService.UpdateCandidate(candidate));
-        //    Assert.Equal("Update not found", exception.Message);
-        //}
+
         [Fact]
-        public async Task UpdateCandidateReturnFail()
+        public async Task Update_Candidate_ShouldThrowKeyNotFoundException_WhenCandidateDoesNotExist()
         {
             // Arrange
             var Id = 1;
@@ -485,35 +428,8 @@ namespace KHRMS.UnitTest
         }
 
 
-        //[Fact]
-        //public async Task UpdateCandidateReturnException()
-        //{
-        //    var Id = 1;
-        //    var mock = new Mock<ICandidateService>();
-        //    ICandidateService candidateService = mock.Object;
-        //    List<Candidate> candidates = new List<Candidate>();
-        //    var candidate = new Candidate
-        //    {
-        //        Id = 1,
-        //        FirstName = "Raj",
-        //        LastName = "Prajapati",
-        //        EmailAddress = "user@example.com",
-        //        MobileNumber = "9876543210",
-        //        TotalExperience = "string",
-        //        RelevantExperience = "string",
-        //        CurrentSalary = 0,
-        //        ExpectedSalary = 0,
-        //        NoticePeriod = 0
-        //    };
-        //    mock.Setup(x => x.GetCandidateById(1));
-        //    mock.Setup(x => x.UpdateCandidate(candidate));
-        //    var result = candidateService.UpdateCandidate(candidate);
-        //    var exception = await Assert.ThrowsAsync<KeyNotFoundException>(() => candidateService.UpdateCandidate(null));
-        //    Assert.Equal("Update not found", exception.Message);
-        //}
-
         [Fact]
-        public async Task UpdateCandidateReturnException()
+        public async Task Update_Candidate_ShouldThrowException_WhenUnexpectedErrorOccurs()
         {
             // Arrange
             var mock = new Mock<ICandidateService>();

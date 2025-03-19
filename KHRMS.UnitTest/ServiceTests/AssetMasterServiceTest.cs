@@ -13,7 +13,7 @@ namespace KHRMS.UnitTest
         }
 
         [Fact]
-        public void AddAssetsReturnPass()
+        public void Add_AssetsMaster_Success()
         {
             var mock = new Mock<IAssetsMasterService>();
             mock.Setup(x => x.AddAssetsMaster(It.IsAny<AssetsMaster>()))
@@ -34,7 +34,7 @@ namespace KHRMS.UnitTest
 
 
         [Fact]
-        public async Task AddAssetsReturnFail()
+        public async Task Add_AssetsMaster_Fails_WhenDuplicate()
         {
             // Arrange
             var mock = new Mock<IAssetsMasterService>();
@@ -65,7 +65,7 @@ namespace KHRMS.UnitTest
 
 
         [Fact]
-        public void AddAssetsReturnException()
+        public void Add_AssetsMaster_ThrowsException_WhenNull()
         {
             // Arrange
             var mock = new Mock<IAssetsMasterService>();
@@ -88,7 +88,7 @@ namespace KHRMS.UnitTest
 
 
         [Fact]
-        public void DeletedAssetsMasterReturnsPass()
+        public void Delete_AssetsMaster_Success()
         {
             var Id = 1;
             var mock = new Mock<IAssetsMasterService>();
@@ -112,7 +112,7 @@ namespace KHRMS.UnitTest
 
 
         [Fact]
-        public async Task DeletedAssetsMasterReturnsFail()
+        public async Task Delete_AssetsMaster_Fails_WhenNotFound()
         {
             // Arrange
             var invalidId = 999; // Non-existing ID
@@ -138,7 +138,7 @@ namespace KHRMS.UnitTest
 
 
         [Fact]
-        public async Task DeletedAssetsMasterReturnsException()
+        public async Task Delete_AssetsMaster_ThrowsException()
         {
             // Arrange
             var Id = 1;
@@ -164,7 +164,7 @@ namespace KHRMS.UnitTest
 
 
         [Fact]
-        public void GetAllAssetsMasterReturnPass()
+        public void Get_AllAssetsMaster_Success()
         {
             var Id = 1;
             var mock = new Mock<IAssetsMasterService>();
@@ -187,7 +187,7 @@ namespace KHRMS.UnitTest
 
 
         [Fact]
-        public async Task GetAllAssetsMasterReturnFail()
+        public async Task Get_AllAssetsMaster_Fails_WhenNoRecords()
         {
             // Arrange
             var mock = new Mock<IAssetsMasterService>();
@@ -213,7 +213,7 @@ namespace KHRMS.UnitTest
 
 
         [Fact]
-        public async Task GetAllAssetsMasterReturnException()
+        public async Task Get_AllAssetsMaster_ThrowsException()
         {
             // Arrange
             var mock = new Mock<IAssetsMasterService>();
@@ -238,7 +238,7 @@ namespace KHRMS.UnitTest
 
 
         [Fact]
-        public void GetAssetsMasterByIdReturnPass()
+        public void Get_AssetsMasterById_Success()
         {
             var Id = 1;
             var mock = new Mock<IAssetsMasterService>();
@@ -262,7 +262,7 @@ namespace KHRMS.UnitTest
 
 
         [Fact]
-        public async Task GetAssetsMasterByIdReturnFail()
+        public async Task Get_AssetsMasterById_Fails_WhenNotFound()
         {
             // Arrange
             var Id = 999;
@@ -289,7 +289,7 @@ namespace KHRMS.UnitTest
 
 
         [Fact]
-        public async Task GetAssetsMasterByIdReturnException()
+        public async Task Get_AssetsMasterById_ThrowsException()
         {
             // Arrange
             var Id = 1;
@@ -315,7 +315,7 @@ namespace KHRMS.UnitTest
 
 
         [Fact]
-        public void UpdateAssetsMastereReturnPass()
+        public void Update_AssetsMaster_Success()
         {
             var Id = 1;
             var mock = new Mock<IAssetsMasterService>();
@@ -346,7 +346,7 @@ namespace KHRMS.UnitTest
 
 
         [Fact]
-        public async Task UpdateAssetsMasterReturnFail()
+        public async Task Update_AssetsMaster_Fails_WhenNotFound()
         {
             // Arrange
             var Id = 1;
@@ -381,7 +381,7 @@ namespace KHRMS.UnitTest
 
 
         [Fact]
-        public async Task UpdateAssetsMasterReturnException()
+        public async Task Update_AssetsMaster_ThrowsException()
         {
             // Arrange
             var Id = 1;

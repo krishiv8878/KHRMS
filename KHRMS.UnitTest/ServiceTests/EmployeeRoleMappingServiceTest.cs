@@ -14,7 +14,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task EmployeeRoleMapping_AddSuccessfully()
+        public async Task Create_EmployeeRoleMapping_ShouldReturnTrue_WhenDataIsValid()
         {
             var employeeRoleMapping = new EmployeeRoleMapping()
             {
@@ -28,7 +28,7 @@ namespace KHRMS.UnitTest.ServiceTests
             _mock.Verify(x => x.CreateEmployeeRoleMapping(It.IsAny<EmployeeRoleMapping>()), Times.Once);
         }
         [Fact]
-        public async Task EmployeeRoleMapping_ThrowException_whenDataInvalid()
+        public async Task Create_EmployeeRoleMapping_ShouldThrowException_WhenDataIsInvalid()
         {
             var employeeRoleMapping = new EmployeeRoleMapping()
             {
@@ -42,7 +42,7 @@ namespace KHRMS.UnitTest.ServiceTests
             Assert.Equal("Invalid Data of EmployeeRoleMapping", exception.Message);
         }
         [Fact]
-        public async Task EmployeeRoleMapping_ThrowException_whenDataIsNull()
+        public async Task Create_EmployeeRoleMapping_ShouldThrowException_WhenDataIsNull()
         {
             EmployeeRoleMapping employeeRoleMapping = null;
 
@@ -53,7 +53,7 @@ namespace KHRMS.UnitTest.ServiceTests
             Assert.Equal("EmployeeRoleMapping Is Null", exception.Message);
         }
         [Fact]
-        public async Task EmployeeRoleMapping_GetSuccessfully()
+        public async Task Get_AllEmployeeRoleMapping_ShouldReturnList_WhenDataExists()
         {
             var employeeRoleMapping = new List<EmployeeRoleMapping>
             {
@@ -70,7 +70,7 @@ namespace KHRMS.UnitTest.ServiceTests
             Assert.Contains(result, r => r.Id == 2);
         }
         [Fact]
-        public async Task employeeRoleMapping_NotFound()
+        public async Task Get_AllEmployeeRoleMapping_ShouldThrowException_WhenNoDataFound()
         {
             var employeeRoleMapping = new List<EmployeeRoleMapping>();
             _mock.Setup(x => x.GetAllEmployeeRoleMapping()).ThrowsAsync(new Exception("EmployeeRoleMapping Not Found"));
@@ -78,7 +78,7 @@ namespace KHRMS.UnitTest.ServiceTests
             Assert.Equal("EmployeeRoleMapping Not Found", exception.Message);
         }
         [Fact]
-        public async Task employeeRoleMapping_GetSuccessFullyById()
+        public async Task Get_RoleMappingById_ShouldReturnRoleMapping_WhenIdIsValid()
         {
             var employeeRoleMappingid = 1;
             var employeeRoleMapping = new EmployeeRoleMapping { Id = employeeRoleMappingid };
@@ -87,7 +87,7 @@ namespace KHRMS.UnitTest.ServiceTests
             _mock.Verify(x => x.GetRoleMappingById(employeeRoleMappingid), Times.Once());
         }
         [Fact]
-        public async Task employeeRoleMapping_IdNotFound()
+        public async Task Get_RoleMappingById_ShouldThrowException_WhenIdNotFound()
         {
             var employeeRoleMappingid = 1;
             var employeeRoleMapping = new EmployeeRoleMapping { Id = employeeRoleMappingid };
@@ -96,7 +96,7 @@ namespace KHRMS.UnitTest.ServiceTests
             Assert.Equal("EmployeeRoleMappingId Not found", exception.Message);
         }
         [Fact]
-        public async Task employeeRoleMapping_DeleteSuccessfully()
+        public async Task Delete_EmployeeRoleMapping_ShouldReturnTrue_WhenIdIsValid()
         {
             var employeeRoleMappingid = 1;
             _mock.Setup(x => x.DeleteEmployeeRoleMapping(employeeRoleMappingid)).ReturnsAsync(true);
@@ -105,7 +105,7 @@ namespace KHRMS.UnitTest.ServiceTests
             _mock.Verify(x => x.DeleteEmployeeRoleMapping(employeeRoleMappingid), Times.Once);
         }
         [Fact]
-        public async Task employeeRoleMapping_DeleteThrowException_WhenNotFound()
+        public async Task Delete_EmployeeRoleMapping_ShouldThrowException_WhenIdNotFound()
         {
             var employeeRoleMappingid = 1;
             _mock.Setup(x => x.DeleteEmployeeRoleMapping(employeeRoleMappingid)).ThrowsAsync(new KeyNotFoundException("EmployeeRoleMapping Not found"));
@@ -113,7 +113,7 @@ namespace KHRMS.UnitTest.ServiceTests
             Assert.Equal("EmployeeRoleMapping Not found", exception.Message);
         }
         [Fact]
-        public async Task employeeRoleMapping_UpdateSuccessfully()
+        public async Task Update_EmployeeRoleMapping_ShouldReturnTrue_WhenDataIsValid()
         {
             var employeeRoleMapping = new EmployeeRoleMapping()
             {
@@ -137,7 +137,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task employeeRoleMapping_ThrowException_WhenAttendanceNotFound()
+        public async Task Update_EmployeeRoleMapping_ShouldThrowException_WhenIdNotFound()
         {
             var updateEmployeeRoleMapping = new EmployeeRoleMapping()
             {

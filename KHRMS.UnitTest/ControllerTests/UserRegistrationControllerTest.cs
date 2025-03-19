@@ -2,11 +2,7 @@
 using KHRMS.Core;
 using KHRMS.Services;
 using Moq;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+
 
 namespace KHRMS.UnitTest.ControllerTests
 {
@@ -14,12 +10,12 @@ namespace KHRMS.UnitTest.ControllerTests
     {
         public UserRegistrationControllerTest()
         {
-                
+
         }
 
 
         [Fact]
-        public void RegistrationReturnPass()
+        public void Registration_ShouldReturnPass_WhenValidDataIsProvided()
         {
             var Id = 1;
             var mock = new Mock<IUserRegistrationService>();

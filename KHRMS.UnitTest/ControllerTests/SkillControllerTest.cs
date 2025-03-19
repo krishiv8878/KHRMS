@@ -2,11 +2,6 @@
 using KHRMS.Core;
 using KHRMS.Services;
 using Moq;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace KHRMS.UnitTest.ControllerTests
 {
@@ -18,7 +13,7 @@ namespace KHRMS.UnitTest.ControllerTests
         }
 
         [Fact]
-        public void GetSkillsReturnPass()
+        public void Get_AllSkills_ShouldReturnSuccess_WhenSkillsExist()
         {
             var Id = 1;
             var mock = new Mock<ISkillService>();
@@ -36,7 +31,7 @@ namespace KHRMS.UnitTest.ControllerTests
         }
 
         [Fact]
-        public void UpdateSkillReturnPass()
+        public void Update_Skill_ShouldReturnSuccess_WhenSkillIsUpdated()
         {
             var Id = 1;
             var mock = new Mock<ISkillService>();
@@ -60,7 +55,7 @@ namespace KHRMS.UnitTest.ControllerTests
 
 
         [Fact]
-        public void AddSkillSkillsReturnPass()
+        public void Add_Skill_ShouldReturnSuccess_WhenSkillIsAdded()
         {
             var Id = 1;
             var mock = new Mock<ISkillService>();
@@ -78,7 +73,7 @@ namespace KHRMS.UnitTest.ControllerTests
         }
 
         [Fact]
-        public void DeleteSkillSkillsReturnPass()
+        public void Delete_Skill_ShouldReturnSuccess_WhenSkillIsDeleted()
         {
             var Id = 1;
             var mock = new Mock<ISkillService>();

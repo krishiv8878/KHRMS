@@ -18,7 +18,7 @@ namespace KHRMS.UnitTest.ServiceTests
                 
         }
         [Fact]
-        public void GetUserLoginByIdReturnPass()
+        public void Get_UserLoginById_ShouldReturnPass_WhenValidCredentialsProvided()
         {
             var Id = 1;
             var mock = new Mock<IUserLoginService>();

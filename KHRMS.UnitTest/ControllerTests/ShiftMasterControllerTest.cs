@@ -15,7 +15,7 @@ namespace KHRMS.UnitTest.ControllerTests
             _controller = new ShiftController(_mock.Object);
         }
         [Fact]
-        public async Task ShiftMaster_AddSuccessfully()
+        public async Task Add_Shift_ShouldReturnSuccess_WhenShiftIsAdded()
         {
             ShiftMaster shiftMaster = new ShiftMaster()
             {
@@ -32,7 +32,7 @@ namespace KHRMS.UnitTest.ControllerTests
         }
 
         [Fact]
-        public async Task ShiftMaster_GetSuccessfully()
+        public async Task Get_AllShifts_ShouldReturnSuccess_WhenShiftsExist()
         {
             var shiftMaster = new List<ShiftMaster>()
             {
@@ -54,7 +54,7 @@ namespace KHRMS.UnitTest.ControllerTests
         }
 
         [Fact]
-        public async Task ShiftMaster_DeleteSuccessfully()
+        public async Task Delete_Shift_ShouldReturnSuccess_WhenShiftIsDeleted()
         {
             var shiftMasterId = 1;
             var shiftMaster = new ShiftMaster { Id = shiftMasterId };
@@ -66,7 +66,7 @@ namespace KHRMS.UnitTest.ControllerTests
         }
 
         [Fact]
-        public async Task ShiftMaster_UpdateSuccessfully()
+        public async Task Update_Shift_ShouldReturnSuccess_WhenShiftIsUpdated()
         {
             var shiftMaster = new ShiftMaster
             {

@@ -13,7 +13,7 @@ namespace KHRMS.UnitTest.ServiceTests
             _mock = new Mock<IShiftService>();
         }
         [Fact]
-        public async Task Shift_AddSuccessfully()
+        public async Task Add_ShiftAsync_ShouldSucceed()
         {
             ShiftMaster shiftMaster = new ShiftMaster() 
             { 
@@ -29,7 +29,7 @@ namespace KHRMS.UnitTest.ServiceTests
             _mock.Verify(x=>x.AddShiftAsync(It.IsAny<ShiftMaster>()),Times.Once);
         }
         [Fact]
-        public async Task ShiftMaster_ThrowException_WhenDataInvalid()
+        public async Task Add_ShiftAsync_ShouldThrowException_WhenDataIsInvalid()
         {
             ShiftMaster shiftMaster = new ShiftMaster()
             {
@@ -46,7 +46,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task ShiftMaster_ThrowException_WhenDataisNull()
+        public async Task Add_ShiftAsync_ShouldThrowException_WhenDataIsNull()
         {
             ShiftMaster shiftMaster = null;
 
@@ -58,7 +58,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task Shiftmaster_GetSuccessfully()
+        public async Task Get_AllShiftsAsync_ShouldReturnAllShifts()
         {
             var shiftMaster = new List<ShiftMaster>()
             {
@@ -74,7 +74,7 @@ namespace KHRMS.UnitTest.ServiceTests
             Assert.Contains(result, r => r.Id == 2);
         }
         [Fact]
-        public async Task ShiftMaster_NotFound()
+        public async Task Get_AllShiftsAsync_ShouldThrowException_WhenNoShiftsFound()
         {
             var shiftMasternotfound = new List<ShiftMaster>();
             _mock.Setup(x => x.GetAllShiftsAsync()).ThrowsAsync(new InvalidOperationException("ShiftMaster not found"));
@@ -82,7 +82,7 @@ namespace KHRMS.UnitTest.ServiceTests
             Assert.Equal("ShiftMaster not found", exception.Message);
         }
         [Fact]
-        public async Task ShiftMaster_GetSuccessFullyById()
+        public async Task Get_ShiftByIdAsync_ShouldReturnShift_WhenIdIsValid()
         {
             var shiftMasterid = 1;
             var shiftmaster = new ShiftMaster { Id = shiftMasterid };
@@ -91,7 +91,7 @@ namespace KHRMS.UnitTest.ServiceTests
             _mock.Verify(x=>x.GetShiftByIdAsync(shiftMasterid), Times.Once());
         }
         [Fact]
-        public async Task ShiftMaster_IdNotFound()
+        public async Task Get_ShiftByIdAsync_ShouldThrowException_WhenIdNotFound()
         {
             var shiftMasterid = 1;
             var shiftmaster = new ShiftMaster { Id = shiftMasterid };
@@ -101,7 +101,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task ShiftMaster_DeleteSuccessfully()
+        public async Task Delete_ShiftAsync_ShouldSucceed_WhenIdIsValid()
         {
             var shiftMasterId = 1;
             _mock.Setup(x => x.DeleteShiftAsync(shiftMasterId)).Returns(Task.CompletedTask);
@@ -110,7 +110,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task ShiftMaster_DeleteThrowException_WhenNotFound()
+        public async Task Delete_ShiftAsync_ShouldThrowException_WhenIdNotFound()
         {
             var shiftMasterId = 1;
             _mock.Setup(x => x.DeleteShiftAsync(shiftMasterId)).ThrowsAsync(new KeyNotFoundException("ShiftMaster not found"));
@@ -120,7 +120,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task ShiftMaster_UpdateSuccessfully()
+        public async Task Update_ShiftAsync_ShouldSucceed_WhenDataIsValid()
         {
             var shiftMaster = new ShiftMaster
             {
@@ -146,7 +146,7 @@ namespace KHRMS.UnitTest.ServiceTests
                 r.ShiftName == UpdateashiftMaster.ShiftName)), Times.Once());
         }
         [Fact]
-        public async Task ShiftMaster_UpdateThrowException_WhenRequestNotFound()
+        public async Task Update_ShiftAsync_ShouldThrowException_WhenIdNotFound()
         {
             var shiftMaster = new ShiftMaster
             {

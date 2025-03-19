@@ -13,7 +13,7 @@ namespace KHRMS.UnitTest.ControllerTests
         }
 
         [Fact]
-        public void AddAssetsMasterReturnPass()
+        public void Add_AssetsMaster_Returns_Success()
         {
             var mock = new Mock<IAssetsMasterService>();
             mock.Setup(x => x.AddAssetsMaster(It.IsAny<AssetsMaster>()));
@@ -30,12 +30,12 @@ namespace KHRMS.UnitTest.ControllerTests
             var result = controller.AddAssetsMaster(assets);
             Assert.NotNull(result);
             Assert.Equal(Id, result.Id);
-            Assert.Equal(1, 1);
+            Assert.Equal(assets.Id, 1);
             Assert.Equal("Java", assets.AssetsMasterName);
         }
 
         [Fact]
-        public void GetAllAssetsMasterReturnPass()
+        public void Get_All_AssetsMaster_Returns_Success()
         {
             var mock = new Mock<IAssetsMasterService>();
             var controller = new AssetsMasterController(mock.Object);
@@ -55,7 +55,7 @@ namespace KHRMS.UnitTest.ControllerTests
         }
 
         [Fact]
-        public void UpdateAssetsMasterReturnPass()
+        public void Update_AssetsMaster_Returns_Success()
         {
             var mock = new Mock<IAssetsMasterService>();
             var controller = new AssetsMasterController(mock.Object);
@@ -84,7 +84,7 @@ namespace KHRMS.UnitTest.ControllerTests
         }
 
         [Fact]
-        public void DeleteAssetsMasterReturnPass()
+        public void Delete_AssetsMaster_Returns_Success()
         {
             var mock = new Mock<IAssetsMasterService>();
             mock.Setup(x => x.DeleteAssetsMaster(1));

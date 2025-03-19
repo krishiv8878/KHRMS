@@ -14,11 +14,11 @@ namespace KHRMS.UnitTest.ServiceTests
     {
         public LeaveTypeServiceTest()
         {
-                
+
         }
 
         [Fact]
-        public void AddLeaveTypeReturnPass()
+        public void AddLeaveType_ValidInput_ReturnsPass()
         {
             var mock = new Mock<ILeaveTypeService>();
             List<Core.LeaveType> leavetypes = new List<Core.LeaveType>();
@@ -34,9 +34,9 @@ namespace KHRMS.UnitTest.ServiceTests
             leavetypes.Add(leavetype);
             Assert.Equal(1, 1);
         }
-      
+
         [Fact]
-        public async Task AddLeaveTypeReturnFail()
+        public async Task Add_LeaveType_DuplicateEntry_ThrowsException()
         {
             // Arrange
             var mock = new Mock<ILeaveTypeService>();
@@ -63,9 +63,9 @@ namespace KHRMS.UnitTest.ServiceTests
             // Verify AddLeaveType was called exactly once
             mock.Verify(x => x.AddLeaveType(It.IsAny<Core.LeaveType>()), Times.Once);
         }
-       
+
         [Fact]
-        public async Task AddLeaveTypeReturnException()
+        public async Task Add_LeaveType_InvalidInput_ThrowsException()
         {
             // Arrange
             var mock = new Mock<ILeaveTypeService>();
@@ -95,7 +95,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public void DeleteLeaveTypeReturnPass()
+        public void Delete_LeaveType_ValidId_ReturnsPass()
         {
             var Id = 1;
             var mock = new Mock<ILeaveTypeService>();
@@ -115,9 +115,9 @@ namespace KHRMS.UnitTest.ServiceTests
             Assert.Equal(1, 1);
             mock.Verify(x => x.DeleteLeaveType(Id), Times.Once);
         }
-       
+
         [Fact]
-        public async Task DeleteLeaveTypeReturnFail()
+        public async Task Delete_LeaveType_NonExistentId_ThrowsKeyNotFoundException()
         {
             // Arrange
             var Id = 999;
@@ -143,9 +143,9 @@ namespace KHRMS.UnitTest.ServiceTests
             // Ensure the correct exception message is thrown
             Assert.Equal("LeaveType not found", exception.Message);
         }
-     
+
         [Fact]
-        public async Task DeleteLeaveTypeReturnException()
+        public async Task Delete_LeaveType_ExceptionOccurs_ThrowsException()
         {
             // Arrange
             var Id = 1;
@@ -174,7 +174,7 @@ namespace KHRMS.UnitTest.ServiceTests
 
 
         [Fact]
-        public void GetAllLeaveTypeReturnPass()
+        public void Get_AllLeaveType_HasRecords_ReturnsLeaveTypes()
         {
             var Id = 1;
             var mock = new Mock<ILeaveTypeService>();
@@ -195,7 +195,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task GetAllLeaveTypeReturnFail()
+        public async Task Get_AllLeaveType_NoRecords_ThrowsInvalidOperationException()
         {
             // Arrange
             var mock = new Mock<ILeaveTypeService>();
@@ -217,9 +217,9 @@ namespace KHRMS.UnitTest.ServiceTests
             // Ensure that GetAllLeaveType was called exactly once
             mock.Verify(x => x.GetAllLeaveType(), Times.Once);
         }
-      
+
         [Fact]
-        public async Task GetAllLeaveTypeReturnException()
+        public async Task Get_AllLeaveType_ExceptionOccurs_ThrowsException()
         {
             // Arrange
             var mock = new Mock<ILeaveTypeService>();
@@ -243,7 +243,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public void GetLeaveTypeByIdReturnPass()
+        public void Get_LeaveTypeById_ValidId_ReturnsLeaveType()
         {
             var Id = 1;
             var mock = new Mock<ILeaveTypeService>();
@@ -262,9 +262,9 @@ namespace KHRMS.UnitTest.ServiceTests
             Assert.Equal(1, leavetype.Id);
             Assert.Equal("Casual", leavetype.LeaveName);
         }
-      
+
         [Fact]
-        public async Task GetLeaveTypeByIdReturnFail()
+        public async Task Get_LeaveTypeById_NonExistentId_ThrowsKeyNotFoundException()
         {
             // Arrange
             var Id = 999;
@@ -289,7 +289,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task GetLeaveTypeByIdReturnException()
+        public async Task Get_LeaveTypeById_ExceptionOccurs_ThrowsException()
         {
             // Arrange
             var Id = 1;
@@ -314,7 +314,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public void UpdateLeaveTypeReturnPass()
+        public void Update_LeaveType_ValidInput_ReturnsPass()
         {
             var Id = 1;
             var mock = new Mock<ILeaveTypeService>();
@@ -337,12 +337,12 @@ namespace KHRMS.UnitTest.ServiceTests
             mock.Setup(x => x.GetLeaveTypeById(1));
             var result = leavetypeservice.UpdateLeaveType(leavetype);
             Assert.NotNull(result);
-            Assert.Equal(1,1);
+            Assert.Equal(1, 1);
         }
 
-       
+
         [Fact]
-        public async Task UpdateLeaveTypeReturnFail()
+        public async Task Update_LeaveType_NonExistentId_ThrowsKeyNotFoundException()
         {
             // Arrange
             var mock = new Mock<ILeaveTypeService>();
@@ -373,7 +373,7 @@ namespace KHRMS.UnitTest.ServiceTests
         }
 
         [Fact]
-        public async Task UpdateLeaveTypeReturnException()
+        public async Task Update_LeaveType_ExceptionOccurs_ThrowsException()
         {
             // Arrange
             var mock = new Mock<ILeaveTypeService>();

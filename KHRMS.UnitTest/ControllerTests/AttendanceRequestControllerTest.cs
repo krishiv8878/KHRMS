@@ -17,7 +17,7 @@ namespace KHRMS.UnitTest.ControllerTests
             _controller = new AttendanceRequestController(_mock.Object);
         }
         [Fact]
-        public async Task AttendanceRequest_AddSuccessfully()
+        public async Task Add_AttendanceRequest_WhenValidRequestProvided_ReturnsSuccess()
         { 
             var attendanceRequest = new AttendanceRequest()
             {
@@ -43,7 +43,7 @@ namespace KHRMS.UnitTest.ControllerTests
         }
      
         [Fact]
-        public async Task AttendanceRequest_GetSuccessfully()
+        public async Task Get_AllAttendanceRequests_WhenCalled_ReturnsSuccess()
         {
             var getattendanceRequest = new List<AttendanceRequest>
             {
@@ -67,7 +67,7 @@ namespace KHRMS.UnitTest.ControllerTests
         }
         
         [Fact]
-        public async Task AttendanceRequest_DeleteSuccessfully()
+        public async Task Delete_AttendanceRequest_WhenRequestExists_ReturnsSuccess()
         {
             var attendancerequestId = 1;
             _mock.Setup(x=>x.DeleteAsync(attendancerequestId)).Returns(Task.CompletedTask);
@@ -77,7 +77,7 @@ namespace KHRMS.UnitTest.ControllerTests
         }
 
         [Fact]
-        public async Task AttendanceRequest_UpdateSuccessfully()
+        public async Task Update_AttendanceRequest_WhenRequestExists_ReturnsSuccess()
         {
             var attendanceRequest = new AttendanceRequest
             {
