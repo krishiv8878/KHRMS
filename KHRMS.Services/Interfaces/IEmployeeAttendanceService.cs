@@ -13,6 +13,7 @@ namespace KHRMS.Services
         Task UpdateAsync(EmployeeAttendance attendance);
         Task DeleteAsync(long id);
 
+        Task UpdateExistingAsync(EmployeeAttendance attendance,EmployeeAttendance attendancebyid);
     }
 }
 

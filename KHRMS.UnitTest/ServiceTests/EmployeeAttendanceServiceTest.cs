@@ -22,6 +22,7 @@ namespace KHRMS.UnitTest.ServiceTests
                 ClockOut = DateTime.Now,
                 EmployeeId = 1,
                 TotalHours = new TimeSpan(7),
+                EffectiveHours = new TimeSpan(6),
             };
             _mock.Setup(x => x.AddAsync(It.IsAny<EmployeeAttendance>())).Returns(Task.CompletedTask);
             await _mock.Object.AddAsync(employeeAttendance);
@@ -37,6 +38,7 @@ namespace KHRMS.UnitTest.ServiceTests
                 ClockOut = DateTime.Now,
                 EmployeeId = 999,//employee does not exist
                 TotalHours = new TimeSpan(7),
+                EffectiveHours = new TimeSpan(6)
             };
 
             _mock.Setup(x => x.AddAsync(It.IsAny<EmployeeAttendance>())).Throws(new ArgumentException("Invalid Data of EmployeeAttendance"));
@@ -59,8 +61,8 @@ namespace KHRMS.UnitTest.ServiceTests
         {
             var employeeAttendance = new List<EmployeeAttendance>
             {
-                new EmployeeAttendance() {Id = 1,ClockIn=DateTime.Now,ClockOut=DateTime.Now,EmployeeId=1,TotalHours = new TimeSpan(7)},
-                new EmployeeAttendance() {Id = 2,ClockIn=DateTime.Now,ClockOut=DateTime.Now,EmployeeId=2,TotalHours = new TimeSpan(7)}
+                new EmployeeAttendance() {Id = 1,ClockIn=DateTime.Now,ClockOut=DateTime.Now,EmployeeId=1,TotalHours = new TimeSpan(7), EffectiveHours = new TimeSpan(6)},
+                new EmployeeAttendance() {Id = 2,ClockIn=DateTime.Now,ClockOut=DateTime.Now,EmployeeId=2,TotalHours = new TimeSpan(7), EffectiveHours = new TimeSpan(5)}
             };
             _mock.Setup(x => x.GetAllAsync()).ReturnsAsync(employeeAttendance);
             var result = await _mock.Object.GetAllAsync();
@@ -123,6 +125,7 @@ namespace KHRMS.UnitTest.ServiceTests
                 ClockOut = DateTime.Now,
                 EmployeeId = 1,
                 TotalHours = new TimeSpan(7),
+                EffectiveHours = new TimeSpan(6),
             };
             var updateEmployeeattendance = new EmployeeAttendance()
             {
@@ -130,7 +133,8 @@ namespace KHRMS.UnitTest.ServiceTests
                 ClockIn = DateTime.Now,
                 ClockOut = new DateTime(2025, 3, 17, 7, 0, 0),//update clockOut time
                 EmployeeId = 1,
-                TotalHours = new TimeSpan(7),
+                TotalHours = new TimeSpan(10),
+                EffectiveHours = new TimeSpan(9),
             };
             _mock.Setup(x => x.UpdateAsync(It.IsAny<EmployeeAttendance>())).Returns(Task.CompletedTask);
 
@@ -150,6 +154,7 @@ namespace KHRMS.UnitTest.ServiceTests
                 ClockOut = DateTime.Now,
                 EmployeeId = 1,
                 TotalHours = new TimeSpan(7),
+                EffectiveHours = new TimeSpan(6),
             };
             _mock.Setup(x => x.UpdateAsync(It.IsAny<EmployeeAttendance>())).Throws(new ArgumentException("EmployeeAttendance not found"));
 

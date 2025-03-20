@@ -21,6 +21,9 @@ namespace KHRMS.Core
         [Required(ErrorMessage = "Total Hours is required")]
         public TimeSpan TotalHours { get; set; } // ✅ Changed from DateTime to TimeSpan
 
+        [Required(ErrorMessage = "Gross Hours is required")]
+        public TimeSpan EffectiveHours { get; set; }
+
        
     }
 }

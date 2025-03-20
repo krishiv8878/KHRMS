@@ -1,4 +1,5 @@
 ﻿using KHRMS.Core;
+using KHRMS.Infrastructure.Migrations;
 using System.Reflection.Metadata;
 
 namespace KHRMS.Services
@@ -20,14 +21,22 @@ namespace KHRMS.Services
 
         public async Task<EmployeeAttendance> GetByEmployeeIdAsync(long employeeId)
         {
-            return await _unitOfWork.EmployeeAttendance.GetByEmployeeIdAsync(employeeId);
+            return await _unitOfWork.EmployeeAttendance.GetById(employeeId);
 
         }
 
         public async Task AddAsync(EmployeeAttendance attendance)
         {
-            await _unitOfWork.EmployeeAttendance.Add(attendance);
-            var result = _unitOfWork.Save();
+            var attendancebyid = (await _unitOfWork.EmployeeAttendance.GetAll()).FirstOrDefault(r => r.EmployeeId == attendance.EmployeeId);
+            var currdate = DateTime.Now;
+            attendance.CreatedDate = currdate;
+            if (attendancebyid != null && attendancebyid.ClockIn.Date == attendance.ClockIn.Date)
+            {
+                await UpdateExistingAsync(attendance,attendancebyid);
+            }else{
+                await _unitOfWork.EmployeeAttendance.Add(attendance);
+                var result = _unitOfWork.Save();
+            }
 
         }
 
@@ -36,6 +45,27 @@ namespace KHRMS.Services
             _unitOfWork.EmployeeAttendance.Update(attendance);
             var result = _unitOfWork.Save();
             return Task.CompletedTask;
+        }
+
+        public async Task UpdateExistingAsync(EmployeeAttendance attendance,EmployeeAttendance attendancebyid)
+        {
+            if (attendancebyid != null)
+            {
+                var timedifference = attendance.ClockIn - attendancebyid.ClockOut;
+                var totalduration = attendance.ClockOut - attendancebyid.ClockIn;
+                attendancebyid.ClockIn = attendancebyid.ClockIn;
+                attendancebyid.ClockOut = attendance.ClockOut;
+                attendancebyid.TotalHours = new TimeSpan(totalduration.Hours, totalduration.Minutes, totalduration.Seconds);
+                var effectivehrs = totalduration - timedifference;
+                attendancebyid.EffectiveHours = new TimeSpan(effectivehrs.Hours, effectivehrs.Minutes, effectivehrs.Seconds);
+                attendancebyid.UpdatedDate = DateTime.Now;
+                _unitOfWork.EmployeeAttendance.Update(attendancebyid);
+                var result = _unitOfWork.Save();
+            }
+            else
+            {
+                throw new Exception("record not found");
+            }
         }
 
         public async Task DeleteAsync(long id)
@@ -47,10 +77,7 @@ namespace KHRMS.Services
                 _unitOfWork.Save();
             }
 
-
         }
-      
-
     }
 }
 
