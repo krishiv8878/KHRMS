@@ -25,6 +25,7 @@ namespace KHRMS.UnitTest.ControllerTests
                 ClockOut = DateTime.Now,
                 EmployeeId = 1,
                 TotalHours = new TimeSpan(7),
+                EffectiveHours = new TimeSpan(6),
             };
             _mock.Setup(x => x.AddAsync(It.IsAny<EmployeeAttendance>())).Returns(Task.CompletedTask);
 
@@ -38,8 +39,8 @@ namespace KHRMS.UnitTest.ControllerTests
         {
             var employeeAttendance = new List<EmployeeAttendance>
             {
-                new EmployeeAttendance() {Id = 1,ClockIn=DateTime.Now,ClockOut=DateTime.Now,EmployeeId=1,TotalHours = new TimeSpan(7)},
-                new EmployeeAttendance() {Id = 2,ClockIn=DateTime.Now,ClockOut=DateTime.Now,EmployeeId=2,TotalHours = new TimeSpan(7)}
+                new EmployeeAttendance() {Id = 1,ClockIn=DateTime.Now,ClockOut=DateTime.Now,EmployeeId=1,TotalHours = new TimeSpan(7), EffectiveHours = new TimeSpan(6)},
+                new EmployeeAttendance() {Id = 2,ClockIn=DateTime.Now,ClockOut=DateTime.Now,EmployeeId=2,TotalHours = new TimeSpan(7), EffectiveHours = new TimeSpan(6),}
             };
             _mock.Setup(x => x.GetAllAsync()).ReturnsAsync(employeeAttendance);
             var result = await _controller.GetAll();
@@ -78,6 +79,7 @@ namespace KHRMS.UnitTest.ControllerTests
                 ClockOut = DateTime.Now,
                 EmployeeId = 1,
                 TotalHours = new TimeSpan(7),
+                EffectiveHours = new TimeSpan(6),
             };
             var updateEmployeeattendance = new EmployeeAttendance()
             {
@@ -86,6 +88,7 @@ namespace KHRMS.UnitTest.ControllerTests
                 ClockOut = new DateTime(2025, 3, 17, 7, 0, 0),//update clockOut time
                 EmployeeId = 1,
                 TotalHours = new TimeSpan(7),
+                EffectiveHours = new TimeSpan(6),
             };
 
             _mock.Setup(x => x.UpdateAsync(It.IsAny<EmployeeAttendance>())).Returns(Task.CompletedTask);
