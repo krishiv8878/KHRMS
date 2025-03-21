@@ -82,7 +82,7 @@ namespace KHRMS
 
 
         public static readonly string UserLoginByIdAdded = "UserLogin saved successfully";
-        public static readonly string UserLoginByIdNotAdded = "UserLogin is not Added successfully";
+        public static readonly string InValidCredentials = "Invalid Credentilas ";
 
         ///<summery>
         ///This is LeaveType Message constant

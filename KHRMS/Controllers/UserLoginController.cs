@@ -33,7 +33,7 @@ namespace KHRMS
                 var response = new ApiResponse<bool>
                 {
                     StatusCode = (int)HttpStatusCode.BadRequest,
-                    Message = ApiMessageConstant.UserLoginByIdNotAdded,
+                    Message = ApiMessageConstant.InValidCredentials,
                     Data = isuserLoginAdded
                 };
                 return BadRequest(response);
