@@ -27,7 +27,7 @@ namespace KHRMS.UnitTest.ServiceTests
             Core.LeaveType leavetype = new Core.LeaveType()
             {
                 Id = 1,
-                //LeaveName = "Casual",
+                LeaveName = "Casual",
                 Type = "Full Type",
                 Description = "string"
             };
@@ -43,7 +43,7 @@ namespace KHRMS.UnitTest.ServiceTests
             Core.LeaveType leavetype = new Core.LeaveType()
             {
                 Id = 1,
-                //LeaveName = "Casual",
+                LeaveName = "Casual",
                 Type = "Full Type",
                 Description = "string"
             };
@@ -73,7 +73,7 @@ namespace KHRMS.UnitTest.ServiceTests
             Core.LeaveType leavetype = new Core.LeaveType()
             {
                 Id = 1,
-                //LeaveName = "Casual",
+                LeaveName = "Casual",
                 Type = "Full Type",
                 Description = "string"
             };
@@ -106,7 +106,7 @@ namespace KHRMS.UnitTest.ServiceTests
             Core.LeaveType leavetype = new Core.LeaveType()
             {
                 Id = 1,
-                //LeaveName = "Casual",
+                LeaveName = "Casual",
                 Type = "Full Type",
                 Description = "string"
             };
@@ -183,7 +183,7 @@ namespace KHRMS.UnitTest.ServiceTests
             Core.LeaveType leavetype = new Core.LeaveType()
             {
                 Id = 1,
-               // LeaveName = "Casual",
+                LeaveName = "Casual",
                 Type = "Full Type",
                 Description = "string"
             };
@@ -191,7 +191,7 @@ namespace KHRMS.UnitTest.ServiceTests
             var result = leavetypeservice.GetAllLeaveType();
             Assert.NotNull(result);
             Assert.Equal(1, leavetype.Id);
-          //  Assert.Equal("Casual", leavetype.LeaveName);
+            Assert.Equal("Casual", leavetype.LeaveName);
         }
 
         [Fact]
@@ -252,7 +252,7 @@ namespace KHRMS.UnitTest.ServiceTests
             Core.LeaveType leavetype = new Core.LeaveType()
             {
                 Id = 1,
-               // LeaveName = "Casual",
+                LeaveName = "Casual",
                 Type = "Full Type",
                 Description = "string"
             };
@@ -260,7 +260,7 @@ namespace KHRMS.UnitTest.ServiceTests
             var result = leavetypeservice.GetLeaveTypeById(1);
             Assert.NotNull(result);
             Assert.Equal(1, leavetype.Id);
-           // Assert.Equal("Casual", leavetype.LeaveName);
+            Assert.Equal("Casual", leavetype.LeaveName);
         }
 
         [Fact]
@@ -323,14 +323,14 @@ namespace KHRMS.UnitTest.ServiceTests
             Core.LeaveType leavetype = new Core.LeaveType()
             {
                 Id = 1,
-              //  LeaveName = "Casual",
+                LeaveName = "Casual",
                 Type = "Full Type",
                 Description = "string"
             };
             Core.LeaveType updateleavetype = new Core.LeaveType()
             {
                 Id = 1,
-                //LeaveName = "EarnLeave",
+                LeaveName = "EarnLeave",
                 Type = "Full Type",
                 Description = "Leave"
             };
@@ -350,7 +350,7 @@ namespace KHRMS.UnitTest.ServiceTests
             Core.LeaveType leavetype = new Core.LeaveType()
             {
                 Id = 1,
-                //LeaveName = "Casual",
+                LeaveName = "Casual",
                 Type = "Full Type",
                 Description = "string"
             };
@@ -381,7 +381,7 @@ namespace KHRMS.UnitTest.ServiceTests
             Core.LeaveType leavetype = new Core.LeaveType()
             {
                 Id = 1,
-                //LeaveName = "Casual",
+                LeaveName = "Casual",
                 Type = "Full Type",
                 Description = "string"
             };

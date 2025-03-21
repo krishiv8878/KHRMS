@@ -20,7 +20,29 @@ namespace KHRMS.Services
             return attendanceRequests;
         }
 
-      
+        //public async Task AddAsync(AttendanceRequest attendanceRequest)
+        //{
+        //    await _unitOfWork.AttendanceRequests.Add(attendanceRequest);
+        //    var result = _unitOfWork.Save();
+
+        //}
+        //public async Task AddAsync(AttendanceRequest attendanceRequest)
+        //{
+        //    if (attendanceRequest == null)
+        //        throw new ArgumentNullException(nameof(attendanceRequest));
+
+        //    // Fetch the employee details to get ManagerId
+        //    var employee = await _unitOfWork.Employees.GetById(attendanceRequest.EmployeeId);
+        //    if (employee == null)
+        //        throw new Exception("Employee not found.");
+
+        //    // Assign the manager's ID automatically
+        //    attendanceRequest.ManagerId = employee.ManagerId;
+
+        //    await _unitOfWork.AttendanceRequests.Add(attendanceRequest);
+        //    var result = _unitOfWork.Save();
+        //}
+
 
         public async Task AddAsync(AttendanceRequest attendanceRequest, ClaimsPrincipal user)
         {

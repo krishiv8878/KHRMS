@@ -197,8 +197,19 @@ namespace KHRMS.Services
                 .Select(emp => new EmployeeRequestModel
                 {
                     Id = emp.Id,
-                    ManagerName = emp.FirstName + " "+ emp.LastName,
-                   
+                    FirstName = emp.FirstName,
+                    LastName = emp.LastName,
+                    EmailAddress = emp.EmailAddress,
+                    EmployeeCode = emp.EmployeeCode,
+                    MobileNumber = emp.MobileNumber,
+                    DesignationId = emp.DesignationId,
+                    DateOfJoining = emp.DateOfJoining,
+                    Gender = emp.Gender,
+                    CurrentAddress = emp.CurrentAddress,
+                    PermanentAddress = emp.PermanentAddress,
+                    IsActive = emp.IsActive,
+                    CreatedDate = emp.CreatedDate,
+                    ShiftId = emp.ShiftIds,
                     ManagerId = emp.ManagerId,
                 })
                 .ToList();

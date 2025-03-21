@@ -72,7 +72,7 @@ namespace KHRMS.Services
                 var leaveTypeDetail = await _unitOfWork.LeaveType.GetById(leaveType.Id);
                 if (leaveTypeDetail != null)
                 {
-                    //leaveTypeDetail.LeaveName = leaveType.LeaveName;
+                    leaveTypeDetail.LeaveName = leaveType.LeaveName;
                     leaveTypeDetail.Description = leaveType.Description;
                     leaveTypeDetail.Type = leaveType.Type;
                     leaveTypeDetail.UpdatedDate = DateTime.Now;
