@@ -27,13 +27,13 @@ namespace KHRMS.Services
 
         public async Task AddAsync(EmployeeAttendance attendance)
         {
-            var attendancebyid = (await _unitOfWork.EmployeeAttendance.GetAll()).FirstOrDefault(r => r.EmployeeId == attendance.EmployeeId);
-            var currdate = DateTime.Now;
-            attendance.CreatedDate = currdate;
-            if (attendancebyid != null && attendancebyid.ClockIn.Date == attendance.ClockIn.Date)
+            var attendancebyid = (await _unitOfWork.EmployeeAttendance.GetAll()).FirstOrDefault(r => r.EmployeeId == attendance.EmployeeId && r.ClockIn.Date == attendance.ClockIn.Date);
+            attendance.CreatedDate = DateTime.Now;
+            if (attendancebyid != null)
             {
                 await UpdateExistingAsync(attendance,attendancebyid);
             }else{
+                attendance.EffectiveHours = attendance.TotalHours;
                 await _unitOfWork.EmployeeAttendance.Add(attendance);
                 var result = _unitOfWork.Save();
             }
@@ -51,12 +51,11 @@ namespace KHRMS.Services
         {
             if (attendancebyid != null)
             {
-                var timedifference = attendance.ClockIn - attendancebyid.ClockOut;
                 var totalduration = attendance.ClockOut - attendancebyid.ClockIn;
                 attendancebyid.ClockIn = attendancebyid.ClockIn;
                 attendancebyid.ClockOut = attendance.ClockOut;
                 attendancebyid.TotalHours = new TimeSpan(totalduration.Hours, totalduration.Minutes, totalduration.Seconds);
-                var effectivehrs = totalduration - timedifference;
+                var effectivehrs = attendancebyid.EffectiveHours + attendance.TotalHours;
                 attendancebyid.EffectiveHours = new TimeSpan(effectivehrs.Hours, effectivehrs.Minutes, effectivehrs.Seconds);
                 attendancebyid.UpdatedDate = DateTime.Now;
                 _unitOfWork.EmployeeAttendance.Update(attendancebyid);
