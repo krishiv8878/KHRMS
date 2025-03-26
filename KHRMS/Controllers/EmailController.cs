@@ -169,7 +169,7 @@ namespace KHRMS
         //}
         [HttpPut("UpdateEmails")]
         public async Task<IActionResult> UpdateEmails([FromBody] Email email)
-        {
+                {
             Log.Information("UpdateEmails API called.");
             await _emailService.UpdateAsync(email);
 
@@ -227,6 +227,7 @@ namespace KHRMS
                 Message = ApiMessageConstant.EmailsDeleted,
                 Data = true
             });
+
         }
     }
 
