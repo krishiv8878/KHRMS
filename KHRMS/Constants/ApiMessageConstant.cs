@@ -216,20 +216,5 @@ namespace KHRMS
         public static readonly string EmailsAdd = "Emails added successfully.";
         public static readonly string EmailsUpdated = "Emails updated successfully.";
         public static readonly string EmailsDeleted = "Emails deleted successfully.";
-
-
-        ///<summery>
-        ///This is LeaveRequestType Message constant
-        ///</summery>
-        public static readonly string LeaveRequestTypeFound = "LeaveRequest retrieved successfully";
-        public static readonly string LeaveRequestTypeNotFound = "No LeaveRequest found!";
-        public static readonly string LeaveRequestNotFound = "Leave request not found.";
-        public static readonly string LeaveRequestFound = "Leave request found.";
-        public static readonly string LeaveRequestTypeAdded = "LeaveRequest saved successfully";
-        public static readonly string LeaveRequestTypeNotAdded = "LeaveRequest is not saved syccessfully";
-        public static readonly string LeaveRequestUpdated = "LeaveRequest updated successfully";
-        public static readonly string LeaveRequestNotUpdated = "LeaveRequest is not Updated...";
-        public static readonly string LeaveRequestDeleted = "LeaveRequest is deleted successfully";
-        public static readonly string LeaveRequestNotDeleted = "LeaveRequest is not deleted..";
     }
 }
