@@ -1,4 +1,5 @@
 ﻿using KHRMS.Core;
+using KHRMS.Core.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace KHRMS.Infrastructure
@@ -26,6 +27,9 @@ namespace KHRMS.Infrastructure
         public DbSet<EmployeePaymentInfo> EmployeePaymentInfos { get; set; }
         public DbSet<EmployeeDocumentInfo> Employeementdocument { get; set; }
         public DbSet<ShiftMaster> ShiftMasters { get; set; } 
+        public DbSet<EmailTemplateTypeMaster> EmailTemplateTypes { get; set; }
+        public DbSet<EmailTemplatesMaster> EmailTemplatesMasters { get; set;}
+        public DbSet<Email> Emails { get; set; }
 
     }
 }

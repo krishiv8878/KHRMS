@@ -4,6 +4,7 @@ using KHRMS.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace KHRMS.Infrastructure.Migrations
 {
     [DbContext(typeof(KHRMSContextClass))]
-    partial class KHRMSContextClassModelSnapshot : ModelSnapshot
+    [Migration("20250325070424_Added_EmailTemplateMaster_Table")]
+    partial class Added_EmailTemplateMaster_Table
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -591,58 +594,6 @@ namespace KHRMS.Infrastructure.Migrations
                     b.ToTable("LeaveType");
                 });
 
-            modelBuilder.Entity("KHRMS.Core.Models.Email", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
-
-                    b.Property<int>("CreatedBy")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("CreatedDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("EmailBody")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("EmailSubject")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<long>("EmailTemplateId")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("FromEmail")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsDelivered")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("ToEmail")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<int>("UpdatedBy")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("UpdatedDate")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("EmailTemplateId");
-
-                    b.ToTable("Emails");
-                });
-
             modelBuilder.Entity("KHRMS.Core.Models.EmailTemplateTypeMaster", b =>
                 {
                     b.Property<long>("Id")
@@ -1024,17 +975,6 @@ namespace KHRMS.Infrastructure.Migrations
                     b.Navigation("Employee");
 
                     b.Navigation("Role");
-                });
-
-            modelBuilder.Entity("KHRMS.Core.Models.Email", b =>
-                {
-                    b.HasOne("KHRMS.Core.Models.EmailTemplatesMaster", "EmailTemplatesMaster")
-                        .WithMany()
-                        .HasForeignKey("EmailTemplateId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("EmailTemplatesMaster");
                 });
 
             modelBuilder.Entity("KHRMS.Core.Models.EmailTemplatesMaster", b =>
