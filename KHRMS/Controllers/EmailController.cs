@@ -227,6 +227,7 @@ namespace KHRMS
                 Message = ApiMessageConstant.EmailsDeleted,
                 Data = true
             });
+
         }
     }
 
