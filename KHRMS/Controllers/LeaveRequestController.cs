@@ -17,6 +17,7 @@ namespace KHRMS
 
         [HttpGet]
         [Route("GetAllLeaveRequest")]
+
         public async Task<ActionResult<IEnumerable<LeaveRequest>>> GetAll()
         {
             var result = await _leaveRequestTypeService.GetAllLeaveRequestType();
@@ -63,6 +64,7 @@ namespace KHRMS
 
         [HttpPost]
         [Route("AddLeaveRequest")]
+
         public async Task<IActionResult> Create([FromBody] LeaveRequest leaveRequest)
         {
             if (leaveRequest == null)
@@ -96,6 +98,7 @@ namespace KHRMS
         }
 
         [HttpPut]
+
         [Route("UpdateLeaveRequest/{id}")]
 
         public async Task<IActionResult> Update(long id, [FromBody] LeaveRequest leaveRequest)
@@ -129,6 +132,7 @@ namespace KHRMS
 
         [HttpDelete]
         [Route("DeleteLeaveRequest/{id}")]
+
         public async Task<IActionResult> Delete(long id)
         {
             var isLeaveRequestDeleted =  await _leaveRequestTypeService.DeleteLeaveRequestType(id);
