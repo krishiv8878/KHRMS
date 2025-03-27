@@ -4,6 +4,7 @@ using KHRMS.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace KHRMS.Infrastructure.Migrations
 {
     [DbContext(typeof(KHRMSContextClass))]
-    partial class KHRMSContextClassModelSnapshot : ModelSnapshot
+    [Migration("20250327075033_Added_Leave_Request_Table")]
+    partial class Added_Leave_Request_Table
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

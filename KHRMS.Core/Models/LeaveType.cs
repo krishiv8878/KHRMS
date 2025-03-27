@@ -11,7 +11,6 @@ namespace KHRMS.Core
         public long Id { get; set; }
 
        
-
         [StringLength(100)]
         [Required(ErrorMessage = "LeaveType is required")]
         public string? Type { get; set; }
@@ -19,6 +18,6 @@ namespace KHRMS.Core
         [StringLength(100)]
         [Required(ErrorMessage = "Leave Description is required")]
         public string? Description { get; set; }
-
+        
     }
 }

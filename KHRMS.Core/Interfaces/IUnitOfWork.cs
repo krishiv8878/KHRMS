@@ -28,6 +28,7 @@
 
         IEmailTemplateMasterRepository EmailTemplateMaster { get; }
         IEmailRepository Email {  get; }
+        ILeaveRequestRepository LeaveRequest { get; }
 
         int Save();
     }

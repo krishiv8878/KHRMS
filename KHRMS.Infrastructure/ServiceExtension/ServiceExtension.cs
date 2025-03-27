@@ -34,6 +34,7 @@ namespace KHRMS.Infrastructure
             services.AddScoped<IEmailTemplateTypeMasterRepository, EmailTemplateTypeMasterRepository>();
             services.AddScoped<IEmailTemplateMasterRepository, EmailTemplatesMasterRepository>();
             services.AddScoped<IEmailRepository, EmailRepository>();
+            services.AddScoped<ILeaveRequestRepository, LeaveRequestRepository>();
             return services;
         }
     }

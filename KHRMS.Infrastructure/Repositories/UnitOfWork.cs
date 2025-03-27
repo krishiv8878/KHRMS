@@ -42,6 +42,8 @@ namespace KHRMS.Infrastructure
 
         public IEmailRepository Email {  get; }
 
+        public ILeaveRequestRepository LeaveRequest { get; }
+
         public UnitOfWork(KHRMSContextClass dbContext,
                             ICandidateRepository candidateRepository,
                             ISkillRepository skillRepository,
@@ -62,7 +64,8 @@ namespace KHRMS.Infrastructure
                             IShiftRepository shiftRepository,
                             IEmailTemplateTypeMasterRepository emailTemplateTypeMaster,
                             IEmailTemplateMasterRepository emailTemplateMaster,
-                            IEmailRepository emails)
+                            IEmailRepository emails,
+                            ILeaveRequestRepository leaveRequest)
         {
             _dbContext = dbContext;
             Candidates = candidateRepository;
@@ -85,7 +88,7 @@ namespace KHRMS.Infrastructure
             EmailTemplateTypeMaster = emailTemplateTypeMaster;
             EmailTemplateMaster = emailTemplateMaster;
             Email = emails;
-            
+            LeaveRequest = leaveRequest;
         }
 
         public int Save()

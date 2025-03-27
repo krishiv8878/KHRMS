@@ -30,6 +30,8 @@ namespace KHRMS.Infrastructure
         public DbSet<EmailTemplateTypeMaster> EmailTemplateTypes { get; set; }
         public DbSet<EmailTemplatesMaster> EmailTemplatesMasters { get; set;}
         public DbSet<Email> Emails { get; set; }
+        public DbSet<LeaveRequest> leaveRequests { get; set; }
+
 
     }
 }
