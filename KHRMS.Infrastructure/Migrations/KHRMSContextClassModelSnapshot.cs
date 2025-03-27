@@ -1180,6 +1180,17 @@ namespace KHRMS.Infrastructure.Migrations
                     b.Navigation("Role");
                 });
 
+            modelBuilder.Entity("KHRMS.Core.LeaveRequest", b =>
+                {
+                    b.HasOne("KHRMS.Core.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Employee");
+                });
+
             modelBuilder.Entity("KHRMS.Core.Models.Email", b =>
                 {
                     b.HasOne("KHRMS.Core.Models.EmailTemplatesMaster", "EmailTemplatesMaster")
