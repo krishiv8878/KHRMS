@@ -1087,6 +1087,39 @@ namespace KHRMS.Infrastructure.Migrations
 
                     b.Navigation("Role");
                 });
+
+            modelBuilder.Entity("KHRMS.Core.LeaveRequest", b =>
+                {
+                    b.HasOne("KHRMS.Core.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Employee");
+                });
+
+            modelBuilder.Entity("KHRMS.Core.Models.Email", b =>
+                {
+                    b.HasOne("KHRMS.Core.Models.EmailTemplatesMaster", "EmailTemplatesMaster")
+                        .WithMany()
+                        .HasForeignKey("EmailTemplateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("EmailTemplatesMaster");
+                });
+
+            modelBuilder.Entity("KHRMS.Core.Models.EmailTemplatesMaster", b =>
+                {
+                    b.HasOne("KHRMS.Core.Models.EmailTemplateTypeMaster", "EmailTemplateTypeMaster")
+                        .WithMany()
+                        .HasForeignKey("EmailTemplateTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("EmailTemplateTypeMaster");
+                });
 #pragma warning restore 612, 618
         }
     }
