@@ -17,14 +17,13 @@ namespace KHRMS
 
         [HttpGet]
         [Route("GetAllLeaveRequest")]
-
         public async Task<ActionResult<IEnumerable<LeaveRequest>>> GetAll()
         {
             var result = await _leaveRequestTypeService.GetAllLeaveRequestType();
             if (result == null)
             {
                 return NotFound();
-        }
+            }
             // Use the wrapper class to create a consistent response
             var response = new ApiResponse<List<LeaveRequest>>
             {
@@ -34,9 +33,7 @@ namespace KHRMS
             };
             return Ok(response);
         }
-
-        //[HttpGet("{id:int}")]
-        [HttpGet]
+       
 
         [HttpGet]
         [Route("GetLeaveRequestById/{id}")]
@@ -52,7 +49,7 @@ namespace KHRMS
                     Message = ApiMessageConstant.LeaveRequestNotFound,
                     Data = null
                 });
-        }
+            }
             var response = new ApiResponse<LeaveRequest>
             {
                 StatusCode = (int)HttpStatusCode.OK,
@@ -64,7 +61,6 @@ namespace KHRMS
 
         [HttpPost]
         [Route("AddLeaveRequest")]
-
         public async Task<IActionResult> Create([FromBody] LeaveRequest leaveRequest)
         {
             if (leaveRequest == null)
@@ -98,7 +94,6 @@ namespace KHRMS
         }
 
         [HttpPut]
-
         [Route("UpdateLeaveRequest/{id}")]
 
         public async Task<IActionResult> Update(long id, [FromBody] LeaveRequest leaveRequest)
@@ -132,7 +127,6 @@ namespace KHRMS
 
         [HttpDelete]
         [Route("DeleteLeaveRequest/{id}")]
-
         public async Task<IActionResult> Delete(long id)
         {
             var isLeaveRequestDeleted =  await _leaveRequestTypeService.DeleteLeaveRequestType(id);

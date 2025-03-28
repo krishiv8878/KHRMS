@@ -37,61 +37,7 @@ namespace KHRMS.Services
 
         }
 
-        //public async Task<bool> AddLeaveType(LeaveType leaveType)
-        //{
-        //    if (leaveType != null)
-        //    {
-        //        leaveType.CreatedDate = DateTime.Now;
-        //        await _unitOfWork.LeaveType.Add(leaveType);
-
-
-
-        //            // Fetch Employee details using EmployeeId
-        //            var employee = await _unitOfWork.Employees.GetById(leaveType.EmployeeId);
-
-        //            if (employee == null)
-        //            {
-        //                throw new Exception("Employee not found.");
-        //            }
-
-        //            var manager = (await _unitOfWork.Employees.GetAll()).FirstOrDefault(t=>t.Id == employee.ManagerId);
-
-        //            if (manager == null)
-        //            {
-        //                throw new Exception("Manager not found.");
-        //            }
-
-        //            // Email parameters from database
-        //            var startDate = new DateTime(2025, 4, 10);
-        //            var endDate = new DateTime(2025, 4, 12);
-        //            var managerEmail = manager.EmailAddress; 
-        //            var managerName = $"{manager.FirstName} {manager.LastName}";
-        //            var employeeName = $"{employee.FirstName} {employee.LastName}";
-        //            var leaveReason = "LeaveRequest";
-
-        //            // Create dictionary for placeholders
-        //            var dict = new Dictionary<string, string>
-        //    {
-        //        { "ManagerName", managerName },
-        //        { "StartDate", startDate.ToString("yyyy-MM-dd") },
-        //        { "EndDate", endDate.ToString("yyyy-MM-dd") },
-        //        { "LeaveReason", leaveReason },
-        //        { "EmployeeName", employeeName },
-        //        { "ManagerEmail", managerEmail }
-        //    };
-
-        //            // Email subject
-        //            var subject = $"Attendance Request from {employeeName}";
-
-        //            // Send email
-        //            await _sendEmailService.SendTemplateEmailAsync(managerEmail, subject, dict, leaveReason);
-
-        //            return true;
-        //        }
-        //    var result = _unitOfWork.Save();
-
-        //    return false;
-        //}
+       
 
         public async Task<bool> DeleteLeaveType(long LeaveTypeId)
         {
