@@ -96,8 +96,8 @@ namespace KHRMS.Services
                 { "StartDate", formattedStartDate  },
                 { "EndDate", formattedEndDate },
                 { "LeaveReason", leaveReason },
-                { "EmployeeName", employeeName },
-                { "ManagerEmail", managerEmail }
+                    { "EmployeeName", employeeName },
+                    { "ManagerEmail", managerEmail }
             };
                 // Function to format date with proper ordinal suffix
                 string GetFormattedDate(DateTime date)
@@ -118,7 +118,6 @@ namespace KHRMS.Services
 
                 return true;
             }
-            var result = _unitOfWork.Save();
 
             return false;
         }
@@ -158,7 +157,7 @@ namespace KHRMS.Services
 
         }
 
-       
+
 
         public async Task<bool> DeleteLeaveRequestType(long LeaveRequestTypeId)
         {
@@ -182,6 +181,6 @@ namespace KHRMS.Services
             return false;
         }
 
-       
+
     }
 }
