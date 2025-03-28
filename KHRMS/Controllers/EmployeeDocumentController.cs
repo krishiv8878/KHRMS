@@ -73,7 +73,7 @@ namespace KHRMS
 
 
         [HttpPost("Upload Document")]
-        public async Task<IActionResult> Create([FromForm] long employeeId, IFormFile file)
+        public async Task<IActionResult> Create([FromForm] long employeeId, string documentName, IFormFile file)
         {
             if (file == null)
             {
@@ -84,7 +84,10 @@ namespace KHRMS
             {
                 return BadRequest("File is empty.");
             }
-
+            if (string.IsNullOrWhiteSpace(documentName))
+            {
+                return BadRequest("Document name is required.");
+            }
             var extension = Path.GetExtension(file.FileName)?.ToLower();
             if (extension != ".pdf" && extension != ".docx")
             {
@@ -109,7 +112,8 @@ namespace KHRMS
                 var document = new EmployeeDocumentInfo
                 {
                     EmployeeId = employeeId,
-                    FilePath = filePath
+                    FilePath = filePath,
+                    DocumentName = file.FileName,
                 };
 
                 await _employeeDocumentService.AddAsync(document);

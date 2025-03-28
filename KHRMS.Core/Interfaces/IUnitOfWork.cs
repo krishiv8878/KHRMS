@@ -24,6 +24,11 @@
 
         IShiftRepository ShiftRepository { get; }
 
+        IEmailTemplateTypeMasterRepository EmailTemplateTypeMaster { get; }
+
+        IEmailTemplateMasterRepository EmailTemplateMaster { get; }
+        IEmailRepository Email {  get; }
+        ILeaveRequestRepository LeaveRequest { get; }
 
         int Save();
     }

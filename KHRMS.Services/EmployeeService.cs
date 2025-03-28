@@ -3,9 +3,10 @@ using KHRMS.Services.Request;
 
 namespace KHRMS.Services
 {
-    public class EmployeeService(IUnitOfWork unitOfWork) : IEmployeeService
+    public class EmployeeService(IUnitOfWork unitOfWork, ISendEmailService emailRepository) : IEmployeeService
     {
         public IUnitOfWork _unitOfWork = unitOfWork;
+        public ISendEmailService _sendEmailService = emailRepository;
 
         public async Task<bool> CreateEmployee(EmployeeRequestModel employeeRequestModel)
         {
@@ -109,7 +110,10 @@ namespace KHRMS.Services
                     .ToList(),
                 ManagerName = employeeDictionary.ContainsKey(emp.ManagerId) ? $"{employeeDictionary[emp.ManagerId].FirstName} {employeeDictionary[emp.ManagerId].LastName}" : "Manager Not Assigned"
 
-            }).ToList();
+            }).OrderByDescending(emp => emp.CreatedDate) // Sort new entries at the top
+    .ToList();
+
+
 
             return employeesWithRoles;
         }

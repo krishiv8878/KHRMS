@@ -31,6 +31,10 @@ namespace KHRMS.Infrastructure
             services.AddScoped<IEmployeePaymentInfoRepository, EmployeePaymentInfoRepository>();
             services.AddScoped<IEmployeeDocumentRepository, EmployeeDocumentRepository>();
             services.AddScoped<IShiftRepository, ShiftRepository>();
+            services.AddScoped<IEmailTemplateTypeMasterRepository, EmailTemplateTypeMasterRepository>();
+            services.AddScoped<IEmailTemplateMasterRepository, EmailTemplatesMasterRepository>();
+            services.AddScoped<IEmailRepository, EmailRepository>();
+            services.AddScoped<ILeaveRequestRepository, LeaveRequestRepository>();
             return services;
         }
     }

@@ -4,6 +4,7 @@ using KHRMS.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace KHRMS.Infrastructure.Migrations
 {
     [DbContext(typeof(KHRMSContextClass))]
-    partial class KHRMSContextClassModelSnapshot : ModelSnapshot
+    [Migration("20250325071304_Added_Email_Table")]
+    partial class Added_Email_Table
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -385,11 +388,6 @@ namespace KHRMS.Infrastructure.Migrations
                     b.Property<DateTime?>("CreatedDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("DocumentName")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
                     b.Property<long>("EmployeeId")
                         .HasColumnType("bigint");
 
@@ -553,51 +551,6 @@ namespace KHRMS.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Holidays");
-                });
-
-            modelBuilder.Entity("KHRMS.Core.LeaveRequest", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
-
-                    b.Property<int>("CreatedBy")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("CreatedDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<long>("EmployeeId")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTime>("EndDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<bool?>("IsApproved")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTime>("StartDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("UpdatedBy")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("UpdatedDate")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("EmployeeId");
-
-                    b.ToTable("leaveRequests");
                 });
 
             modelBuilder.Entity("KHRMS.Core.LeaveType", b =>
@@ -1074,17 +1027,6 @@ namespace KHRMS.Infrastructure.Migrations
                     b.Navigation("Employee");
 
                     b.Navigation("Role");
-                });
-
-            modelBuilder.Entity("KHRMS.Core.LeaveRequest", b =>
-                {
-                    b.HasOne("KHRMS.Core.Employee", "Employee")
-                        .WithMany()
-                        .HasForeignKey("EmployeeId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Employee");
                 });
 
             modelBuilder.Entity("KHRMS.Core.Models.Email", b =>

@@ -2,27 +2,42 @@
 
 namespace KHRMS.Services
 {
-    public class LeaveTypeService(IUnitOfWork unitOfWork) : ILeaveTypeService
+    public class LeaveTypeService(IUnitOfWork unitOfWork, ISendEmailService emailRepository) : ILeaveTypeService
     {
         public IUnitOfWork _unitOfWork = unitOfWork;
+        public ISendEmailService _sendEmailService = emailRepository;
+
+
+
         public async Task<bool> AddLeaveType(LeaveType leaveType)
+
         {
+
             if (leaveType != null)
+
             {
+
                 leaveType.CreatedDate = DateTime.Now;
+
                 await _unitOfWork.LeaveType.Add(leaveType);
 
                 var result = _unitOfWork.Save();
 
                 if (result > 0)
+
                     return true;
+
                 else
+
                     return false;
+
             }
+
             return false;
+
         }
 
-        
+       
 
         public async Task<bool> DeleteLeaveType(long LeaveTypeId)
         {

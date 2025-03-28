@@ -8,7 +8,8 @@ namespace KHRMS.Services
         Task<IEnumerable<EmployeeDocumentInfo>> GetAllAsync();
         Task<EmployeeDocumentInfo> GetByIdAsync(long id);
         Task AddAsync(EmployeeDocumentInfo document);
-        Task DeleteAsync(long id);
-        
+        Task<bool> DeleteAsync(long id);
+
+
     }
 }

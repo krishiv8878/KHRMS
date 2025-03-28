@@ -182,5 +182,53 @@ namespace KHRMS
         public static readonly string EmployeeShifttInfoAdd = "Employee Shift information added successfully.";
         public static readonly string ShiftInfoeRequestUpdated = "Employee Shift information updated successfully.";
         public static readonly string ShiftInfoRequestDeleted = "Employee Shift information deleted successfully.";
+
+        /// <summary>
+        /// This is EmailTemplateTypes Message constant
+        /// </summary>
+        public static readonly string AllEmailTemplateTypeFound = "EmailTemplateType retrieved successfully.";
+        public static readonly string AllEmailTemplateTypeNotFound = "EmailTemplateType not found";
+        public static readonly string EmailTemplateTypeFound = "EmailTemplateType retrieved successfully.";
+        public static readonly string InvalidDataofEmailTemplateType = "Invalid data.";
+        public static readonly string EmailTemplateTypeAdd = "EmailTemplateType added successfully.";
+        public static readonly string EmailTemplateTypeUpdated = "EmailTemplateType updated successfully.";
+        public static readonly string EmailTemplateTypeDeleted = "EmailTemplateType deleted successfully.";
+
+        /// <summary>
+        /// This is EmailTemplate Message constant
+        /// </summary>
+        public static readonly string AllEmailTemplateFound = "EmailTemplate retrieved successfully.";
+        public static readonly string AllEmailTemplateNotFound = "EmailTemplate not found";
+        public static readonly string EmailTemplateFound = "EmailTemplate retrieved successfully.";
+        public static readonly string InvalidDataofEmailTemplate = "Invalid data.";
+        public static readonly string EmailTemplateAdd = "EmailTemplate added successfully.";
+        public static readonly string EmailTemplateUpdated = "EmailTemplate updated successfully.";
+        public static readonly string EmailTemplateDeleted = "EmailTemplate deleted successfully.";
+
+        /// <summary>
+        /// This is Emails Message constant
+        /// </summary>
+        public static readonly string AllEmailsFound = "Emails retrieved successfully.";
+        public static readonly string AllEmailsNotFound = "Emails not found";
+        public static readonly string EmailsFound = "Emails retrieved successfully.";
+        public static readonly string InvalidDataofEmails = "Invalid data.";
+        public static readonly string EmailsAdd = "Emails added successfully.";
+        public static readonly string EmailsUpdated = "Emails updated successfully.";
+        public static readonly string EmailsDeleted = "Emails deleted successfully.";
+
+
+        ///<summery>
+        ///This is LeaveRequestType Message constant
+        ///</summery>
+        public static readonly string LeaveRequestTypeFound = "LeaveRequest retrieved successfully";
+        public static readonly string LeaveRequestTypeNotFound = "No LeaveRequest found!";
+        public static readonly string LeaveRequestNotFound = "Leave request not found.";
+        public static readonly string LeaveRequestFound = "Leave request found.";
+        public static readonly string LeaveRequestTypeAdded = "LeaveRequest saved successfully";
+        public static readonly string LeaveRequestTypeNotAdded = "LeaveRequest is not saved syccessfully";
+        public static readonly string LeaveRequestUpdated = "LeaveRequest updated successfully";
+        public static readonly string LeaveRequestNotUpdated = "LeaveRequest is not Updated...";
+        public static readonly string LeaveRequestDeleted = "LeaveRequest is deleted successfully";
+        public static readonly string LeaveRequestNotDeleted = "LeaveRequest is not deleted..";
     }
 }

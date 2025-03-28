@@ -23,6 +23,11 @@ builder.Services.AddScoped<IEmployeeAttendanceService, EmployeeAttendanceService
 builder.Services.AddScoped<IEmployeePaymentInfoService, EmployeePaymentInfoService>();
 builder.Services.AddScoped<IEmployeeDocumentService, EmployeeDocumentService>();
 builder.Services.AddScoped<IShiftService, ShiftService>();
+builder.Services.AddScoped<IEmailTemplateTypeMasterService, EmailTemplateTypeService>();
+builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<ISendEmailService, SendEmailService>();
+builder.Services.AddScoped<ILeaveRequestTypeService, LeaveRequestTypeService>();
 
 builder.Services.AddControllers(); 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
