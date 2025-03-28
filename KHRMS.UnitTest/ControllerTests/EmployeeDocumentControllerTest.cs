@@ -54,6 +54,49 @@ namespace KHRMS.UnitTest.ControllerTests
             Assert.IsType<NotFoundObjectResult>(result.Result);
         }
 
+        //[Fact]
+        //public async Task UploadDocument_WhenValidFileProvided_Returns_CreatedAtActionResult()
+        //{
+        //    var mockFile = new Mock<IFormFile>();
+        //    var content = new MemoryStream();
+        //    var writer = new StreamWriter(content);
+        //    writer.Write("Dummy content");
+        //    writer.Flush();
+        //    content.Position = 0;
+        //    mockFile.Setup(_ => _.OpenReadStream()).Returns(content);
+        //    mockFile.Setup(_ => _.FileName).Returns("sample.pdf");
+        //    mockFile.Setup(_ => _.Length).Returns(content.Length);
+
+        //    var document = new EmployeeDocumentInfo
+        //    {
+        //        Id = 1,
+        //        EmployeeId = 1001,
+        //        FilePath = "uploads/sample.pdf",
+        //        DocumentName = "Sample Document" // Add Document Name
+        //    };
+
+        //    //_mockService.Setup(x => x.AddAsync(It.IsAny<EmployeeDocumentInfo>()))
+        //    //    .Callback<EmployeeDocumentInfo>(doc => doc.Id = 1)  // Assign ID in mock setup
+        //    //    .Returns(Task.CompletedTask);
+        //    _mockService.Setup(x => x.AddAsync(It.IsAny<EmployeeDocumentInfo>()))
+        //.Callback<EmployeeDocumentInfo>(doc =>
+        //{
+        //    doc.Id = 1;
+        //    doc.DocumentName = "Sample Document"; // Set document name in mock setup
+        //})
+        //.Returns(Task.CompletedTask);
+
+        //    _mockService.Setup(x => x.GetByIdAsync(It.IsAny<long>())).ReturnsAsync(document);
+
+        //    var result = await _controller.Create(1001, mockFile.Object);
+
+        //    var createdAtResult = Assert.IsType<CreatedAtActionResult>(result);
+        //    Assert.NotNull(createdAtResult.Value);
+
+        //    var returnedDocument = Assert.IsType<EmployeeDocumentInfo>(createdAtResult.Value);
+        //    Assert.Equal(1, returnedDocument.Id);       
+        //    Assert.Equal("Sample Document", returnedDocument.DocumentName); // Verify document name
+        //}
         [Fact]
         public async Task UploadDocument_WhenValidFileProvided_Returns_CreatedAtActionResult()
         {
@@ -63,38 +106,57 @@ namespace KHRMS.UnitTest.ControllerTests
             writer.Write("Dummy content");
             writer.Flush();
             content.Position = 0;
+
             mockFile.Setup(_ => _.OpenReadStream()).Returns(content);
             mockFile.Setup(_ => _.FileName).Returns("sample.pdf");
             mockFile.Setup(_ => _.Length).Returns(content.Length);
 
-            var document = new EmployeeDocumentInfo { Id = 1, EmployeeId = 1001, FilePath = "uploads/sample.pdf" };
+            var document = new EmployeeDocumentInfo
+            {
+                Id = 1,
+                EmployeeId = 1001,
+                FilePath = "uploads/sample.pdf",
+                DocumentName = "Employee Contract"
+            };
 
             _mockService.Setup(x => x.AddAsync(It.IsAny<EmployeeDocumentInfo>()))
-                .Callback<EmployeeDocumentInfo>(doc => doc.Id = 1)  // Assign ID in mock setup
+                .Callback<EmployeeDocumentInfo>(doc => doc.Id = 1)
                 .Returns(Task.CompletedTask);
 
             _mockService.Setup(x => x.GetByIdAsync(It.IsAny<long>())).ReturnsAsync(document);
 
-            var result = await _controller.Create(1001, mockFile.Object);
+            // ✅ Pass documentName as an argument
+            var result = await _controller.Create(1001, "Employee Contract", mockFile.Object);
 
             var createdAtResult = Assert.IsType<CreatedAtActionResult>(result);
             Assert.NotNull(createdAtResult.Value);
 
             var returnedDocument = Assert.IsType<EmployeeDocumentInfo>(createdAtResult.Value);
             Assert.Equal(1, returnedDocument.Id);
+            Assert.Equal("Employee Contract", returnedDocument.DocumentName);
         }
 
         [Fact]
         public async Task DeleteDocument_WhenDocumentExists_Returns_OkResult()
         {
+            // Arrange
             var id = 1;
-            _mockService.Setup(x => x.GetByIdAsync(id)).ReturnsAsync(new EmployeeDocumentInfo { Id = id });
-            _mockService.Setup(x => x.DeleteAsync(id)).Returns(Task.CompletedTask);
+            _mockService.Setup(x => x.GetByIdAsync(id))
+                .ReturnsAsync(new EmployeeDocumentInfo { Id = id });
 
+            _mockService.Setup(x => x.DeleteAsync(id))
+                .ReturnsAsync(true);  // ✅ Fix: Ensure it returns Task<bool>
+
+            // Act
             var result = await _controller.DeleteDocument(id);
+
+            // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
-            Assert.True((bool)((ApiResponse<bool>)okResult.Value).Data);
+            var response = Assert.IsType<ApiResponse<bool>>(okResult.Value);
+
+            Assert.True(response.Data);  // ✅ Ensure Data is true
         }
+
 
         [Fact]
         public async Task DeleteDocument_WhenDocumentDoesNotExist_Returns_NotFoundResult()

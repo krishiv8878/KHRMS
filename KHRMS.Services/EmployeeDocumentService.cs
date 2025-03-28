@@ -31,20 +31,34 @@ namespace KHRMS.Services
             await _unitOfWork.EmployeementDocument.Add(document);
             _unitOfWork.Save();
         }
-        public async Task AddAsync(EmployeeAttendance attendance)
+      
+        //public async Task DeleteAsync(long id)
+        //{
+        //    var document = await _unitOfWork.EmployeementDocument.GetById(id);
+        //    if (document != null)
+        //    {
+        //        _unitOfWork.EmployeementDocument.Delete(document);
+        //        _unitOfWork.Save();
+        //    }
+        //}
+        public async Task<bool> DeleteAsync(long id)
         {
-            await _unitOfWork.EmployeeAttendance.Add(attendance);
-            var result = _unitOfWork.Save();
-
-        }
-        public async Task DeleteAsync(long id)
-        {
-            var document = await _unitOfWork.EmployeementDocument.GetById(id);
-            if (document != null)
+            if (id > 0)
             {
-                _unitOfWork.EmployeementDocument.Delete(document);
-                _unitOfWork.Save();
+                var document = await _unitOfWork.EmployeementDocument.GetById(id);
+                if (document != null)
+                {
+                    document.IsDeleted = true;
+                    document.IsActive = false;
+
+                    _unitOfWork.EmployeementDocument.Update(document);
+                    var result = _unitOfWork.Save();
+
+                    return result > 0;
+                }
             }
+            return false;
         }
+
     }
 }

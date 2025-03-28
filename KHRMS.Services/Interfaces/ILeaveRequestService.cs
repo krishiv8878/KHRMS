@@ -9,6 +9,7 @@ namespace KHRMS.Services
         Task<LeaveRequest> GetLeaveRequestTypeById(int LeaveRequestTypeId);
         Task<bool> UpdateLeaveRequestType(LeaveRequest leaveRequest);
         Task<bool> DeleteLeaveRequestType(long LeaveRequestTypeId);
+
     }
 }
 

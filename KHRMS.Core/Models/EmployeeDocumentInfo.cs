@@ -16,5 +16,9 @@ namespace KHRMS.Core
         public DateTime? UploadedDate { get; set; }
         public long UploadedBy { get; set; }
 
+        [Required(ErrorMessage = "Document Name is required")]
+        [StringLength(255, ErrorMessage = "Document Name cannot exceed 255 characters")]
+        public string? DocumentName { get; set; } 
+
     }
 }

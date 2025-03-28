@@ -1,5 +1,6 @@
 ﻿using KHRMS.Core;
 using KHRMS.Services.Request;
+using System.Linq.Expressions;
 
 namespace KHRMS.Services
 {
@@ -11,5 +12,6 @@ namespace KHRMS.Services
         Task<bool> UpdateEmployee(EmployeeRequestModel employeeRequestModel);
         Task<bool> DeleteEmployee(long employeeId);
         Task<IEnumerable<EmployeeRequestModel>> GetAllManagers();
+
     }
 }

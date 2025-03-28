@@ -20,6 +20,7 @@ namespace KHRMS.UnitTest.ServiceTests
                 Id = 1,
                 EmployeeId = 1,
                 FilePath = "C:/user/user/docs",
+                DocumentName = "PDF", // ✅ Added document type
                 UploadedBy = 1,
                 UploadedDate = DateTime.Now,
             };

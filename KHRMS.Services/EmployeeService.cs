@@ -110,8 +110,10 @@ namespace KHRMS.Services
                     .ToList(),
                 ManagerName = employeeDictionary.ContainsKey(emp.ManagerId) ? $"{employeeDictionary[emp.ManagerId].FirstName} {employeeDictionary[emp.ManagerId].LastName}" : "Manager Not Assigned"
 
-            }).ToList();
-           
+            }).OrderByDescending(emp => emp.CreatedDate) // Sort new entries at the top
+    .ToList();
+
+
 
             return employeesWithRoles;
         }
