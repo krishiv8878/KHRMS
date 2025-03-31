@@ -34,6 +34,8 @@ namespace KHRMS
             return Ok(response);
         }
        
+        //[HttpGet("{id:int}")]
+        [HttpGet]
 
         [HttpGet]
         [Route("GetLeaveRequestById/{id}")]
