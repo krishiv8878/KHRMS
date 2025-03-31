@@ -20,7 +20,7 @@ namespace KHRMS.UnitTest.ServiceTests
                 Id = 1,
                 EmployeeId = 1,
                 FilePath = "C:/user/user/docs",
-                DocumentName = "PDF", // ✅ Added document type
+                DocumentName = "PDF", // Added document type
                 UploadedBy = 1,
                 UploadedDate = DateTime.Now,
             };
@@ -98,14 +98,22 @@ namespace KHRMS.UnitTest.ServiceTests
             var exception = await Assert.ThrowsAsync<ArgumentException>(() => _mock.Object.GetByIdAsync(employeeDocumentid));
             Assert.Equal("EmployeeDocumentId Not found", exception.Message);
         }
+       
         [Fact]
         public async Task EmployeeDocument_DeleteSuccessfully()
         {
-            var employeeDocumentid = 1;
-            _mock.Setup(x => x.DeleteAsync(employeeDocumentid)).Returns(Task.CompletedTask);
-            await _mock.Object.DeleteAsync(employeeDocumentid);
-            _mock.Verify(x => x.DeleteAsync(employeeDocumentid), Times.Once);
+            var employeeDocumentId = 1;
+
+            
+            _mock.Setup(x => x.DeleteAsync(employeeDocumentId)).ReturnsAsync(true);
+
+            var result = await _mock.Object.DeleteAsync(employeeDocumentId);
+
+            _mock.Verify(x => x.DeleteAsync(employeeDocumentId), Times.Once);
+
+            Assert.True(result);  
         }
+
         [Fact]
         public async Task EmployeeDocument_DeleteThrowException_WhenNotFound()
         {

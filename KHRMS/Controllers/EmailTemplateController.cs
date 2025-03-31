@@ -102,24 +102,49 @@ namespace KHRMS
 
         }
 
+        //[HttpDelete]
+        //[Route("DeleteemailTemplatesMaster/{id}")]
+        //public async Task<IActionResult> DeleteemailTemplatesMaster(long id)
+        //{
+
+        //    var emailTemplates = await _emailTemplateService.GetByIdAsync(id);
+        //    if (emailTemplates == null)
+        //        return NotFound();
+
+        //    await _emailTemplateService.DeleteAsync(id);
+        //    return Ok(new ApiResponse<bool>
+        //    {
+        //        StatusCode = (int)HttpStatusCode.OK,
+        //        Message = ApiMessageConstant.EmailTemplateDeleted,
+        //        Data = true
+        //    });
+
+        //}
+
         [HttpDelete]
         [Route("DeleteemailTemplatesMaster/{id}")]
         public async Task<IActionResult> DeleteemailTemplatesMaster(long id)
         {
-
-            var emailTemplates = await _emailTemplateService.GetByIdAsync(id);
-            if (emailTemplates == null)
-                return NotFound();
+            var emailTemplate = await _emailTemplateService.GetByIdAsync(id);
+            if (emailTemplate == null)
+            {
+                return NotFound(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.NotFound,
+                    Message = "Email Template not found",
+                    Data = false
+                });
+            }
 
             await _emailTemplateService.DeleteAsync(id);
             return Ok(new ApiResponse<bool>
             {
                 StatusCode = (int)HttpStatusCode.OK,
-                Message = ApiMessageConstant.EmailTemplateDeleted,
+                Message = "Email Template deleted successfully",
                 Data = true
             });
-
         }
+
     }
 
 }
