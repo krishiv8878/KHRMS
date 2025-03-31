@@ -1,12 +1,8 @@
 ﻿using KHRMS.Core;
 using KHRMS.Infrastructure;
 using KHRMS.Services;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using System.Net;
-using System.Reflection.Metadata;
-using System.Xml.Linq;
 
 
 namespace KHRMS
@@ -75,6 +71,7 @@ namespace KHRMS
         [HttpPost("Upload Document")]
         public async Task<IActionResult> Create([FromForm] long employeeId, string documentName, IFormFile file)
         {
+          
             if (file == null)
             {
                 return BadRequest("File is not provided.");
@@ -113,7 +110,7 @@ namespace KHRMS
                 {
                     EmployeeId = employeeId,
                     FilePath = filePath,
-                    DocumentName = file.FileName,
+                    DocumentName = documentName,
                 };
 
                 await _employeeDocumentService.AddAsync(document);
@@ -160,20 +157,48 @@ namespace KHRMS
         /// </summary>
         /// <param name="id">Employee Document Info ID</param>     
         /// 
-        [HttpDelete("DeleteDocument/{id}")]
-        public async Task<ActionResult> DeleteDocument(long id)
-        {
-            var document = await _employeeDocumentService.GetByIdAsync(id);
-            if (document == null)
-                return NotFound();
+        //[HttpDelete("DeleteDocument/{id}")]
+        //public async Task<ActionResult> DeleteDocument(long id)
+        //{
+        //    var document = await _employeeDocumentService.GetByIdAsync(id);
+        //    if (document == null)
+        //        return NotFound();
 
-            await _employeeDocumentService.DeleteAsync(id);
-            return Ok(new ApiResponse<bool>
+        //    await _employeeDocumentService.DeleteAsync(id);
+        //    return Ok(new ApiResponse<bool>
+        //    {
+        //        StatusCode = (int)HttpStatusCode.OK,
+        //        Message = ApiMessageConstant.DocumentRequestDeleted,
+        //        Data = true
+        //    });
+        //}
+
+        [HttpDelete("DeleteDocument/{id}")]
+       // [Route("DeleteDocument")]
+        public async Task<IActionResult> DeleteDocument(long  id)
+        {
+            var isDocumentDeleted = await _employeeDocumentService.DeleteAsync(id);
+            if (isDocumentDeleted)
             {
-                StatusCode = (int)HttpStatusCode.OK,
-                Message = ApiMessageConstant.DocumentRequestDeleted,
-                Data = true
-            });
+                // Use the wrapper class to create a consistent response
+                var response = new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.OK,
+                    Message = ApiMessageConstant.DocumentRequestDeleted,
+                    Data = isDocumentDeleted
+                };
+                return Ok(response);
+            }
+            else
+            {
+                var response = new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = ApiMessageConstant.DocumentRequestNotDeleted,
+                    Data = isDocumentDeleted
+                };
+                return BadRequest(response);
+            }
         }
     }
 }
