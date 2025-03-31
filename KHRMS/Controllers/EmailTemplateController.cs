@@ -253,8 +253,8 @@ namespace KHRMS
                 Message = "Email Template deleted successfully",
                 Data = true
             });
-
         }
+
     }
 
 }
