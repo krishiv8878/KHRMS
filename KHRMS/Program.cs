@@ -1,8 +1,21 @@
 ﻿using KHRMS.Services;
 using KHRMS.Infrastructure;
 using KHRMS.Services.Interfaces;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+// Configure Serilog to log only INFO messages
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.File($"Logs/ERROR/ERROR_{DateTime.Now:yyyy_MM_dd}.log",
+        restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Error)
+    .WriteTo.File($"Logs/WARNING/WARNING_{DateTime.Now:yyyy_MM_dd}.log",
+       restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Warning)
+     .WriteTo.File($"Logs/INFO/INFO_{DateTime.Now:yyyy_MM_dd}.log",
+        restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Information)
+     .WriteTo.File($"Logs/DEBUG/DEBUG_{DateTime.Now:yyyy_MM_dd}.log",
+       restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Debug)
+    .CreateLogger();
+builder.Host.UseSerilog();
 
 // Add services to the container.
 builder.Services.AddDIServices(builder.Configuration);
@@ -29,10 +42,11 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<ISendEmailService, SendEmailService>();
 builder.Services.AddScoped<ILeaveRequestTypeService, LeaveRequestTypeService>();
 
-builder.Services.AddControllers(); 
+builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
 
 builder.Services.AddCors(p => p.AddPolicy("corspolice", builder =>
 {
@@ -40,19 +54,27 @@ builder.Services.AddCors(p => p.AddPolicy("corspolice", builder =>
 }));
 
 var app = builder.Build();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+// Use the Global Exception Handling Middleware
+app.UseMiddleware<ExceptionHandlingMiddleware>();
+
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment()) 
+if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+app.UseSerilogRequestLogging(); // Log all requests
 
 app.UseHttpsRedirection();
 
 app.UseAuthorization();
 
-app.MapControllers(); 
+app.MapControllers();
 
 app.UseCors("corspolice");
 
