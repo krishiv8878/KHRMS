@@ -211,6 +211,7 @@ namespace KHRMS
         /// </summary>
         public static readonly string AllEmailsFound = "Emails retrieved successfully.";
         public static readonly string AllEmailsNotFound = "Emails not found";
+        public static readonly string EmailNotFound = "Emails not found";
         public static readonly string EmailsFound = "Emails retrieved successfully.";
         public static readonly string InvalidDataofEmails = "Invalid data.";
         public static readonly string EmailsAdd = "Emails added successfully.";
