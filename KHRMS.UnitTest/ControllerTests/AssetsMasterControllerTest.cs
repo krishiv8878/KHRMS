@@ -48,7 +48,7 @@ namespace KHRMS.UnitTest.ControllerTests
                 SerialNumber = "string",
                 DateOfPurchase = new DateTime(2024, 11, 26, 12, 0, 0)
             };
-;            var result = controller.GetDesignations();
+;            var result = controller.GetAssetsMaster();
             Assert.NotNull(result);
             Assert.Equal(1, assets.Id);
             Assert.Equal("Java", assets.AssetsMasterName);

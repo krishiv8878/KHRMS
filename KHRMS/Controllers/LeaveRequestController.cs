@@ -23,7 +23,7 @@ namespace KHRMS
             if (result == null)
             {
                 return NotFound();
-            }
+        }
             // Use the wrapper class to create a consistent response
             var response = new ApiResponse<List<LeaveRequest>>
             {
@@ -33,7 +33,7 @@ namespace KHRMS
             };
             return Ok(response);
         }
-       
+
         //[HttpGet("{id:int}")]
         [HttpGet]
 
@@ -51,7 +51,7 @@ namespace KHRMS
                     Message = ApiMessageConstant.LeaveRequestNotFound,
                     Data = null
                 });
-            }
+        }
             var response = new ApiResponse<LeaveRequest>
             {
                 StatusCode = (int)HttpStatusCode.OK,
