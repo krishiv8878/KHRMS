@@ -250,7 +250,7 @@ namespace KHRMS
             return Ok(new ApiResponse<bool>
             {
                 StatusCode = (int)HttpStatusCode.OK,
-                Message = "Email Template deleted successfully",
+                Message = ApiMessageConstant.EmailTemplateDeleted,
                 Data = true
             });
         }
