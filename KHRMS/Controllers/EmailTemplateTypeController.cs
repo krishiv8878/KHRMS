@@ -199,7 +199,6 @@ namespace KHRMS
                 Message = ApiMessageConstant.EmailTemplateTypeDeleted,
                 Data = true
             });
-
         }
     }
 }
