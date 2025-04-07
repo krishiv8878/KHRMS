@@ -2,6 +2,7 @@
 using KHRMS.Infrastructure;
 using KHRMS.Services;
 using Microsoft.AspNetCore.Mvc;
+using Serilog;
 using System.Net;
 
 
@@ -23,36 +24,76 @@ namespace KHRMS
         private EmployeeDocumentInfo _document;
 
 
+        //[HttpGet("GetAllDocumentsInfo")]
+        //public async Task<ActionResult<IEnumerable<EmployeeDocumentInfo>>> GetAll()
+        //{
+        //    var documents = await _employeeDocumentService.GetAllAsync();
+        //    return Ok(new ApiResponse<IEnumerable<EmployeeDocumentInfo>>
+        //    {
+        //        StatusCode = (int)HttpStatusCode.OK,
+        //        Message = "Employee Documents information retrieved successfully.",
+        //        Data = documents
+        //    });
+        //}
         [HttpGet("GetAllDocumentsInfo")]
-        public async Task<ActionResult<IEnumerable<EmployeeDocumentInfo>>> GetAll()
+        public async Task<ActionResult<ApiResponse<IEnumerable<EmployeeDocumentInfo>>>> GetAll()
         {
+            Log.Information("EmployeeDocumentController - GetAllDocumentsInfo called.");
+
             var documents = await _employeeDocumentService.GetAllAsync();
+
+            Log.Information("EmployeeDocumentController - {Count} documents found.", documents.Count());
+
             return Ok(new ApiResponse<IEnumerable<EmployeeDocumentInfo>>
             {
                 StatusCode = (int)HttpStatusCode.OK,
-                Message = "Employee Documents information retrieved successfully.",
+                Message = ApiMessageConstant.EmployeeDocumentFound,
                 Data = documents
             });
         }
-
         /// <summary>
         /// Retrieves employee document information by ID.
         /// </summary>
         /// <param name="id">Employee Document Info ID</param>
 
+        //[HttpGet("GetDocument/{id}")]
+        //public async Task<ActionResult<EmployeeDocumentInfo>> GetDocument(long id)
+        //{
+        //    var document = await _employeeDocumentService.GetByIdAsync(id);
+        //    if (document == null)
+        //    {
+        //        return NotFound(new ApiResponse<EmployeeDocumentInfo>
+        //        {
+        //            StatusCode = (int)HttpStatusCode.NotFound,
+        //            Message = ApiMessageConstant.EmployeeDocumentNotFound,
+        //            Data = null
+        //        }); ;
+        //    }
+        //    return Ok(new ApiResponse<EmployeeDocumentInfo>
+        //    {
+        //        StatusCode = (int)HttpStatusCode.OK,
+        //        Message = ApiMessageConstant.EmployeeDocumentFound,
+        //        Data = document
+        //    });
+        //}
         [HttpGet("GetDocument/{id}")]
-        public async Task<ActionResult<EmployeeDocumentInfo>> GetDocument(long id)
+        public async Task<IActionResult> GetDocument(long id)
         {
+            Log.Information("EmployeeDocumentController - GetDocument called with ID: {Id}", id);
+
             var document = await _employeeDocumentService.GetByIdAsync(id);
             if (document == null)
             {
+                Log.Warning("EmployeeDocumentController - Document not found with ID: {Id}", id);
                 return NotFound(new ApiResponse<EmployeeDocumentInfo>
                 {
                     StatusCode = (int)HttpStatusCode.NotFound,
                     Message = ApiMessageConstant.EmployeeDocumentNotFound,
                     Data = null
-                }); ;
+                });
             }
+
+            Log.Information("EmployeeDocumentController - Document retrieved for ID: {Id}", id);
             return Ok(new ApiResponse<EmployeeDocumentInfo>
             {
                 StatusCode = (int)HttpStatusCode.OK,
@@ -61,50 +102,101 @@ namespace KHRMS
             });
         }
 
-
         /// <summary>
         /// Creates a new employee Document information record.
         /// </summary>
         /// <param Id="employeeId" file="IFormFile" )>Employee Document Info object</param>
 
 
-        [HttpPost("Upload Document")]
-        public async Task<IActionResult> Create([FromForm] long employeeId, string documentName, IFormFile file)
+        //[HttpPost("Upload Document")]
+        //public async Task<IActionResult> Create([FromForm] long employeeId, string documentName, IFormFile file)
+        //{
+
+        //    if (file == null)
+        //    {
+        //        return BadRequest("File is not provided.");
+        //    }
+
+        //    if (file.Length == 0)
+        //    {
+        //        return BadRequest("File is empty.");
+        //    }
+        //    if (string.IsNullOrWhiteSpace(documentName))
+        //    {
+        //        return BadRequest("Document name is required.");
+        //    }
+        //    var extension = Path.GetExtension(file.FileName)?.ToLower();
+        //    if (extension != ".pdf" && extension != ".docx")
+        //    {
+        //        return BadRequest("Only .pdf and .docx files are allowed.");
+        //    }
+
+        //    try
+        //    {
+        //        var filePath = Path.Combine("uploads", Path.GetFileName(file.FileName));
+
+        //        // Ensure the uploads directory exists
+        //        if (!Directory.Exists("uploads"))
+        //        {
+        //            Directory.CreateDirectory("uploads");
+        //        }
+        //        // Save the file to the server
+        //        using (var stream = new FileStream(filePath, FileMode.Create))
+        //        {
+        //            await file.CopyToAsync(stream);
+        //        }
+
+        //        var document = new EmployeeDocumentInfo
+        //        {
+        //            EmployeeId = employeeId,
+        //            FilePath = filePath,
+        //            DocumentName = documentName,
+        //        };
+
+        //        await _employeeDocumentService.AddAsync(document);
+        //        //  return CreatedAtAction(nameof(GetDocument), new { id = _document.Id }, _document);
+        //        return CreatedAtAction(nameof(GetDocument), new { id = document.Id }, document);
+
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, "Internal server error");
+        //    }
+        //}
+
+        [HttpPost("UploadDocument")]
+        public async Task<IActionResult> UploadDocument([FromForm] long employeeId, string documentName, IFormFile file)
         {
-          
-            if (file == null)
+            Log.Information("EmployeeDocumentController - UploadDocument called for EmployeeID: {EmployeeId}", employeeId);
+
+            if (file == null || file.Length == 0)
             {
-                return BadRequest("File is not provided.");
+                Log.Warning("EmployeeDocumentController - Invalid file upload attempt.");
+                return BadRequest("File is not provided or empty.");
             }
 
-            if (file.Length == 0)
-            {
-                return BadRequest("File is empty.");
-            }
             if (string.IsNullOrWhiteSpace(documentName))
             {
+                Log.Warning("EmployeeDocumentController - Document name is missing.");
                 return BadRequest("Document name is required.");
             }
+
             var extension = Path.GetExtension(file.FileName)?.ToLower();
             if (extension != ".pdf" && extension != ".docx")
             {
+                Log.Warning("EmployeeDocumentController - Invalid file extension: {Extension}", extension);
                 return BadRequest("Only .pdf and .docx files are allowed.");
             }
-
+           
             try
             {
-                var filePath = Path.Combine("uploads", Path.GetFileName(file.FileName));
+                var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
+                Directory.CreateDirectory(uploadsDir);
 
-                // Ensure the uploads directory exists
-                if (!Directory.Exists("uploads"))
-                {
-                    Directory.CreateDirectory("uploads");
-                }
-                // Save the file to the server
-                using (var stream = new FileStream(filePath, FileMode.Create))
-                {
-                    await file.CopyToAsync(stream);
-                }
+                var filePath = Path.Combine(uploadsDir, Path.GetFileName(file.FileName));
+
+                using var stream = new FileStream(filePath, FileMode.Create);
+                await file.CopyToAsync(stream);
 
                 var document = new EmployeeDocumentInfo
                 {
@@ -114,91 +206,144 @@ namespace KHRMS
                 };
 
                 await _employeeDocumentService.AddAsync(document);
-                //  return CreatedAtAction(nameof(GetDocument), new { id = _document.Id }, _document);
-                return CreatedAtAction(nameof(GetDocument), new { id = document.Id }, document);
 
+                Log.Information("EmployeeDocumentController - Document uploaded successfully for EmployeeID: {EmployeeId}", employeeId);
+
+                return CreatedAtAction(nameof(GetDocument), new { id = document.Id }, new ApiResponse<EmployeeDocumentInfo>
+                {
+                    StatusCode = (int)HttpStatusCode.Created,
+                    Message = ApiMessageConstant.DocumentRequestAdded,
+                    Data = document
+                });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, "Internal server error");
+                Log.Error(ex, "EmployeeDocumentController - Exception occurred while uploading document.");
+                return StatusCode(500, new ApiResponse<string>
+                {
+                    StatusCode = 500,
+                    Message = "Internal server error",
+                    Data = null
+                });
             }
         }
+
         /// <summary>
         /// View an employee payment information record by ID.
         /// </summary>
         /// <param name="id">Employee Document Info ID</param>     
         /// 
-        [HttpGet("view/{id}")]
+        //[HttpGet("view/{id}")]
+        //public async Task<IActionResult> ViewFile(long id)
+        //{
+
+        //    var document = await _employeeDocumentService.GetByIdAsync(id);
+        //    if (document == null)
+        //    {
+        //        //  _logger.LogWarning("Document with ID: {DocumentId} not found.", id);
+        //        return NotFound();
+        //    }
+
+        //    var filePath = document.FilePath;
+        //    if (!System.IO.File.Exists(filePath))
+        //    {
+        //        return NotFound("File not found.");
+        //    }
+
+        //    var fileBytes = await System.IO.File.ReadAllBytesAsync(filePath);
+        //    var extension = Path.GetExtension(filePath)?.ToLower();
+        //    var contentType = extension == ".pdf" ? "application/pdf" : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        //    return File(fileBytes, contentType, Path.GetFileName(filePath));
+
+
+        //}
+        [HttpGet("View/{id}")]
         public async Task<IActionResult> ViewFile(long id)
         {
+            Log.Information("EmployeeDocumentController - ViewFile called with ID: {Id}", id);
 
             var document = await _employeeDocumentService.GetByIdAsync(id);
             if (document == null)
             {
-                //  _logger.LogWarning("Document with ID: {DocumentId} not found.", id);
-                return NotFound();
+                Log.Warning("EmployeeDocumentController - Document not found for ID: {Id}", id);
+                return NotFound("Document not found.");
             }
 
             var filePath = document.FilePath;
             if (!System.IO.File.Exists(filePath))
             {
+                Log.Warning("EmployeeDocumentController - File not found on disk at {Path}", filePath);
                 return NotFound("File not found.");
             }
 
             var fileBytes = await System.IO.File.ReadAllBytesAsync(filePath);
             var extension = Path.GetExtension(filePath)?.ToLower();
             var contentType = extension == ".pdf" ? "application/pdf" : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
+            Log.Information("EmployeeDocumentController - File successfully retrieved from path: {Path}", filePath);
             return File(fileBytes, contentType, Path.GetFileName(filePath));
-
-
         }
+
+
         /// <summary>
         /// Deletes an employee payment information record by ID.
         /// </summary>
         /// <param name="id">Employee Document Info ID</param>     
         /// 
-        //[HttpDelete("DeleteDocument/{id}")]
-        //public async Task<ActionResult> DeleteDocument(long id)
-        //{
-        //    var document = await _employeeDocumentService.GetByIdAsync(id);
-        //    if (document == null)
-        //        return NotFound();
 
-        //    await _employeeDocumentService.DeleteAsync(id);
-        //    return Ok(new ApiResponse<bool>
+
+        //[HttpDelete("DeleteDocument/{id}")]
+        //// [Route("DeleteDocument")]
+        //public async Task<IActionResult> DeleteDocument(long id)
+        //{
+        //    var isDocumentDeleted = await _employeeDocumentService.DeleteAsync(id);
+        //    if (isDocumentDeleted)
         //    {
-        //        StatusCode = (int)HttpStatusCode.OK,
-        //        Message = ApiMessageConstant.DocumentRequestDeleted,
-        //        Data = true
-        //    });
+        //        // Use the wrapper class to create a consistent response
+        //        var response = new ApiResponse<bool>
+        //        {
+        //            StatusCode = (int)HttpStatusCode.OK,
+        //            Message = ApiMessageConstant.DocumentRequestDeleted,
+        //            Data = isDocumentDeleted
+        //        };
+        //        return Ok(response);
+        //    }
+        //    else
+        //    {
+        //        var response = new ApiResponse<bool>
+        //        {
+        //            StatusCode = (int)HttpStatusCode.BadRequest,
+        //            Message = ApiMessageConstant.DocumentRequestNotDeleted,
+        //            Data = isDocumentDeleted
+        //        };
+        //        return BadRequest(response);
+        //    }
         //}
 
         [HttpDelete("DeleteDocument/{id}")]
-       // [Route("DeleteDocument")]
-        public async Task<IActionResult> DeleteDocument(long  id)
+        public async Task<IActionResult> DeleteDocument(long id)
         {
-            var isDocumentDeleted = await _employeeDocumentService.DeleteAsync(id);
-            if (isDocumentDeleted)
+            Log.Information("EmployeeDocumentController - DeleteDocument called with ID: {Id}", id);
+
+            var isDeleted = await _employeeDocumentService.DeleteAsync(id);
+            if (isDeleted)
             {
-                // Use the wrapper class to create a consistent response
-                var response = new ApiResponse<bool>
+                Log.Information("EmployeeDocumentController - Document with ID {Id} deleted successfully.", id);
+                return Ok(new ApiResponse<bool>
                 {
                     StatusCode = (int)HttpStatusCode.OK,
                     Message = ApiMessageConstant.DocumentRequestDeleted,
-                    Data = isDocumentDeleted
-                };
-                return Ok(response);
+                    Data = true
+                });
             }
-            else
+
+            Log.Error("EmployeeDocumentController - Failed to delete document with ID: {Id}", id);
+            return BadRequest(new ApiResponse<bool>
             {
-                var response = new ApiResponse<bool>
-                {
-                    StatusCode = (int)HttpStatusCode.BadRequest,
-                    Message = ApiMessageConstant.DocumentRequestNotDeleted,
-                    Data = isDocumentDeleted
-                };
-                return BadRequest(response);
-            }
+                StatusCode = (int)HttpStatusCode.BadRequest,
+                Message = ApiMessageConstant.DocumentRequestNotDeleted,
+                Data = false
+            });
         }
     }
 }
