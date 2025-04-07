@@ -1,44 +1,91 @@
 ﻿
+using Serilog;
 using System.Net;
 using System.Text.Json;
-using Serilog;
 
-public class ExceptionHandlingMiddleware
+namespace GlobalExceptionHandlingDemo.Middleware
 {
-    private readonly RequestDelegate _next;
-
-    public ExceptionHandlingMiddleware(RequestDelegate next)
+    public class GlobalExceptionHandlingMiddleware
     {
-        _next = next;
+        private readonly RequestDelegate _next;
+
+        public GlobalExceptionHandlingMiddleware(RequestDelegate next)
+        {
+            _next = next;
+        }
+
+        public async Task Invoke(HttpContext context)
+        {
+            try
+            {
+                await _next(context);
+            }
+            catch (Exception ex)
+            {
+                var contextInfo = GetContextInfo(context);
+                Log.Error(ex, "{ContextInfo} - An exception occurred while processing the request.", contextInfo);
+                await HandleExceptionAsync(context, ex, contextInfo);
+            }
+        }
+
+        private async Task HandleExceptionAsync(HttpContext context, Exception exception, string contextInfo)
+        {
+            context.Response.ContentType = "application/json";
+            var response = context.Response;
+            ResponseModel exModel = new ResponseModel();
+
+            switch (exception)
+            {
+                case ApplicationException ex:
+                    exModel.responseCode = (int)HttpStatusCode.BadRequest;
+                    response.StatusCode = (int)HttpStatusCode.BadRequest;
+                    exModel.responseMessage = "Application Exception Occurred, please retry after some time.";
+                    Log.Error("{ContextInfo} - ApplicationException: {Message}", contextInfo, ex.Message);
+                    break;
+
+                case FileNotFoundException ex:
+                    exModel.responseCode = (int)HttpStatusCode.NotFound;
+                    response.StatusCode = (int)HttpStatusCode.NotFound;
+                    exModel.responseMessage = "The requested resource is not found.";
+                    Log.Error("{ContextInfo} - FileNotFoundException: {Message}", contextInfo, ex.Message);
+                    break;
+
+                default:
+                    exModel.responseCode = (int)HttpStatusCode.InternalServerError;
+                    response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                    exModel.responseMessage = "Internal Server Error, Please retry after some time.";
+                    Log.Error("{ContextInfo} - Unhandled Exception: {Message}", contextInfo, exception.Message);
+                    break;
+            }
+
+            var exResult = JsonSerializer.Serialize(exModel);
+            await context.Response.WriteAsync(exResult);
+        }
+
+        private string GetContextInfo(HttpContext context)
+        {
+            try
+            {
+               var routeData = context.GetRouteData();
+                string controller = routeData.Values["controller"]?.ToString() ?? "UnknownController";
+               // string action = routeData.Values["action"]?.ToString() ?? "UnknownAction";
+               // string requestPath = context.Request.Path;
+                string method = context.Request.Method;
+                //string user = context.User?.Identity?.Name ?? "Anonymous";
+
+                return $"[Controller: {controller}] [Method: {method}] ";
+            }
+            catch
+            {
+                return "[ContextInfo: Unknown]";
+            }
+        }
     }
 
-    public async Task Invoke(HttpContext context)
+    public class ResponseModel
     {
-        try
-        {
-            await _next(context);
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Unhandled exception occurred. ex{0}: {Message}, ex{1}: {StackTrace}, ex{2}: {InnerException}",
-                ex.Message, ex.StackTrace, ex.InnerException?.Message ?? "N/A");
-
-            context.Response.ContentType = "application/json";
-            context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
-
-            var response = new
-            {
-                StatusCode = context.Response.StatusCode,
-                Message = "An error occurred while processing your request.",
-                Data = new
-                {
-                    ex0 = ex.Message,
-                    ex1 = ex.StackTrace,
-                    ex2 = ex.InnerException?.Message ?? "N/A"
-                }
-            };
-
-            await context.Response.WriteAsync(JsonSerializer.Serialize(response));
-        }
+        public int responseCode { get; set; }
+        public string responseMessage { get; set; }
     }
 }
+
