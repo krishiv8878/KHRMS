@@ -2,6 +2,7 @@
 using KHRMS.Infrastructure;
 using KHRMS.Services.Interfaces;
 using Serilog;
+using GlobalExceptionHandlingDemo.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 // Configure Serilog to log only INFO messages
@@ -59,7 +60,9 @@ if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 }
 // Use the Global Exception Handling Middleware
-app.UseMiddleware<ExceptionHandlingMiddleware>();
+//app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+app.UseMiddleware<GlobalExceptionHandlingMiddleware>();
 
 
 // Configure the HTTP request pipeline.

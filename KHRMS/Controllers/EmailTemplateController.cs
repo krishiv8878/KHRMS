@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using KHRMS.Core.Models;
 using Serilog;
 
+
 namespace KHRMS
 {
 
@@ -133,7 +134,8 @@ namespace KHRMS
         public async Task<IActionResult> AddEmailTemplates([FromBody] EmailTemplatesMaster emailTemplatesMaster)
         {
             Log.Information("AddEmailTemplates API called.");
-
+           //// var contextInfo = LoggingHelper.GetCurrentContext();
+           // Log.Information($"{contextInfo} API called.");
             if (!ModelState.IsValid)
             {
                 Log.Warning("Invalid data provided for adding email template.");
@@ -250,7 +252,7 @@ namespace KHRMS
             return Ok(new ApiResponse<bool>
             {
                 StatusCode = (int)HttpStatusCode.OK,
-                Message = "Email Template deleted successfully",
+                Message = ApiMessageConstant.EmailTemplateDeleted,
                 Data = true
             });
         }

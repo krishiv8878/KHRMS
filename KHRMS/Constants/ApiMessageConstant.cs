@@ -161,6 +161,8 @@ namespace KHRMS
         public static readonly string EmployeeDocumentFound = "Employee document information retrieved successfully.";     
         public static readonly string DocumentRequestDeleted = "Document deleted successfully.";
         public static readonly string DocumentRequestNotDeleted = "Document Is Not deleted successfully.";
+        public const string DocumentRequestAdded = "Document uploaded successfully.";
+
 
         /// <summary>
         /// This is Employee Payment request Message constant
