@@ -3,6 +3,7 @@ using KHRMS.Infrastructure;
 using KHRMS.Infrastructure.Migrations;
 using KHRMS.Services;
 using Microsoft.AspNetCore.Mvc;
+using Serilog;
 using System.Net;
 
 
@@ -15,146 +16,282 @@ namespace KHRMS
         public readonly ILeaveRequestTypeService _leaveRequestTypeService = leaveRequestTypeService;
 
 
-        [HttpGet]
-        [Route("GetAllLeaveRequest")]
-        public async Task<ActionResult<IEnumerable<LeaveRequest>>> GetAll()
+        //[HttpGet]
+        //[Route("GetAllLeaveRequest")]
+        //public async Task<ActionResult<IEnumerable<LeaveRequest>>> GetAll()
+        //{
+        //    var result = await _leaveRequestTypeService.GetAllLeaveRequestType();
+        //    if (result == null)
+        //    {
+        //        return NotFound();
+        //}
+        //    // Use the wrapper class to create a consistent response
+        //    var response = new ApiResponse<List<LeaveRequest>>
+        //    {
+        //        StatusCode = (int)HttpStatusCode.OK,
+        //        Message = result.Any() ? ApiMessageConstant.LeaveRequestTypeFound : ApiMessageConstant.LeaveRequestTypeNotFound,
+        //        Data = result.ToList()
+        //    };
+        //    return Ok(response);
+        //}
+        [HttpGet("GetAllLeaveRequest")]
+        public async Task<IActionResult> GetAll()
         {
+            Log.Information("LeaveRequestController - GetAllLeaveRequest called.");
             var result = await _leaveRequestTypeService.GetAllLeaveRequestType();
-            if (result == null)
+
+            if (result == null || !result.Any())
             {
-                return NotFound();
-        }
-            // Use the wrapper class to create a consistent response
-            var response = new ApiResponse<List<LeaveRequest>>
+                Log.Warning("LeaveRequestController - No leave requests found.");
+                return NotFound(new ApiResponse<List<LeaveRequest>>
+                {
+                    StatusCode = (int)HttpStatusCode.NotFound,
+                    Message = ApiMessageConstant.LeaveRequestTypeNotFound,
+                    Data = null
+                });
+            }
+
+            Log.Information("LeaveRequestController - {Count} leave requests found.", result.Count());
+            return Ok(new ApiResponse<List<LeaveRequest>>
             {
                 StatusCode = (int)HttpStatusCode.OK,
-                Message = result.Any() ? ApiMessageConstant.LeaveRequestTypeFound : ApiMessageConstant.LeaveRequestTypeNotFound,
+                Message = ApiMessageConstant.LeaveRequestTypeFound,
                 Data = result.ToList()
-            };
-            return Ok(response);
+            });
         }
 
-        //[HttpGet("{id:int}")]
-        [HttpGet]
 
-        [HttpGet]
-        [Route("GetLeaveRequestById/{id}")]
-        public async Task<ActionResult<LeaveRequest>> GetById(int id)
+        //[HttpGet]
+        //[Route("GetLeaveRequestById/{id}")]
+        //public async Task<ActionResult<LeaveRequest>> GetById(int id)
+        //{
+        //    var result = await _leaveRequestTypeService.GetLeaveRequestTypeById(id);
+
+        //    if (result == null)
+        //    {
+        //        return NotFound(new ApiResponse<LeaveRequest>
+        //        {
+        //            StatusCode = (int)HttpStatusCode.NotFound,
+        //            Message = ApiMessageConstant.LeaveRequestNotFound,
+        //            Data = null
+        //        });
+        //}
+        //    var response = new ApiResponse<LeaveRequest>
+        //    {
+        //        StatusCode = (int)HttpStatusCode.OK,
+        //        Message = ApiMessageConstant.LeaveRequestFound,
+        //        Data = result
+        //    };
+        //    return Ok(response);
+        //}
+
+        [HttpGet("GetLeaveRequestById/{id}")]
+        public async Task<IActionResult> GetById(int id)
         {
+            Log.Information("LeaveRequestController - GetLeaveRequestById called with ID: {Id}", id);
             var result = await _leaveRequestTypeService.GetLeaveRequestTypeById(id);
 
             if (result == null)
             {
+                Log.Warning("LeaveRequestController - Leave request not found for ID: {Id}", id);
                 return NotFound(new ApiResponse<LeaveRequest>
                 {
                     StatusCode = (int)HttpStatusCode.NotFound,
                     Message = ApiMessageConstant.LeaveRequestNotFound,
                     Data = null
                 });
-        }
-            var response = new ApiResponse<LeaveRequest>
+            }
+
+            Log.Information("LeaveRequestController - Leave request found for ID: {Id}", id);
+            return Ok(new ApiResponse<LeaveRequest>
             {
                 StatusCode = (int)HttpStatusCode.OK,
                 Message = ApiMessageConstant.LeaveRequestFound,
                 Data = result
-            };
-            return Ok(response);
+            });
         }
 
-        [HttpPost]
-        [Route("AddLeaveRequest")]
+
+        //[HttpPost]
+        //[Route("AddLeaveRequest")]
+        //public async Task<IActionResult> Create([FromBody] LeaveRequest leaveRequest)
+        //{
+        //    if (leaveRequest == null)
+        //        return BadRequest("Invalid data.");
+        //       // return CreatedAtAction(nameof(GetById), new { id = leaveRequest.Id }, leaveRequest);
+
+
+        //    var isleaverequest = await _leaveRequestTypeService.AddLeaveRequestType(leaveRequest);
+        //    if (isleaverequest)
+        //    {
+        //        // Use the wrapper class to create a consistent response
+        //        var response = new ApiResponse<bool>
+        //        {
+        //            StatusCode = (int)HttpStatusCode.OK,
+        //            Message = ApiMessageConstant.LeaveRequestTypeAdded,
+        //            Data = isleaverequest
+        //        };
+        //        return Ok(response);
+
+        //    }
+        //    else
+        //    {
+        //        var response = new ApiResponse<bool>
+        //        {
+        //            StatusCode = (int)HttpStatusCode.BadRequest,
+        //            Message = ApiMessageConstant.LeaveRequestTypeNotAdded,
+        //            Data = isleaverequest
+        //        };
+        //        return BadRequest(response);
+        //    }
+        //}
+        [HttpPost("AddLeaveRequest")]
         public async Task<IActionResult> Create([FromBody] LeaveRequest leaveRequest)
         {
+            Log.Information("LeaveRequestController - AddLeaveRequest called.");
+
             if (leaveRequest == null)
-                return BadRequest("Invalid data.");
-               // return CreatedAtAction(nameof(GetById), new { id = leaveRequest.Id }, leaveRequest);
-
-
-            var isleaverequest = await _leaveRequestTypeService.AddLeaveRequestType(leaveRequest);
-            if (isleaverequest)
             {
-                // Use the wrapper class to create a consistent response
-                var response = new ApiResponse<bool>
+                Log.Warning("LeaveRequestController - Invalid leave request object.");
+                return BadRequest("Invalid data.");
+            }
+
+            var result = await _leaveRequestTypeService.AddLeaveRequestType(leaveRequest);
+            if (result)
+            {
+                Log.Information("LeaveRequestController - Leave request added successfully.");
+                return Ok(new ApiResponse<bool>
                 {
                     StatusCode = (int)HttpStatusCode.OK,
                     Message = ApiMessageConstant.LeaveRequestTypeAdded,
-                    Data = isleaverequest
-                };
-                return Ok(response);
+                    Data = true
+                });
+            }
 
-            }
-            else
+            Log.Warning("LeaveRequestController - Failed to add leave request.");
+            return BadRequest(new ApiResponse<bool>
             {
-                var response = new ApiResponse<bool>
-                {
-                    StatusCode = (int)HttpStatusCode.BadRequest,
-                    Message = ApiMessageConstant.LeaveRequestTypeNotAdded,
-                    Data = isleaverequest
-                };
-                return BadRequest(response);
-            }
+                StatusCode = (int)HttpStatusCode.BadRequest,
+                Message = ApiMessageConstant.LeaveRequestTypeNotAdded,
+                Data = false
+            });
         }
 
-        [HttpPut]
-        [Route("UpdateLeaveRequest/{id}")]
+        //[HttpPut]
+        //[Route("UpdateLeaveRequest/{id}")]
 
+        //public async Task<IActionResult> Update(long id, [FromBody] LeaveRequest leaveRequest)
+        //{
+        //    if (id != leaveRequest.Id)
+        //        return BadRequest("ID mismatch.");
+
+        //    var isLeaveTypeUpdated = await _leaveRequestTypeService.UpdateLeaveRequestType(leaveRequest);
+        //    if (isLeaveTypeUpdated)
+        //    {
+        //        // Use the wrapper class to create a consistent response
+        //        var response = new ApiResponse<bool>
+        //        {
+        //            StatusCode = (int)HttpStatusCode.OK,
+        //            Message = ApiMessageConstant.LeaveRequestDeleted,
+        //            Data = isLeaveTypeUpdated
+        //        };
+        //        return Ok(response);
+        //    }
+        //    else
+        //    {
+        //        var response = new ApiResponse<bool>
+        //        {
+        //            StatusCode = (int)HttpStatusCode.BadRequest,
+        //            Message = ApiMessageConstant.LeaveRequestNotDeleted,
+        //            Data = isLeaveTypeUpdated
+        //        };
+        //        return BadRequest(response);
+        //    }
+        //}
+        [HttpPut("UpdateLeaveRequest/{id}")]
         public async Task<IActionResult> Update(long id, [FromBody] LeaveRequest leaveRequest)
         {
-            if (id != leaveRequest.Id)
-                return BadRequest("ID mismatch.");
+            Log.Information("LeaveRequestController - UpdateLeaveRequest called for ID: {Id}", id);
 
-            var isLeaveTypeUpdated = await _leaveRequestTypeService.UpdateLeaveRequestType(leaveRequest);
-            if (isLeaveTypeUpdated)
+            if (id != leaveRequest.Id)
             {
-                // Use the wrapper class to create a consistent response
-                var response = new ApiResponse<bool>
+                Log.Warning("LeaveRequestController - ID mismatch: URL ID {Id}, Body ID {BodyId}", id, leaveRequest.Id);
+                return BadRequest("ID mismatch.");
+            }
+
+            var result = await _leaveRequestTypeService.UpdateLeaveRequestType(leaveRequest);
+            if (result)
+            {
+                Log.Information("LeaveRequestController - Leave request updated successfully for ID: {Id}", id);
+                return Ok(new ApiResponse<bool>
                 {
                     StatusCode = (int)HttpStatusCode.OK,
-                    Message = ApiMessageConstant.LeaveRequestDeleted,
-                    Data = isLeaveTypeUpdated
-                };
-                return Ok(response);
+                    Message = ApiMessageConstant.LeaveRequestUpdated,
+                    Data = true
+                });
             }
-            else
+
+            Log.Warning("LeaveRequestController - Failed to update leave request for ID: {Id}", id);
+            return BadRequest(new ApiResponse<bool>
             {
-                var response = new ApiResponse<bool>
-                {
-                    StatusCode = (int)HttpStatusCode.BadRequest,
-                    Message = ApiMessageConstant.LeaveRequestNotDeleted,
-                    Data = isLeaveTypeUpdated
-                };
-                return BadRequest(response);
-            }
+                StatusCode = (int)HttpStatusCode.BadRequest,
+                Message = ApiMessageConstant.LeaveRequestNotUpdated,
+                Data = false
+            });
         }
 
-        [HttpDelete]
-        [Route("DeleteLeaveRequest/{id}")]
+        //[HttpDelete]
+        //[Route("DeleteLeaveRequest/{id}")]
+        //public async Task<IActionResult> Delete(long id)
+        //{
+        //    var isLeaveRequestDeleted =  await _leaveRequestTypeService.DeleteLeaveRequestType(id);
+        //    if (isLeaveRequestDeleted)
+        //    {
+        //        // Use the wrapper class to create a consistent response
+        //        var response = new ApiResponse<bool>
+        //        {
+        //            StatusCode = (int)HttpStatusCode.OK,
+        //            Message = ApiMessageConstant.LeaveRequestDeleted,
+        //            Data = isLeaveRequestDeleted
+        //        };
+        //        return Ok(response);
+        //    }
+        //    else
+        //    {
+        //        var response = new ApiResponse<bool>
+        //        {
+        //            StatusCode = (int)HttpStatusCode.BadRequest,
+        //            Message = ApiMessageConstant.LeaveRequestNotDeleted,
+        //            Data = isLeaveRequestDeleted
+        //        };
+        //        return BadRequest(response);
+        //    }
+        //}
+        [HttpDelete("DeleteLeaveRequest/{id}")]
         public async Task<IActionResult> Delete(long id)
         {
-            var isLeaveRequestDeleted =  await _leaveRequestTypeService.DeleteLeaveRequestType(id);
-            if (isLeaveRequestDeleted)
+            Log.Information("LeaveRequestController - DeleteLeaveRequest called for ID: {Id}", id);
+
+            var result = await _leaveRequestTypeService.DeleteLeaveRequestType(id);
+            if (result)
             {
-                // Use the wrapper class to create a consistent response
-                var response = new ApiResponse<bool>
+                Log.Information("LeaveRequestController - Leave request deleted for ID: {Id}", id);
+                return Ok(new ApiResponse<bool>
                 {
                     StatusCode = (int)HttpStatusCode.OK,
                     Message = ApiMessageConstant.LeaveRequestDeleted,
-                    Data = isLeaveRequestDeleted
-                };
-                return Ok(response);
+                    Data = true
+                });
             }
-            else
+
+            Log.Warning("LeaveRequestController - Failed to delete leave request for ID: {Id}", id);
+            return BadRequest(new ApiResponse<bool>
             {
-                var response = new ApiResponse<bool>
-                {
-                    StatusCode = (int)HttpStatusCode.BadRequest,
-                    Message = ApiMessageConstant.LeaveRequestNotDeleted,
-                    Data = isLeaveRequestDeleted
-                };
-                return BadRequest(response);
-            }
+                StatusCode = (int)HttpStatusCode.BadRequest,
+                Message = ApiMessageConstant.LeaveRequestNotDeleted,
+                Data = false
+            });
         }
     }
 }
 
-   

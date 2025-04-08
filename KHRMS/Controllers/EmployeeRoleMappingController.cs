@@ -3,6 +3,7 @@ using KHRMS.Core;
 using KHRMS.Infrastructure;
 using KHRMS.Services;
 using Microsoft.AspNetCore.Mvc;
+using Serilog;
 using System.Net;
 
 namespace KHRMS.Controllers
@@ -16,116 +17,218 @@ namespace KHRMS.Controllers
         /// Get List Of EmployeeRoleMapping
         /// </summary>
         /// <returns></returns>
-        [HttpGet]
-        [Route("GetEmployeeRoles")]
+        //[HttpGet]
+        //[Route("GetEmployeeRoles")]
+        //public async Task<IActionResult> GetEmployeeRoles()
+        //{
+        //    var employeeroleMapping = await _employeeRoleMappingService.GetAllEmployeeRoleMapping();
+        //    if (employeeroleMapping == null)
+        //    {
+        //        return NotFound();
+        //    }
+        //    var response = new ApiResponse<List<EmployeeRoleMapping>>
+        //    {
+        //        StatusCode = (int)HttpStatusCode.OK,
+        //        Message = employeeroleMapping.Any() ? ApiMessageConstant.EmployeeRoleMapping: ApiMessageConstant.NoEmployeeRoleMappingFound,
+        //        Data = employeeroleMapping.ToList()
+        //    };
+        //    return Ok(response);
+        //}
+        [HttpGet("GetEmployeeRoles")]
         public async Task<IActionResult> GetEmployeeRoles()
         {
+            Log.Information("EmployeeRoleMappingController - GetEmployeeRoles called.");
             var employeeroleMapping = await _employeeRoleMappingService.GetAllEmployeeRoleMapping();
-            if (employeeroleMapping == null)
+
+            if (employeeroleMapping == null || !employeeroleMapping.Any())
             {
-                return NotFound();
+                Log.Warning("EmployeeRoleMappingController - No employee role mappings found.");
+                return NotFound(new ApiResponse<List<EmployeeRoleMapping>>
+                {
+                    StatusCode = (int)HttpStatusCode.NotFound,
+                    Message = ApiMessageConstant.NoEmployeeRoleMappingFound,
+                    Data = null
+                });
             }
-            var response = new ApiResponse<List<EmployeeRoleMapping>>
+
+            Log.Information("EmployeeRoleMappingController - {Count} employee role mappings found.", employeeroleMapping.Count());
+            return Ok(new ApiResponse<List<EmployeeRoleMapping>>
             {
                 StatusCode = (int)HttpStatusCode.OK,
-                Message = employeeroleMapping.Any() ? ApiMessageConstant.EmployeeRoleMapping: ApiMessageConstant.NoEmployeeRoleMappingFound,
+                Message = ApiMessageConstant.EmployeeRoleMapping,
                 Data = employeeroleMapping.ToList()
-            };
-            return Ok(response);
+            });
         }
         /// <summary>
         /// Add New EmployeeRoleMapping
         /// </summary>
         /// <param name="employeeRoleMapping"></param>
         /// <returns></returns>
-        [HttpPost]
-        [Route("AssignEmployeeRole")]
-        public async Task<IActionResult> AssignEmployeeRole(EmployeeRoleMapping employeeRoleMapping)
+        //[HttpPost]
+        //[Route("AssignEmployeeRole")]
+        //public async Task<IActionResult> AssignEmployeeRole(EmployeeRoleMapping employeeRoleMapping)
+        //{
+        //    var isEmployeRoleMappingAdded = await _employeeRoleMappingService.CreateEmployeeRoleMapping(employeeRoleMapping);
+        //    if (isEmployeRoleMappingAdded)
+        //    {
+        //        var response = new ApiResponse<bool>
+        //        {
+        //            StatusCode = (int)HttpStatusCode.OK,
+        //            Message = ApiMessageConstant.EmployeeRoleMappingAdded,
+        //            Data = isEmployeRoleMappingAdded
+        //        };
+        //        return Ok(response);
+        //    }
+        //    else
+        //    {
+        //        var response = new ApiResponse<bool>
+        //        {
+        //            StatusCode = (int)HttpStatusCode.BadRequest,
+        //            Message = ApiMessageConstant.EmployeeRoleMappingNotAdded,
+        //            Data = isEmployeRoleMappingAdded
+        //        };
+        //        return BadRequest(response);
+        //    }
+        //}
+
+        [HttpPost("AssignEmployeeRole")]
+        public async Task<IActionResult> AssignEmployeeRole([FromBody] EmployeeRoleMapping employeeRoleMapping)
         {
-            var isEmployeRoleMappingAdded = await _employeeRoleMappingService.CreateEmployeeRoleMapping(employeeRoleMapping);
-            if (isEmployeRoleMappingAdded)
+            Log.Information("EmployeeRoleMappingController - AssignEmployeeRole called.");
+            var result = await _employeeRoleMappingService.CreateEmployeeRoleMapping(employeeRoleMapping);
+
+            if (result)
             {
-                var response = new ApiResponse<bool>
+                Log.Information("EmployeeRoleMappingController - Employee role mapping assigned successfully.");
+                return Ok(new ApiResponse<bool>
                 {
                     StatusCode = (int)HttpStatusCode.OK,
                     Message = ApiMessageConstant.EmployeeRoleMappingAdded,
-                    Data = isEmployeRoleMappingAdded
-                };
-                return Ok(response);
+                    Data = true
+                });
             }
-            else
+
+            Log.Warning("EmployeeRoleMappingController - Failed to assign employee role mapping.");
+            return BadRequest(new ApiResponse<bool>
             {
-                var response = new ApiResponse<bool>
-                {
-                    StatusCode = (int)HttpStatusCode.BadRequest,
-                    Message = ApiMessageConstant.EmployeeRoleMappingNotAdded,
-                    Data = isEmployeRoleMappingAdded
-                };
-                return BadRequest(response);
-            }
+                StatusCode = (int)HttpStatusCode.BadRequest,
+                Message = ApiMessageConstant.EmployeeRoleMappingNotAdded,
+                Data = false
+            });
         }
         /// <summary>
         /// Update EmployeeRoleMapping
         /// </summary>
         /// <param name="employeeRoleMapping"></param>
         /// <returns></returns>
-        [HttpPut]
-        [Route("UpdateEmployeeRole")]
-        public async Task<IActionResult> UpdateEmployeeRole(EmployeeRoleMapping employeeRoleMapping)
+        //[HttpPut]
+        //[Route("UpdateEmployeeRole")]
+        //public async Task<IActionResult> UpdateEmployeeRole(EmployeeRoleMapping employeeRoleMapping)
+        //{
+        //    var isEmployeRoleMappingUpdated = await _employeeRoleMappingService.UpdateEmployeeRoleMapping(employeeRoleMapping);
+        //    if (isEmployeRoleMappingUpdated)
+        //    {
+        //        var response = new ApiResponse<bool>
+        //        {
+        //            StatusCode = (int)HttpStatusCode.OK,
+        //            Message = ApiMessageConstant.EmployeeRoleMappingUpdated,
+        //            Data = isEmployeRoleMappingUpdated
+        //        };
+        //        return Ok(response);
+        //    }
+        //    else
+        //    {
+        //        var response = new ApiResponse<bool>
+        //        {
+        //            StatusCode = (int)HttpStatusCode.BadRequest,
+        //            Message = ApiMessageConstant.EmployeeRoleMappingNotUpdated,
+        //            Data = isEmployeRoleMappingUpdated
+        //        };
+        //        return BadRequest(response);
+        //    }
+
+        //}
+        [HttpPut("UpdateEmployeeRole")]
+        public async Task<IActionResult> UpdateEmployeeRole([FromBody] EmployeeRoleMapping employeeRoleMapping)
         {
-            var isEmployeRoleMappingUpdated = await _employeeRoleMappingService.UpdateEmployeeRoleMapping(employeeRoleMapping);
-            if (isEmployeRoleMappingUpdated)
+            Log.Information("EmployeeRoleMappingController - UpdateEmployeeRole called.");
+            var result = await _employeeRoleMappingService.UpdateEmployeeRoleMapping(employeeRoleMapping);
+
+            if (result)
             {
-                var response = new ApiResponse<bool>
+                Log.Information("EmployeeRoleMappingController - Employee role mapping updated successfully.");
+                return Ok(new ApiResponse<bool>
                 {
                     StatusCode = (int)HttpStatusCode.OK,
                     Message = ApiMessageConstant.EmployeeRoleMappingUpdated,
-                    Data = isEmployeRoleMappingUpdated
-                };
-                return Ok(response);
-            }
-            else
-            {
-                var response = new ApiResponse<bool>
-                {
-                    StatusCode = (int)HttpStatusCode.BadRequest,
-                    Message = ApiMessageConstant.EmployeeRoleMappingNotUpdated,
-                    Data = isEmployeRoleMappingUpdated
-                };
-                return BadRequest(response);
+                    Data = true
+                });
             }
 
+            Log.Warning("EmployeeRoleMappingController - Failed to update employee role mapping.");
+            return BadRequest(new ApiResponse<bool>
+            {
+                StatusCode = (int)HttpStatusCode.BadRequest,
+                Message = ApiMessageConstant.EmployeeRoleMappingNotUpdated,
+                Data = false
+            });
         }
         /// <summary>
         /// Delete EmployeeRoleMapping
         /// </summary>
         /// <param name="employeeRoleMappingId"></param>
         /// <returns></returns>
-        [HttpDelete]
-        [Route("DeleteEmployeeRole")]
+        //[HttpDelete]
+        //[Route("DeleteEmployeeRole")]
+        //public async Task<IActionResult> DeleteEmployeeRole(long employeeRoleMappingId)
+        //{
+        //    var isEmployeRoleMappingDeleted = await _employeeRoleMappingService.DeleteEmployeeRoleMapping(employeeRoleMappingId);
+        //    if (isEmployeRoleMappingDeleted)
+        //    {
+        //        var response = new ApiResponse<bool>
+        //        {
+        //            StatusCode = (int)HttpStatusCode.OK,
+        //            Message = ApiMessageConstant.EmployeeRoleMappingDeleted,
+        //            Data = isEmployeRoleMappingDeleted
+        //        };
+        //        return Ok(response);
+        //    }
+        //    else
+        //    {
+        //        var response = new ApiResponse<bool>
+        //        {
+        //            StatusCode = (int)HttpStatusCode.BadRequest,
+        //            Message = ApiMessageConstant.EmployeeRoleMappingNotDeleted,
+        //            Data = isEmployeRoleMappingDeleted
+        //        };
+        //        return BadRequest(response);
+        //    }
+        //}
+
+        [HttpDelete("DeleteEmployeeRole")]
         public async Task<IActionResult> DeleteEmployeeRole(long employeeRoleMappingId)
         {
-            var isEmployeRoleMappingDeleted = await _employeeRoleMappingService.DeleteEmployeeRoleMapping(employeeRoleMappingId);
-            if (isEmployeRoleMappingDeleted)
+            Log.Information("EmployeeRoleMappingController - DeleteEmployeeRole called with ID: {Id}", employeeRoleMappingId);
+            var result = await _employeeRoleMappingService.DeleteEmployeeRoleMapping(employeeRoleMappingId);
+
+            if (result)
             {
-                var response = new ApiResponse<bool>
+                Log.Information("EmployeeRoleMappingController - Employee role mapping deleted successfully for ID: {Id}", employeeRoleMappingId);
+                return Ok(new ApiResponse<bool>
                 {
                     StatusCode = (int)HttpStatusCode.OK,
                     Message = ApiMessageConstant.EmployeeRoleMappingDeleted,
-                    Data = isEmployeRoleMappingDeleted
-                };
-                return Ok(response);
+                    Data = true
+                });
             }
-            else
+
+            Log.Warning("EmployeeRoleMappingController - Failed to delete employee role mapping for ID: {Id}", employeeRoleMappingId);
+            return BadRequest(new ApiResponse<bool>
             {
-                var response = new ApiResponse<bool>
-                {
-                    StatusCode = (int)HttpStatusCode.BadRequest,
-                    Message = ApiMessageConstant.EmployeeRoleMappingNotDeleted,
-                    Data = isEmployeRoleMappingDeleted
-                };
-                return BadRequest(response);
-            }
+                StatusCode = (int)HttpStatusCode.BadRequest,
+                Message = ApiMessageConstant.EmployeeRoleMappingNotDeleted,
+                Data = false
+            });
         }
     }
 }
