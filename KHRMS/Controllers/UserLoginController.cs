@@ -5,41 +5,106 @@ using Microsoft.AspNetCore.Mvc;
 using System.Net;
 
 namespace KHRMS
+
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class UserLoginController(IUserLoginService userLoginService) : ControllerBase
+
+    public class UserLoginController(IUserLoginService userLoginService, IHttpContextAccessor httpContextAccessor) : ControllerBase
     {
         public readonly IUserLoginService _userLoginService = userLoginService;
 
+        public readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
+
+        //[HttpPost]
+        //[Route("Login")]
+
+        //public async Task<IActionResult> Login([FromBody] UserLogin model)
+        //{
+        //    var isuserLoginAdded = await _userLoginService.GetUserLoginById(model.Email,model.Password);
+        //    if (isuserLoginAdded)
+        //    {
+        //        var response = new ApiResponse<bool>
+        //        {
+        //            StatusCode = (int)HttpStatusCode.OK,
+        //            Message = ApiMessageConstant.UserLoginByIdAdded,
+        //            Data = isuserLoginAdded
+        //        };
+        //        return Ok(response);
+        //    }
+        //    else
+        //    {
+        //        var response = new ApiResponse<bool>
+        //        {
+        //            StatusCode = (int)HttpStatusCode.BadRequest,
+        //            Message = ApiMessageConstant.InvalidCredentials,
+        //            Data = isuserLoginAdded
+        //        };
+        //        return BadRequest(response);
+        //    }
+        //}
+
+        //[HttpPost]
+        //[Route("Login")]
+        //public async Task<IActionResult> Login([FromBody] UserLogin model)
+        //{
+        //    var employeeId = await _userLoginService.GetUserLoginById(model.Email, model.Password);
+
+        //    if (employeeId.HasValue)
+        //    {
+        //        HttpContext.Items["EmployeeId"] = employeeId.Value;
+
+        //        var response = new ApiResponse<long>
+        //        {
+        //            StatusCode = (int)HttpStatusCode.OK,
+        //            Message = ApiMessageConstant.UserLoginByIdAdded,
+        //            Data = employeeId.Value
+        //        };
+        //        return Ok(response);
+        //    }
+        //    else
+        //    {
+        //        var response = new ApiResponse<string>
+        //        {
+        //            StatusCode = (int)HttpStatusCode.BadRequest,
+        //            Message = ApiMessageConstant.InvalidCredentials,
+        //            Data = null
+        //        };
+        //        return BadRequest(response);
+        //    }
+        //}
         [HttpPost]
         [Route("Login")]
-
         public async Task<IActionResult> Login([FromBody] UserLogin model)
         {
-            var isuserLoginAdded = await _userLoginService.GetUserLoginById(model.Email,model.Password);
-            if (isuserLoginAdded)
+            var employeeId = await _userLoginService.GetUserLoginById(model.Email, model.Password);
+
+            if (employeeId.HasValue)
             {
-                var response = new ApiResponse<bool>
+                // Store employee ID in HttpContext.Items
+                HttpContext.Session.SetString("EmployeeId", employeeId.Value.ToString());
+
+                var response = new ApiResponse<long>
                 {
                     StatusCode = (int)HttpStatusCode.OK,
                     Message = ApiMessageConstant.UserLoginByIdAdded,
-                    Data = isuserLoginAdded
+                    Data = employeeId.Value
                 };
                 return Ok(response);
             }
             else
             {
-                var response = new ApiResponse<bool>
+                var response = new ApiResponse<string>
                 {
                     StatusCode = (int)HttpStatusCode.BadRequest,
                     Message = ApiMessageConstant.InvalidCredentials,
-                    Data = isuserLoginAdded
+                    Data = null
                 };
                 return BadRequest(response);
             }
         }
 
-       
+
+
     }
 }

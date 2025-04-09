@@ -7,24 +7,49 @@ namespace KHRMS.Services
     public class UserLoginService(IUnitOfWork unitOfWork) : IUserLoginService
     {
         public IUnitOfWork _unitOfWork = unitOfWork;
-        public async Task<bool> GetUserLoginById(string email, string password)
+        //public async Task<bool> GetUserLoginById(string email, string password)
+        //{
+        //    var allUsers = await _unitOfWork.UserLogins.GetAll();
+        //    var matchedUser = allUsers.FirstOrDefault(x => x.Email == email && !x.IsDeleted && x.IsActive);
+        //    if (matchedUser != null)
+        //    {
+        //        var passwordHasher = new PasswordHasher<UserLogin>();
+        //        var verificationResult = passwordHasher.VerifyHashedPassword(matchedUser, matchedUser.Password, password);
+        //        Console.WriteLine(verificationResult);
+
+        //        return verificationResult == PasswordVerificationResult.Success;
+        //    }
+        //    else
+        //    {
+        //        return false;
+        //    }
+        //}
+
+        public async Task<long?> GetUserLoginById(string email, string password)
         {
             var allUsers = await _unitOfWork.UserLogins.GetAll();
             var matchedUser = allUsers.FirstOrDefault(x => x.Email == email && !x.IsDeleted && x.IsActive);
+
             if (matchedUser != null)
             {
                 var passwordHasher = new PasswordHasher<UserLogin>();
                 var verificationResult = passwordHasher.VerifyHashedPassword(matchedUser, matchedUser.Password, password);
-                Console.WriteLine(verificationResult);
 
-                return verificationResult == PasswordVerificationResult.Success;
+                if (verificationResult == PasswordVerificationResult.Success)
+                {
+                    // Find matching employee
+                    var allEmployees = await _unitOfWork.Employees.GetAll();
+                    var matchedEmployee = allEmployees.FirstOrDefault(e => e.EmailAddress == email && !e.IsDeleted && e.IsActive);
+
+                    if (matchedEmployee != null)
+                    {
+                        return matchedEmployee.Id;
+                    }
+                }
             }
-            else
-            {
-                return false;
-            }
+
+            return null;
         }
-
 
 
 
