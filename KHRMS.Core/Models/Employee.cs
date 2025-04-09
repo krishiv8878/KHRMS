@@ -34,7 +34,7 @@ namespace KHRMS.Core
         [Required(ErrorMessage = "Date Of Joining is required")]
         public DateTime? DateOfJoining { get; set; }
 
-        [StringLength(10)]
+        [StringLength(20)]
         [Required(ErrorMessage = "Gender is required")]
         public string? Gender { get; set; }
 
