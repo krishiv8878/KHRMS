@@ -1,6 +1,9 @@
 ﻿using KHRMS.Core;
+using KHRMS.Infrastructure;
 using KHRMS.Services;
+using Microsoft.AspNetCore.Mvc;
 using Moq;
+using System.Net;
 
 
 namespace KHRMS.UnitTest.ControllerTests
@@ -50,27 +53,31 @@ namespace KHRMS.UnitTest.ControllerTests
         }
 
         [Fact]
-        public void Update_LeaveType_WhenExistingLeaveTypeUpdated_ShouldReturnSuccess()
+        public async Task Update_LeaveType_WhenExistingLeaveTypeUpdated_ShouldReturnSuccess()
         {
-            var Id = 1;
+            // Arrange
             var mock = new Mock<ILeaveTypeService>();
             var controller = new LeaveTypeController(mock.Object);
-            mock.Setup(x => x.UpdateLeaveType(It.IsAny<LeaveType>()));
-            Core.LeaveType leavetype = new Core.LeaveType()
+
+            var leavetype = new LeaveType
             {
                 Id = 1,
                 Type = "Full Type",
                 Description = "string"
             };
-            Core.LeaveType updateleavetype = new Core.LeaveType()
-            {
-                Id = 1,
-                Type = "Full Type",
-                Description = "string"
-            };
-            var result = controller.UpdateLeaveType(leavetype);
-            Assert.NotNull(result);
-            Assert.Equal(1, 1);
+
+            mock.Setup(x => x.UpdateLeaveType(leavetype)).ReturnsAsync(true);
+
+            // Act
+            var result = await controller.UpdateLeaveType(1, leavetype);
+
+            // Assert
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<bool>>(okResult.Value);
+
+            Assert.True(response.Data);
+            Assert.Equal((int)HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal(ApiMessageConstant.LeaveTypeUpdated, response.Message);
         }
 
         [Fact]

@@ -2,6 +2,7 @@
 using KHRMS.Services;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
+using System.Net;
 
 namespace KHRMS.UnitTest.ControllerTests
 {
@@ -68,6 +69,7 @@ namespace KHRMS.UnitTest.ControllerTests
         [Fact]
         public async Task Update_Shift_ShouldReturnSuccess_WhenShiftIsUpdated()
         {
+            // Arrange
             var shiftMaster = new ShiftMaster
             {
                 Id = 1,
@@ -75,23 +77,30 @@ namespace KHRMS.UnitTest.ControllerTests
                 StartTime = "10:20:00",
                 EndTime = "07:10:00"
             };
-            var UpdateashiftMaster = new ShiftMaster
+
+            var updatedShiftMaster = new ShiftMaster
             {
                 Id = 1,
-                ShiftName = "Day",//update shiftname
+                ShiftName = "Day", // updated shift name
                 StartTime = "10:20:00",
                 EndTime = "07:10:00"
             };
 
             _mock.Setup(x => x.UpdateShiftAsync(It.IsAny<ShiftMaster>())).Returns(Task.CompletedTask);
 
-            var result = await _controller.Update(UpdateashiftMaster);
-            Assert.NotNull(result);
+            // Act
+            var result = await _controller.Update(updatedShiftMaster.Id, updatedShiftMaster);
+            var okResult = result as OkObjectResult;
+
+            // Assert
+            Assert.NotNull(okResult);
+            Assert.Equal((int)HttpStatusCode.OK, okResult.StatusCode);
 
             _mock.Verify(x => x.UpdateShiftAsync(It.Is<ShiftMaster>(r =>
-                r.Id == UpdateashiftMaster.Id &&
-                r.ShiftName == UpdateashiftMaster.ShiftName)), Times.Once());
+                r.Id == updatedShiftMaster.Id &&
+                r.ShiftName == updatedShiftMaster.ShiftName)), Times.Once());
         }
+
     }
 }
 
