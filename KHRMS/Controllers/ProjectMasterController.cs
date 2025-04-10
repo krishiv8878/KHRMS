@@ -2,6 +2,7 @@
 using KHRMS.Infrastructure;
 using KHRMS.Services;
 using Microsoft.AspNetCore.Mvc;
+using Serilog;
 using System.Net;
 
 namespace KHRMS.Controllers
@@ -16,120 +17,236 @@ namespace KHRMS.Controllers
         /// Get the list of projectMaster
         /// </summary>
         /// <returns></returns>
-        [HttpGet]
-        [Route("GetProjectMaster")]
+        //[HttpGet]
+        //[Route("GetProjectMaster")]
+        //public async Task<IActionResult> GetProjectMaster()
+        //{
+        //    var projectMaster = await _projectMasterService.GetAllProjectMaster();
+        //    if (projectMaster == null)
+        //    {
+        //        return NotFound();
+        //    }
+        //    // Use the wrapper class to create a consistent response
+        //    var response = new ApiResponse<List<ProjectMaster>>
+        //    {
+        //        StatusCode = (int)HttpStatusCode.OK,
+        //        Message = projectMaster.Any() ? ApiMessageConstant.ProjectMasterFound : ApiMessageConstant.ProjectMasterNotFound,
+        //        Data = projectMaster.ToList()
+        //    };
+        //    return Ok(response);
+        //}
+
+        [HttpGet("GetProjectMaster")]
         public async Task<IActionResult> GetProjectMaster()
         {
-            var projectMaster = await _projectMasterService.GetAllProjectMaster();
-            if (projectMaster == null)
+            Log.Information("ProjectMasterController - GetProjectMaster called.");
+
+            var projectList = await _projectMasterService.GetAllProjectMaster();
+
+            if (projectList == null || !projectList.Any())
             {
-                return NotFound();
+                Log.Warning("ProjectMasterController - No project master records found.");
+                return NotFound(new ApiResponse<List<ProjectMaster>>
+                {
+                    StatusCode = (int)HttpStatusCode.NotFound,
+                    Message = ApiMessageConstant.ProjectMasterNotFound,
+                    Data = null
+                });
             }
-            // Use the wrapper class to create a consistent response
-            var response = new ApiResponse<List<ProjectMaster>>
+
+            Log.Information("ProjectMasterController - {Count} project master records found.", projectList.Count());
+            return Ok(new ApiResponse<List<ProjectMaster>>
             {
                 StatusCode = (int)HttpStatusCode.OK,
-                Message = projectMaster.Any() ? ApiMessageConstant.ProjectMasterFound : ApiMessageConstant.ProjectMasterNotFound,
-                Data = projectMaster.ToList()
-            };
-            return Ok(response);
+                Message = ApiMessageConstant.ProjectMasterFound,
+                Data = projectList.ToList()
+            });
         }
-
 
         /// <summary>
         /// Add a new ProjectMaster
         /// </summary>
-    
-        [HttpPost]
-        [Route("AddProjectMaster")]
-        public async Task<IActionResult> AddProjectMaster(ProjectMaster projectMaster)
+
+        //[HttpPost]
+        //[Route("AddProjectMaster")]
+        //public async Task<IActionResult> AddProjectMaster(ProjectMaster projectMaster)
+        //{
+        //    var isProjectMasterAdded = await _projectMasterService.AddProjectMaster(projectMaster);
+        //    if (isProjectMasterAdded)
+        //    {
+        //        // Use the wrapper class to create a consistent response
+        //        var response = new ApiResponse<bool>
+        //        {
+        //            StatusCode = (int)HttpStatusCode.OK,
+        //            Message = ApiMessageConstant.ProjectMasterAdded,
+        //            Data = isProjectMasterAdded
+        //        };
+        //        return Ok(response);
+        //    }
+        //    else
+        //    {
+        //        var response = new ApiResponse<bool>
+        //        {
+        //            StatusCode = (int)HttpStatusCode.BadRequest,
+        //            Message = ApiMessageConstant.ProjectMasterNotAdded,
+        //            Data = isProjectMasterAdded
+        //        };
+        //        return BadRequest(response);
+        //    }
+        //}
+        [HttpPost("AddProjectMaster")]
+        public async Task<IActionResult> AddProjectMaster([FromBody] ProjectMaster projectMaster)
         {
-            var isProjectMasterAdded = await _projectMasterService.AddProjectMaster(projectMaster);
-            if (isProjectMasterAdded)
+            Log.Information("ProjectMasterController - AddProjectMaster called.");
+
+            if (projectMaster == null)
             {
-                // Use the wrapper class to create a consistent response
-                var response = new ApiResponse<bool>
+                Log.Warning("ProjectMasterController - Invalid project master object.");
+                return BadRequest("Invalid data.");
+            }
+
+            var result = await _projectMasterService.AddProjectMaster(projectMaster);
+
+            if (result)
+            {
+                Log.Information("ProjectMasterController - Project master added successfully.");
+                return Ok(new ApiResponse<bool>
                 {
                     StatusCode = (int)HttpStatusCode.OK,
                     Message = ApiMessageConstant.ProjectMasterAdded,
-                    Data = isProjectMasterAdded
-                };
-                return Ok(response);
+                    Data = true
+                });
             }
-            else
+
+            Log.Warning("ProjectMasterController - Failed to add project master.");
+            return BadRequest(new ApiResponse<bool>
             {
-                var response = new ApiResponse<bool>
-                {
-                    StatusCode = (int)HttpStatusCode.BadRequest,
-                    Message = ApiMessageConstant.ProjectMasterNotAdded,
-                    Data = isProjectMasterAdded
-                };
-                return BadRequest(response);
-            }
+                StatusCode = (int)HttpStatusCode.BadRequest,
+                Message = ApiMessageConstant.ProjectMasterNotAdded,
+                Data = false
+            });
         }
 
         /// <summary>
         /// Update a existing candidate
         /// </summary>
 
-        [HttpPut]
-        [Route("UpdateProjectMaster")]
-        public async Task<IActionResult> UpdateProjectMaster(ProjectMaster projectMaster)
+        //[HttpPut]
+        //[Route("UpdateProjectMaster")]
+        //public async Task<IActionResult> UpdateProjectMaster(ProjectMaster projectMaster)
+        //{
+        //    var isProjectMasterEdited = await _projectMasterService.UpdateProjectMaster(projectMaster);
+        //    if (isProjectMasterEdited)
+        //    {
+        //        // Use the wrapper class to create a consistent response
+        //        var response = new ApiResponse<bool>
+        //        {
+        //            StatusCode = (int)HttpStatusCode.OK,
+        //            Message = ApiMessageConstant.ProjectMasterUpdated,
+        //            Data = isProjectMasterEdited
+        //        };
+        //        return Ok(response);
+        //    }
+        //    else
+        //    {
+        //        var response = new ApiResponse<bool>
+        //        {
+        //            StatusCode = (int)HttpStatusCode.BadRequest,
+        //            Message = ApiMessageConstant.ProjectMasterNotUpdated,
+        //            Data = isProjectMasterEdited
+        //        };
+        //        return BadRequest(response);
+        //    }
+        //}
+        [HttpPut("UpdateProjectMaster/{id}")]
+        public async Task<IActionResult> UpdateProjectMaster(long id, [FromBody] ProjectMaster projectMaster)
         {
-            var isProjectMasterEdited = await _projectMasterService.UpdateProjectMaster(projectMaster);
-            if (isProjectMasterEdited)
+            Log.Information("ProjectMasterController - UpdateProjectMaster called for ID: {Id}", id);
+
+            if (id != projectMaster.Id)
             {
-                // Use the wrapper class to create a consistent response
-                var response = new ApiResponse<bool>
+                Log.Warning("ProjectMasterController - ID mismatch: URL ID {Id}, Body ID {BodyId}", id, projectMaster.Id);
+                return BadRequest("ID mismatch.");
+            }
+
+            var result = await _projectMasterService.UpdateProjectMaster(projectMaster);
+
+            if (result)
+            {
+                Log.Information("ProjectMasterController - Project master updated for ID: {Id}", id);
+                return Ok(new ApiResponse<bool>
                 {
                     StatusCode = (int)HttpStatusCode.OK,
                     Message = ApiMessageConstant.ProjectMasterUpdated,
-                    Data = isProjectMasterEdited
-                };
-                return Ok(response);
+                    Data = true
+                });
             }
-            else
+
+            Log.Warning("ProjectMasterController - Failed to update project master for ID: {Id}", id);
+            return BadRequest(new ApiResponse<bool>
             {
-                var response = new ApiResponse<bool>
-                {
-                    StatusCode = (int)HttpStatusCode.BadRequest,
-                    Message = ApiMessageConstant.ProjectMasterNotUpdated,
-                    Data = isProjectMasterEdited
-                };
-                return BadRequest(response);
-            }
+                StatusCode = (int)HttpStatusCode.BadRequest,
+                Message = ApiMessageConstant.ProjectMasterNotUpdated,
+                Data = false
+            });
         }
 
         /// <summary>
         /// Delete existing candidate
         /// </summary>
 
-        [HttpDelete]
-        [Route("DeleteProjectMaster")]
-        public async Task<IActionResult> DeleteCandidate(long projectMasterId)
+        //[HttpDelete]
+        //[Route("DeleteProjectMaster")]
+        //public async Task<IActionResult> DeleteCandidate(long projectMasterId)
+        //{
+        //    var isProjectMasterDeleted = await _projectMasterService.DeleteProjectMaster(projectMasterId);
+        //    if (isProjectMasterDeleted)
+        //    {
+        //        // Use the wrapper class to create a consistent response
+        //        var response = new ApiResponse<bool>
+        //        {
+        //            StatusCode = (int)HttpStatusCode.OK,
+        //            Message = ApiMessageConstant.ProjectMasterDeleted,
+        //            Data = isProjectMasterDeleted
+        //        };
+        //        return Ok(response);
+        //    }
+        //    else
+        //    {
+        //        var response = new ApiResponse<bool>
+        //        {
+        //            StatusCode = (int)HttpStatusCode.BadRequest,
+        //            Message = ApiMessageConstant.ProjectMasterNotDeleted,
+        //            Data = isProjectMasterDeleted
+        //        };
+        //        return BadRequest(response);
+        //    }
+        //}
+        [HttpDelete("DeleteProjectMaster/{id}")]
+        public async Task<IActionResult> DeleteProjectMaster(long id)
         {
-            var isProjectMasterDeleted = await _projectMasterService.DeleteProjectMaster(projectMasterId);
-            if (isProjectMasterDeleted)
+            Log.Information("ProjectMasterController - DeleteProjectMaster called for ID: {Id}", id);
+
+            var result = await _projectMasterService.DeleteProjectMaster(id);
+
+            if (result)
             {
-                // Use the wrapper class to create a consistent response
-                var response = new ApiResponse<bool>
+                Log.Information("ProjectMasterController - Project master deleted for ID: {Id}", id);
+                return Ok(new ApiResponse<bool>
                 {
                     StatusCode = (int)HttpStatusCode.OK,
                     Message = ApiMessageConstant.ProjectMasterDeleted,
-                    Data = isProjectMasterDeleted
-                };
-                return Ok(response);
+                    Data = true
+                });
             }
-            else
+
+            Log.Warning("ProjectMasterController - Failed to delete project master for ID: {Id}", id);
+            return BadRequest(new ApiResponse<bool>
             {
-                var response = new ApiResponse<bool>
-                {
-                    StatusCode = (int)HttpStatusCode.BadRequest,
-                    Message = ApiMessageConstant.ProjectMasterNotDeleted,
-                    Data = isProjectMasterDeleted
-                };
-                return BadRequest(response);
-            }
+                StatusCode = (int)HttpStatusCode.BadRequest,
+                Message = ApiMessageConstant.ProjectMasterNotDeleted,
+                Data = false
+            });
         }
     }
 }

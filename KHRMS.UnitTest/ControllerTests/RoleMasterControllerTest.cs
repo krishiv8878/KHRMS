@@ -1,5 +1,6 @@
 ﻿using KHRMS.Controllers;
 using KHRMS.Core;
+using KHRMS.Infrastructure;
 using KHRMS.Services;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
@@ -87,13 +88,19 @@ public class RoleMasterControllerTests
         _mockService.Setup(service => service.UpdateRoleMaster(role)).ReturnsAsync(true);
 
         // Act
-        var result = await _controller.UpdateRole(role);
+        var result = await _controller.UpdateRole(role.Id, role);
         var okResult = result as OkObjectResult;
 
         // Assert
         Assert.NotNull(okResult);
         Assert.Equal((int)HttpStatusCode.OK, okResult.StatusCode);
+
+        var response = okResult.Value as ApiResponse<bool>;
+        Assert.NotNull(response);
+        Assert.True(response.Data);
     }
+
+
 
     [Fact]
     public async Task UpdateRole_ShouldReturnBadRequest_WhenRoleIsNotUpdated()
@@ -103,13 +110,18 @@ public class RoleMasterControllerTests
         _mockService.Setup(service => service.UpdateRoleMaster(role)).ReturnsAsync(false);
 
         // Act
-        var result = await _controller.UpdateRole(role);
+        var result = await _controller.UpdateRole(role.Id, role);
         var badRequestResult = result as BadRequestObjectResult;
 
         // Assert
         Assert.NotNull(badRequestResult);
         Assert.Equal((int)HttpStatusCode.BadRequest, badRequestResult.StatusCode);
+
+        var response = badRequestResult.Value as ApiResponse<bool>;
+        Assert.NotNull(response);
+        Assert.False(response.Data);
     }
+
 
     [Fact]
     public async Task DeleteRole_ShouldReturnOk_WhenRoleIsDeleted()
