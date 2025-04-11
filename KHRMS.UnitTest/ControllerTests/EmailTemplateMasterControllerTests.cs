@@ -93,13 +93,19 @@ namespace KHRMS.UnitTest.ControllerTests
         public async Task DeleteEmailTemplateType_ReturnsNotFound_WhenTemplateDoesNotExist()
         {
             // Arrange
-            _mockService.Setup(service => service.GetByIdAsync(It.IsAny<long>())).ReturnsAsync((EmailTemplateTypeMaster)null);
+            _mockService.Setup(service => service.GetByIdAsync(It.IsAny<long>()))
+                        .ReturnsAsync((EmailTemplateTypeMaster)null);
 
             // Act
             var result = await _controller.DeletEmailTemplateType(999);
 
             // Assert
-            Assert.IsType<NotFoundResult>(result);
+            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<bool>>(notFoundResult.Value);
+            Assert.False(response.Data);
+            Assert.Equal((int)HttpStatusCode.NotFound, response.StatusCode);
+            Assert.Equal("EmailTemplateType not found", response.Message);
         }
+
     }
 }

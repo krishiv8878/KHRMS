@@ -169,8 +169,20 @@ namespace KHRMS
         //}
         [HttpPut("UpdateEmails")]
         public async Task<IActionResult> UpdateEmails([FromBody] Email email)
-                {
+        {
             Log.Information("UpdateEmails API called.");
+
+            if (!ModelState.IsValid)
+            {
+                Log.Warning("UpdateEmails API received invalid model.");
+                return BadRequest(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = "Invalid email data",
+                    Data = false
+                });
+            }
+
             await _emailService.UpdateAsync(email);
 
             Log.Information("Email updated successfully.");
@@ -181,6 +193,7 @@ namespace KHRMS
                 Data = true
             });
         }
+
 
 
         //[HttpDelete]

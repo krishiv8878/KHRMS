@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Moq;
+using System.Net;
 
 namespace KHRMS.UnitTest.ControllerTests
 {
@@ -37,22 +38,42 @@ namespace KHRMS.UnitTest.ControllerTests
         [Fact]
         public async Task Get_DocumentById_WhenDocumentExists_Returns_OkResult()
         {
+            // Arrange
             var document = new EmployeeDocumentInfo { Id = 1, EmployeeId = 1001, FilePath = "path1.pdf" };
             _mockService.Setup(x => x.GetByIdAsync(1)).ReturnsAsync(document);
 
+            // Act
             var result = await _controller.GetDocument(1);
-            var okResult = Assert.IsType<OkObjectResult>(result.Result);
-            Assert.NotNull(okResult.Value);
+
+            // Assert
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<EmployeeDocumentInfo>>(okResult.Value);
+
+            Assert.Equal((int)HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal(ApiMessageConstant.EmployeeDocumentFound, response.Message);
+            Assert.NotNull(response.Data);
+            Assert.Equal(1, response.Data.Id);
+            Assert.Equal(1001, response.Data.EmployeeId);
         }
 
         [Fact]
         public async Task Get_DocumentById_WhenDocumentDoesNotExist_Returns_NotFoundResult()
         {
+            // Arrange
             _mockService.Setup(x => x.GetByIdAsync(999)).ReturnsAsync((EmployeeDocumentInfo)null);
 
+            // Act
             var result = await _controller.GetDocument(999);
-            Assert.IsType<NotFoundObjectResult>(result.Result);
+
+            // Assert
+            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<EmployeeDocumentInfo>>(notFoundResult.Value);
+
+            Assert.Equal((int)HttpStatusCode.NotFound, response.StatusCode);
+            Assert.Equal(ApiMessageConstant.EmployeeDocumentNotFound, response.Message);
+            Assert.Null(response.Data);
         }
+
 
         //[Fact]
         //public async Task UploadDocument_WhenValidFileProvided_Returns_CreatedAtActionResult()
@@ -100,6 +121,7 @@ namespace KHRMS.UnitTest.ControllerTests
         [Fact]
         public async Task UploadDocument_WhenValidFileProvided_Returns_CreatedAtActionResult()
         {
+            // Arrange
             var mockFile = new Mock<IFormFile>();
             var content = new MemoryStream();
             var writer = new StreamWriter(content);
@@ -107,9 +129,9 @@ namespace KHRMS.UnitTest.ControllerTests
             writer.Flush();
             content.Position = 0;
 
-            mockFile.Setup(_ => _.OpenReadStream()).Returns(content);
-            mockFile.Setup(_ => _.FileName).Returns("sample.pdf");
-            mockFile.Setup(_ => _.Length).Returns(content.Length);
+            mockFile.Setup(f => f.OpenReadStream()).Returns(content);
+            mockFile.Setup(f => f.FileName).Returns("sample.pdf");
+            mockFile.Setup(f => f.Length).Returns(content.Length);
 
             var document = new EmployeeDocumentInfo
             {
@@ -125,15 +147,17 @@ namespace KHRMS.UnitTest.ControllerTests
 
             _mockService.Setup(x => x.GetByIdAsync(It.IsAny<long>())).ReturnsAsync(document);
 
-            // ✅ Pass documentName as an argument
-            var result = await _controller.Create(1001, "Employee Contract", mockFile.Object);
+            // Act
+            var result = await _controller.UploadDocument(1001, "Employee Contract", mockFile.Object);
 
+            // Assert
             var createdAtResult = Assert.IsType<CreatedAtActionResult>(result);
-            Assert.NotNull(createdAtResult.Value);
+            var response = Assert.IsType<ApiResponse<EmployeeDocumentInfo>>(createdAtResult.Value);
 
-            var returnedDocument = Assert.IsType<EmployeeDocumentInfo>(createdAtResult.Value);
-            Assert.Equal(1, returnedDocument.Id);
-            Assert.Equal("Employee Contract", returnedDocument.DocumentName);
+            Assert.Equal((int)HttpStatusCode.Created, response.StatusCode);
+            Assert.NotNull(response.Data);
+            Assert.Equal(1, response.Data.Id);
+            Assert.Equal("Employee Contract", response.Data.DocumentName);
         }
 
         [Fact]
@@ -159,13 +183,22 @@ namespace KHRMS.UnitTest.ControllerTests
 
 
         [Fact]
-        public async Task DeleteDocument_WhenDocumentDoesNotExist_Returns_NotFoundResult()
+        public async Task DeleteDocument_WhenDocumentDoesNotExist_Returns_BadRequestObjectResult()
         {
+            // Arrange
             var id = 999;
-            _mockService.Setup(x => x.GetByIdAsync(id)).ReturnsAsync((EmployeeDocumentInfo)null);
+            _mockService.Setup(x => x.DeleteAsync(id)).ReturnsAsync(false);
 
+            // Act
             var result = await _controller.DeleteDocument(id);
-            Assert.IsType<NotFoundResult>(result);
+
+            // Assert
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<bool>>(badRequestResult.Value);
+            Assert.False(response.Data);
+            Assert.Equal((int)HttpStatusCode.BadRequest, response.StatusCode);
+            Assert.Equal(ApiMessageConstant.DocumentRequestNotDeleted, response.Message);
         }
+
     }
 }

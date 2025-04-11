@@ -72,14 +72,25 @@ namespace KHRMS.UnitTest.ControllerTests
             Assert.False(response.Data);
         }
 
+
+
         [Fact]
         public async Task DeleteEmails_ReturnsNotFound_WhenEmailDoesNotExist()
         {
-            _mockEmailService.Setup(service => service.GetByIdAsync(It.IsAny<long>())).ReturnsAsync((Email)null);
+            // Arrange
+            _mockEmailService.Setup(service => service.GetByIdAsync(It.IsAny<long>()))
+                             .ReturnsAsync((Email)null);
 
+            // Act
             var result = await _emailController.Deleteemails(1);
 
-            Assert.IsType<NotFoundResult>(result);
+            // Assert
+            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<bool>>(notFoundResult.Value);
+            Assert.False(response.Data);
+            Assert.Equal((int)HttpStatusCode.NotFound, response.StatusCode);
+            Assert.Equal(ApiMessageConstant.EmailNotFound, response.Message);
         }
+
     }
 }
