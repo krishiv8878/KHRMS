@@ -183,13 +183,22 @@ namespace KHRMS.UnitTest.ControllerTests
 
 
         [Fact]
-        public async Task DeleteDocument_WhenDocumentDoesNotExist_Returns_NotFoundResult()
+        public async Task DeleteDocument_WhenDocumentDoesNotExist_Returns_BadRequestObjectResult()
         {
+            // Arrange
             var id = 999;
-            _mockService.Setup(x => x.GetByIdAsync(id)).ReturnsAsync((EmployeeDocumentInfo)null);
+            _mockService.Setup(x => x.DeleteAsync(id)).ReturnsAsync(false);
 
+            // Act
             var result = await _controller.DeleteDocument(id);
-            Assert.IsType<NotFoundResult>(result);
+
+            // Assert
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<bool>>(badRequestResult.Value);
+            Assert.False(response.Data);
+            Assert.Equal((int)HttpStatusCode.BadRequest, response.StatusCode);
+            Assert.Equal(ApiMessageConstant.DocumentRequestNotDeleted, response.Message);
         }
+
     }
 }
