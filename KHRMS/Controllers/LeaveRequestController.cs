@@ -292,6 +292,49 @@ namespace KHRMS
                 Data = false
             });
         }
+
+
+
+        [HttpPut("approve/{id}")]
+        public async Task<IActionResult> ApproveLeaveRequest(int id)
+        {
+            Log.Information("ApproveLeaveRequest called with ID: {LeaveRequestId}", id);
+
+            try
+            {
+                var result = await _leaveRequestTypeService.ApproveLeaveRequestAsync(id);
+
+                if (!result)
+                {
+                    Log.Warning("Failed to approve LeaveRequest ID: {LeaveRequestId}", id);
+                    return BadRequest(new ApiResponse<bool>
+                    {
+                        StatusCode = (int)HttpStatusCode.BadRequest,
+                        Message = "Leave request not found or already approved.",
+                        Data = false
+                    });
+                }
+
+                Log.Information("Successfully approved LeaveRequest ID: {LeaveRequestId}", id);
+                return Ok(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.OK,
+                    Message = "Leave request approved successfully.",
+                    Data = true
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error occurred while approving LeaveRequest ID: {LeaveRequestId}", id);
+                return BadRequest(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = "An error occurred while approving the leave request.",
+                    Data = false
+                });
+            }
+        }
+
     }
 }
 

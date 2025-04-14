@@ -170,6 +170,7 @@
 //    }
 //}
 using KHRMS.Core;
+using KHRMS.Infrastructure;
 using KHRMS.Services.Interfaces;
 
 namespace KHRMS.Services
@@ -304,5 +305,20 @@ namespace KHRMS.Services
 
             return false;
         }
+
+        public async Task<bool> ApproveLeaveRequestAsync(int id)
+        {
+            var leaveRequest = await _unitOfWork.LeaveRequest.GetByIdAsync(id);
+
+            if (leaveRequest == null || leaveRequest.Status == "Approved")
+                return false;
+
+            leaveRequest.Status = "Approved";
+            leaveRequest.ApprovedDate = DateTime.UtcNow;
+
+            _unitOfWork.LeaveRequest.Update(leaveRequest);
+            return true;
+        }
+
     }
 }
