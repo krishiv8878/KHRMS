@@ -2,6 +2,7 @@
 using KHRMS.Infrastructure;
 using KHRMS.Infrastructure.Migrations;
 using KHRMS.Services;
+using KHRMS.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Serilog;
 using System.Net;
@@ -14,6 +15,8 @@ namespace KHRMS
     public class LeaveRequestController(ILeaveRequestTypeService leaveRequestTypeService) : ControllerBase
     {
         public readonly ILeaveRequestTypeService _leaveRequestTypeService = leaveRequestTypeService;
+        private readonly IUserContextService _userContext;
+
 
 
         //[HttpGet]
@@ -295,27 +298,146 @@ namespace KHRMS
 
 
 
-        [HttpPut("approve/{id}")]
-        public async Task<IActionResult> ApproveLeaveRequest(int id)
+        //[HttpPut("approve/{id}")]
+        //public async Task<IActionResult> ApproveLeaveRequest(int id)
+        //{
+        //    Log.Information("ApproveLeaveRequest called with ID: {LeaveRequestId}", id);
+
+        //    try
+        //    {
+        //        var result = await _leaveRequestTypeService.ApproveLeaveRequestAsync(id);
+
+        //        if (!result)
+        //        {
+        //            Log.Warning("Failed to approve LeaveRequest ID: {LeaveRequestId}", id);
+        //            return BadRequest(new ApiResponse<bool>
+        //            {
+        //                StatusCode = (int)HttpStatusCode.BadRequest,
+        //                Message = "Leave request not found or already approved.",
+        //                Data = false
+        //            });
+        //        }
+
+        //        Log.Information("Successfully approved LeaveRequest ID: {LeaveRequestId}", id);
+        //        return Ok(new ApiResponse<bool>
+        //        {
+        //            StatusCode = (int)HttpStatusCode.OK,
+        //            Message = "Leave request approved successfully.",
+        //            Data = true
+        //        });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Log.Error(ex, "Error occurred while approving LeaveRequest ID: {LeaveRequestId}", id);
+        //        return BadRequest(new ApiResponse<bool>
+        //        {
+        //            StatusCode = (int)HttpStatusCode.BadRequest,
+        //            Message = "An error occurred while approving the leave request.",
+        //            Data = false
+        //        });
+        //    }
+        //}
+        //[HttpPut("approve/{id}")]
+        //public async Task<IActionResult> ApproveLeaveRequest(int id)
+        //{
+        //    Log.Information("ApproveLeaveRequest called for ID: {LeaveRequestId}", id);
+
+        //    try
+        //    {
+        //        // 1. Get user info from HttpContext
+        //        var userIdClaim = HttpContext.User.Claims.FirstOrDefault(c => c.Type == "UserId");
+        //        var roleClaim = HttpContext.User.Claims.FirstOrDefault(c => c.Type == "UserRole");
+
+        //        if (userIdClaim == null || roleClaim == null)
+        //        {
+        //            Log.Warning("User ID or role claim not found in HttpContext.");
+        //            return Unauthorized(new ApiResponse<string>
+        //            {
+        //                StatusCode = (int)HttpStatusCode.Unauthorized,
+        //                Message = "User context is missing.",
+        //                Data = null
+        //            });
+        //        }
+
+        //        int approverId = int.Parse(userIdClaim.Value);
+        //        string userRole = roleClaim.Value;
+
+        //        // 2. Only allow if user is Manager
+        //        if (userRole != "Manager")
+        //        {
+        //            Log.Warning("Unauthorized role attempted to approve leave: Role = {Role}", userRole);
+        //            return Forbid();
+        //        }
+
+        //        // 3. Call service to approve
+        //        var isApproved = await _leaveRequestTypeService.ApproveLeaveRequestAsync(id, approverId);
+        //        //        var result = await _leaveRequestTypeService.ApproveLeaveRequestAsync(id);
+
+
+        //        if (!isApproved)
+        //        {
+        //            Log.Warning("Approval failed or leave already approved for ID: {Id}", id);
+        //            return BadRequest(new ApiResponse<bool>
+        //            {
+        //                StatusCode = (int)HttpStatusCode.BadRequest,
+        //                Message = "Approval failed. Either leave not found or already approved.",
+        //                Data = false
+        //            });
+        //        }
+
+        //        Log.Information("LeaveRequest ID {Id} approved by User ID {UserId}", id, approverId);
+        //        return Ok(new ApiResponse<bool>
+        //        {
+        //            StatusCode = (int)HttpStatusCode.OK,
+        //            Message = "Leave approved successfully.",
+        //            Data = true
+        //        });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Log.Error(ex, "Error occurred while approving leave ID: {LeaveRequestId}", id);
+        //        return StatusCode(500, new ApiResponse<string>
+        //        {
+        //            StatusCode = 500,
+        //            Message = "Internal server error while approving leave.",
+        //            Data = null
+        //        });
+        //    }
+        //}
+
+        [HttpPost("ApproveLeaveRequest")]
+        public async Task<IActionResult> ApproveLeaveRequest([FromBody] LeaveRequest request)
         {
-            Log.Information("ApproveLeaveRequest called with ID: {LeaveRequestId}", id);
+            Log.Information("LeaveRequestController - ApproveLeaveRequest called with ID: {Id}, ApprovedBy: {ApprovedBy}", request?.Id, request?.ApprovedBy);
+
+            // Validate input
+            if (request == null || request.Id <= 0 || request.ApprovedBy <= 0)
+            {
+                Log.Warning("LeaveRequestController - Invalid leave approval data. Request is null or IDs are invalid.");
+                return BadRequest(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = "Invalid request data.",
+                    Data = false
+                });
+            }
 
             try
             {
-                var result = await _leaveRequestTypeService.ApproveLeaveRequestAsync(id);
+                var result = await _leaveRequestTypeService.ApproveLeaveRequestAsync(request.Id, request.ApprovedBy);
 
                 if (!result)
                 {
-                    Log.Warning("Failed to approve LeaveRequest ID: {LeaveRequestId}", id);
+                    Log.Warning("LeaveRequestController - Approval failed for LeaveRequest ID: {Id}", request.Id);
                     return BadRequest(new ApiResponse<bool>
                     {
                         StatusCode = (int)HttpStatusCode.BadRequest,
-                        Message = "Leave request not found or already approved.",
+                        Message = "Failed to approve leave request. It may not exist or is already approved.",
                         Data = false
                     });
                 }
 
-                Log.Information("Successfully approved LeaveRequest ID: {LeaveRequestId}", id);
+                Log.Information("LeaveRequestController - Leave request approved successfully. ID: {Id}", request.Id);
                 return Ok(new ApiResponse<bool>
                 {
                     StatusCode = (int)HttpStatusCode.OK,
@@ -325,10 +447,10 @@ namespace KHRMS
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Error occurred while approving LeaveRequest ID: {LeaveRequestId}", id);
-                return BadRequest(new ApiResponse<bool>
+                Log.Error(ex, "LeaveRequestController - Exception occurred while approving leave ID: {Id}", request.Id);
+                return StatusCode(500, new ApiResponse<bool>
                 {
-                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    StatusCode = 500,
                     Message = "An error occurred while approving the leave request.",
                     Data = false
                 });
@@ -336,5 +458,8 @@ namespace KHRMS
         }
 
     }
+
 }
+
+
 
