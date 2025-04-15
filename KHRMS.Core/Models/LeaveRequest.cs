@@ -17,8 +17,13 @@ namespace KHRMS.Core
         [Required]
         public DateTime EndDate { get; set; }
         public bool? IsApproved { get; set; }  // Nullable
+        public int ApprovedBy { get; set; }
 
-       
+        public DateTime ApprovedDate { get; set; }
+
+        public string LeaveReason { get; set; }
+
+
 
     }
 }

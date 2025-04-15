@@ -2,6 +2,7 @@
 using KHRMS.Infrastructure;
 using KHRMS.Infrastructure.Migrations;
 using KHRMS.Services;
+using KHRMS.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Serilog;
 using System.Net;
@@ -14,6 +15,8 @@ namespace KHRMS
     public class LeaveRequestController(ILeaveRequestTypeService leaveRequestTypeService) : ControllerBase
     {
         public readonly ILeaveRequestTypeService _leaveRequestTypeService = leaveRequestTypeService;
+        private readonly IUserContextService _userContext;
+
 
 
         //[HttpGet]
@@ -292,6 +295,52 @@ namespace KHRMS
                 Data = false
             });
         }
+
+
+        //[HttpPut("ApproveLeaveRequest/{id}")]
+        [HttpPut("ApproveLeaveRequest")]
+        public async Task<IActionResult> ApproveLeaveRequest(LeaveRequest leaveRequest)
+        {
+            Log.Information("ApproveLeaveRequest called for ID: {LeaveRequestId}", leaveRequest.Id);
+
+            try
+            {
+          
+                var isApproved = await _leaveRequestTypeService.ApproveLeaveRequestAsync(leaveRequest);
+                if (!isApproved)
+                {
+                    Log.Warning("Approval failed or already approved for ID: {Id}", leaveRequest.Id);
+                    return BadRequest(new ApiResponse<bool>
+                    {
+                        StatusCode = (int)HttpStatusCode.BadRequest,
+                        Message = "Approval failed. Either leave not found or already approved.",
+                        Data = false
+                    });
+                }
+
+                Log.Information("LeaveRequest ID {Id} approved by Manager ID {ManagerId}", leaveRequest.Id, leaveRequest.ApprovedBy);
+                return Ok(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.OK,
+                    Message = "Leave approved successfully.",
+                    Data = true
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error while approving leave ID: {LeaveRequestId}", leaveRequest.Id);
+                return StatusCode(500, new ApiResponse<string>
+                {
+                    StatusCode = 500,
+                    Message = "Internal server error while approving leave.",
+                    Data = null
+                });
+            }
+        }
+
     }
+
 }
+
+
 

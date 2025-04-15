@@ -136,7 +136,7 @@ builder.Services.AddScoped<ILeaveRequestTypeService, LeaveRequestTypeService>();
 
 // ✅ Add context-aware services
 builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
-builder.Services.AddScoped<IUserContextService, UserContextService>();
+builder.Services.AddTransient<IUserContextService, UserContextService>();
 
 // ✅ Add Session support
 builder.Services.AddDistributedMemoryCache();
