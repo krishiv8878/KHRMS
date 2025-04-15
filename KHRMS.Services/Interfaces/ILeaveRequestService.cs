@@ -9,8 +9,7 @@ namespace KHRMS.Services
         Task<LeaveRequest> GetLeaveRequestTypeById(int LeaveRequestTypeId);
         Task<bool> UpdateLeaveRequestType(LeaveRequest leaveRequest);
         Task<bool> DeleteLeaveRequestType(long LeaveRequestTypeId);
-        //Task<bool> ApproveLeaveRequestAsync(int id);
-        Task<bool> ApproveLeaveRequestAsync(long id, int approvedBy);
+        Task<bool> ApproveLeaveRequestAsync(LeaveRequest leaveRequest);
 
 
 
@@ -18,5 +17,5 @@ namespace KHRMS.Services
 }
 
 
-  
+
 

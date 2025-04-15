@@ -192,63 +192,65 @@ namespace KHRMS.Services
             _userContext = userContextService;
         }
 
-            public async Task<bool> AddLeaveRequestType(LeaveRequest leaveRequest)
+        public async Task<bool> AddLeaveRequestType(LeaveRequest leaveRequest)
+        {
+            if (leaveRequest == null)
+                return false;
+            long employeeId = _userContext.GetCurrentEmployeeId(); 
+
+
+
+            var leaverequest = new LeaveRequest
             {
-                if (leaveRequest == null)
-                    return false;
-                long employeeId = _userContext.GetCurrentEmployeeId(); // 
+                EmployeeId = employeeId,
+                StartDate = leaveRequest.StartDate,
+                EndDate = leaveRequest.EndDate,
+                CreatedDate = DateTime.Now,
+                IsActive = leaveRequest.IsActive,
+                IsApproved = false,
+                IsDeleted = leaveRequest.IsDeleted,
+                LeaveReason = leaveRequest.LeaveReason,
+            };
 
+            await _unitOfWork.LeaveRequest.Add(leaverequest);
 
+            var employee = await _unitOfWork.Employees.GetById(employeeId);
+            if (employee == null)
+                throw new Exception("Employee not found.");
 
-                var leaverequest = new LeaveRequest
-                {
-                    EmployeeId = employeeId,
-                    StartDate = leaveRequest.StartDate,
-                    EndDate = leaveRequest.EndDate,
-                    CreatedDate = DateTime.Now,
-                    IsActive = leaveRequest.IsActive,
-                    IsApproved = false,
-                    IsDeleted = leaveRequest.IsDeleted
-                };
+            var manager = (await _unitOfWork.Employees.GetAll())
+                          .FirstOrDefault(t => t.Id == employee.ManagerId);
+            if (manager == null)
+                throw new Exception("Manager not found.");
 
-                await _unitOfWork.LeaveRequest.Add(leaverequest);
+            _unitOfWork.Save();
 
-                var employee = await _unitOfWork.Employees.GetById(employeeId);
-                if (employee == null)
-                    throw new Exception("Employee not found.");
+            // Format dates for email
+            string formattedStartDate = GetFormattedDate(leaverequest.StartDate);
+            string formattedEndDate = GetFormattedDate(leaverequest.EndDate);
+            var managerEmail = manager.EmailAddress;
+            var managerName = $"{manager.FirstName} {manager.LastName}";
+            var employeeName = $"{employee.FirstName} {employee.LastName}";
+            var leavetype = "LeaveRequest";
 
-                var manager = (await _unitOfWork.Employees.GetAll())
-                              .FirstOrDefault(t => t.Id == employee.ManagerId);
-                if (manager == null)
-                    throw new Exception("Manager not found.");
-
-                _unitOfWork.Save();
-
-                // Format dates for email
-                string formattedStartDate = GetFormattedDate(leaverequest.StartDate);
-                string formattedEndDate = GetFormattedDate(leaverequest.EndDate);
-                var managerEmail = manager.EmailAddress;
-                var managerName = $"{manager.FirstName} {manager.LastName}";
-                var employeeName = $"{employee.FirstName} {employee.LastName}";
-                var leaveReason = "Attendancerequest";
-
-                // Create email placeholders
-                var dict = new Dictionary<string, string>
+            // Create email placeholders
+            var dict = new Dictionary<string, string>
                 {
                     { "ManagerName", managerName },
                     { "StartDate", formattedStartDate },
                     { "EndDate", formattedEndDate },
-                    { "LeaveReason", leaveReason },
+                    { "LeaveType", leavetype },
                     { "EmployeeName", employeeName },
-                    { "ManagerEmail", managerEmail }
+                    { "ManagerEmail", managerEmail },
+                     { "LeaveDescription" ,leaveRequest.LeaveReason}
                 };
 
-                var subject = $"Attendance Request from {employeeName}";
+            var subject = $"Leave Request from {employeeName}";
 
-                await _sendEmailService.SendTemplateEmailAsync(managerEmail, subject, dict, leaveReason);
+            await _sendEmailService.SendTemplateEmailAsync(managerEmail, subject, dict, leavetype);
 
-                return true;
-            }
+            return true;
+        }
 
         private string GetFormattedDate(DateTime date)
         {
@@ -263,7 +265,10 @@ namespace KHRMS.Services
 
         public async Task<IEnumerable<LeaveRequest>> GetAllLeaveRequestType()
         {
-            return await _unitOfWork.LeaveRequest.GetAll();
+
+             return await _unitOfWork.LeaveRequest.GetAll();
+           
+
         }
 
         public async Task<LeaveRequest> GetLeaveRequestTypeById(int LeaveRequestTypeId)
@@ -289,7 +294,7 @@ namespace KHRMS.Services
 
             return false;
         }
-
+      
         public async Task<bool> DeleteLeaveRequestType(long LeaveRequestTypeId)
         {
             if (LeaveRequestTypeId <= 0) return false;
@@ -307,110 +312,60 @@ namespace KHRMS.Services
             return false;
         }
 
-        //public async Task<bool> ApproveLeaveRequestAsync(int id)
-        //{
-        //    var leaveRequest = await _unitOfWork.LeaveRequest.GetByIdAsync(id);
-
-        //    if (leaveRequest == null || leaveRequest.Status == "Approved")
-        //        return false;
-
-        //    leaveRequest.Status = "Approved";
-        //    leaveRequest.ApprovedDate = DateTime.UtcNow;
-
-        //    _unitOfWork.LeaveRequest.Update(leaveRequest);
-        //    return true;
-        //}
-
-        //public async Task<bool> ApproveLeaveRequestAsync(int id, int approvedBy)
-        //{
-        //    var leave = await _unitOfWork.LeaveRequest.GetByIdAsync(id);
-
-        //    if (leave == null || leave.Status == "Approved")
-        //        return false;
-
-        //    leave.Status = "Approved";
-        //    leave.ApprovedBy = approvedBy;
-        //    leave.ApprovedDate = DateTime.UtcNow;
-
-        //    // Optional: Send email notification here
-
-        //      _unitOfWork.LeaveRequest.Update(leave);
-
-        //    _unitOfWork.Save();
-        //    return true;
-        //}
-
-        public async Task<bool> ApproveLeaveRequestAsync(long id, int approvedBy)
-
-
+       
+        public async Task<bool> ApproveLeaveRequestAsync(LeaveRequest leaveRequest)
         {
-            //long employeeId = _userContext.GetCurrentEmployeeId(); // 
 
-            var leaveRequest = await _unitOfWork.LeaveRequest.GetById(id);
-
-            if (leaveRequest == null)
-            {
-               // _logger.LogWarning("LeaveRequest with id {id} not found.", id);
-                return false;
-            }
-
-            if (leaveRequest.IsApproved.GetValueOrDefault())
-            {
-               // _logger.LogInformation("LeaveRequest with id {id} is already approved.", id);
-                return false;
-            }
+            var leaveRequest1 = await _unitOfWork.LeaveRequest.GetById(leaveRequest.Id);
+            if (leaveRequest1 == null || leaveRequest1.IsApproved.GetValueOrDefault()) return false;
 
             var managerId = _userContext.GetCurrentEmployeeId();
 
             var employee = await _unitOfWork.Employees.GetById(leaveRequest.EmployeeId);
             var manager = await _unitOfWork.Employees.GetById(managerId);
 
-            if (employee == null || manager == null)
-            {
-                //Log.Warning("Employee or Manager not found for approval.");
-                return false;
-            }
+            if (employee == null || manager == null) return false;
 
-            // Update approval details
-            leaveRequest.IsApproved = true;
-            leaveRequest.ApprovedDate = DateTime.Now;
-            leaveRequest.ApprovedBy = approvedBy;
+            leaveRequest1.IsApproved = true;
+            leaveRequest1.ApprovedDate = DateTime.Now;
+            leaveRequest1.ApprovedBy = (int)managerId;
 
-            _unitOfWork.LeaveRequest.Update(leaveRequest);
+            _unitOfWork.LeaveRequest.Update(leaveRequest1);
             var result = _unitOfWork.Save();
 
-            if (result <= 0)
-            {
-              //  Log.Error("Failed to save leave approval changes.");
-                return false;
-            }
+            if (result <= 0) return false;
 
-            // Email notification
             var dict = new Dictionary<string, string>
-    {
-        { "ManagerName", $"{manager.FirstName} {manager.LastName}" },
-        { "StartDate", GetFormattedDate(leaveRequest.StartDate) },
-        { "EndDate", GetFormattedDate(leaveRequest.EndDate) },
-        { "LeaveReason", "Leave Approved" },
-        { "EmployeeName", $"{employee.FirstName} {employee.LastName}" },
-        { "ManagerEmail", manager.EmailAddress }
-    };
+            {
+                { "ManagerName", $"{manager.FirstName} {manager.LastName}" },
+                { "StartDate", GetFormattedDate(leaveRequest.StartDate) },
+                { "EndDate", GetFormattedDate(leaveRequest.EndDate) },
+                { "LeaveReason", "Approval Request" },
+                { "EmployeeName", $"{employee.FirstName} {employee.LastName}" },
+                { "ManagerEmail", manager.EmailAddress }
+            };
 
-            var subject = "Your Leave Request Has Been Approved";
-
+            string subject = "Your Leave Request Has Been Approved";
             try
             {
-                await _sendEmailService.SendTemplateEmailAsync(employee.EmailAddress, subject, dict, "LeaveApproval");
+                await _sendEmailService.SendTemplateEmailAsync(employee.EmailAddress, subject, dict, "Approval Request");
             }
-            catch (Exception ex)
+            catch
             {
-               // _logger.LogError(ex, "Error while sending approval email.");
-                // Optional: still return true even if email fails
+                // Optional: log the failure but still return success
             }
 
             return true;
         }
+        public async Task<IEnumerable<LeaveRequest>> GetAllEmployeesLeaveRequest()
+        {
+            long employeeId = _userContext.GetCurrentEmployeeId(); // 
 
+            var empid = (await _unitOfWork.Employees.GetAll()).Where(r => r.ManagerId == employeeId).Select(r => r.Id).ToList();
+            //UpdateLeaveRequestType(empid);
+            var leaverequest = (await _unitOfWork.LeaveRequest.GetAll()).Where(r => empid.Contains(r.EmployeeId)).ToList();
+            return leaverequest;
+        }
 
     }
 }
