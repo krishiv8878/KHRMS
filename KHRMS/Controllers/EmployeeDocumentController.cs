@@ -182,7 +182,7 @@ namespace KHRMS
         /// </summary>
         /// <param name="id">Employee Document Info ID</param>     
 
-        [HttpDelete("DeleteDocument")]
+        [HttpDelete("DeleteDocument/{id}")]
         public async Task<IActionResult> DeleteDocument(long id)
         {
             Log.Information("EmployeeDocumentController - DeleteDocument called with ID: {Id}", id);
