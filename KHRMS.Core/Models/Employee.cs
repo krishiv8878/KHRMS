@@ -48,6 +48,11 @@ namespace KHRMS.Core
 
         public long ManagerId { get; set; }
 
+        //Primary Email Address Field
+        [StringLength(300)]
+        [EmailAddress(ErrorMessage = "Primary Email Address required")]
+        public string? PrimaryEmailAddress { get; set; }
+
     }
 
 }

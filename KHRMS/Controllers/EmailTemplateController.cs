@@ -18,18 +18,6 @@ namespace KHRMS
         private readonly IEmailTemplateService _emailTemplateService = emailTemplateService;
 
 
-
-        //[HttpGet("GetAll")]
-        //public async Task<IActionResult> GetAll()
-        //{
-        //    var emailTemplates = await _emailTemplateService.GetAllAsync();
-        //    return Ok(new ApiResponse<IEnumerable<EmailTemplatesMaster>>
-        //    {
-        //        StatusCode = (int)HttpStatusCode.OK,
-        //        Message = ApiMessageConstant.AllEmailTemplateFound,
-        //        Data = emailTemplates
-        //    });
-        //}
         [HttpGet("GetAll")]
         public async Task<IActionResult> GetAll()
         {
@@ -56,29 +44,6 @@ namespace KHRMS
             });
         }
 
-        //[HttpGet]
-        //[Route("GetByTemplateTypeId/{TemplateTypeId}")]
-        //public async Task<IActionResult> GetByTemplateTypeId(long templateTypeid)
-        //{
-        //    var emailTemplates = await _emailTemplateService.GetByEmailTemplateTypeIdAsync(templateTypeid);
-        //    if (emailTemplates == null)
-        //    {
-        //        return NotFound(new ApiResponse<EmailTemplatesMaster>
-        //        {
-        //            StatusCode = (int)HttpStatusCode.NotFound,
-        //            Message = ApiMessageConstant.AllEmailTemplateNotFound,
-        //            Data = null
-        //        });
-        //    }
-        //    var response = new ApiResponse<EmailTemplatesMaster>
-        //    {
-        //        StatusCode = (int)HttpStatusCode.OK,
-        //        Message = ApiMessageConstant.AllEmailTemplateFound,
-        //        Data = emailTemplates
-        //    };
-
-        //    return Ok(response);
-        //}
 
         [HttpGet]
         [Route("GetByTemplateTypeId")]
@@ -107,35 +72,13 @@ namespace KHRMS
             });
         }
 
-        //[HttpPost]
-        //[Route("AddEmailTemplates")]
-        //public async Task<IActionResult> AddEmailTemplates([FromBody] EmailTemplatesMaster emailTemplatesMaster)
-        //{
-        //    if (!ModelState.IsValid)
-        //    {
-        //        return BadRequest(new ApiResponse<bool>
-        //        {
-        //            StatusCode = (int)HttpStatusCode.BadRequest,
-        //            Message = ApiMessageConstant.InvalidDataofEmailTemplate,
-        //            Data = false
-        //        });
-        //    }
-        //    await _emailTemplateService.AddAsync(emailTemplatesMaster);
-        //    var response = new ApiResponse<bool>
-        //    {
-        //        StatusCode = (int)HttpStatusCode.OK,
-        //        Message = ApiMessageConstant.EmailTemplateAdd,
-        //        Data = true
-        //    };
-        //    return Ok(response);
-        //}
 
         [HttpPost("AddEmailTemplates")]
         public async Task<IActionResult> AddEmailTemplates([FromBody] EmailTemplatesMaster emailTemplatesMaster)
         {
             Log.Information("AddEmailTemplates API called.");
-           //// var contextInfo = LoggingHelper.GetCurrentContext();
-           // Log.Information($"{contextInfo} API called.");
+            //// var contextInfo = LoggingHelper.GetCurrentContext();
+            // Log.Information($"{contextInfo} API called.");
             if (!ModelState.IsValid)
             {
                 Log.Warning("Invalid data provided for adding email template.");
@@ -156,29 +99,8 @@ namespace KHRMS
                 Data = true
             });
         }
-        //[HttpPut]
-        //[Route("UpdateEmailTemplates")]
-        //public async Task<IActionResult> UpdateEmailTemplates(EmailTemplatesMaster emailTemplatesMaster)
-        //{
-        //    if (!ModelState.IsValid)
-        //    {
-        //        return BadRequest(new ApiResponse<bool>
-        //        {
-        //            StatusCode = (int)HttpStatusCode.BadRequest,
-        //            Message = ApiMessageConstant.InvalidDataofEmailTemplate,
-        //            Data = false
-        //        });
-        //    }
-        //    await _emailTemplateService.UpdateAsync(emailTemplatesMaster);
-        //    var response = new ApiResponse<bool>
-        //    {
-        //        StatusCode = (int)HttpStatusCode.OK,
-        //        Message = ApiMessageConstant.EmailTemplateUpdated,
-        //        Data = true
-        //    };
-        //    return Ok(response);
 
-        //}
+
         [HttpPut("UpdateEmailTemplates")]
         public async Task<IActionResult> UpdateEmailTemplates(EmailTemplatesMaster emailTemplatesMaster)
         {
@@ -206,30 +128,7 @@ namespace KHRMS
         }
 
 
-        //[HttpDelete]
-        //[Route("DeleteemailTemplatesMaster/{id}")]
-        //public async Task<IActionResult> DeleteemailTemplatesMaster(long id)
-        //{
-        //    var emailTemplate = await _emailTemplateService.GetByIdAsync(id);
-        //    if (emailTemplate == null)
-        //    {
-        //        return NotFound(new ApiResponse<bool>
-        //        {
-        //            StatusCode = (int)HttpStatusCode.NotFound,
-        //            Message = "Email Template not found",
-        //            Data = false
-        //        });
-        //    }
-
-        //    await _emailTemplateService.DeleteAsync(id);
-        //    return Ok(new ApiResponse<bool>
-        //    {
-        //        StatusCode = (int)HttpStatusCode.OK,
-        //        Message = "Email Template deleted successfully",
-        //        Data = true
-        //    });
-        //}
-        [HttpDelete("DeleteemailTemplatesMaster")]
+        [HttpDelete("DeleteemailTemplatesMaster/{id:long}")]
         public async Task<IActionResult> DeleteemailTemplatesMaster(long id)
         {
             Log.Information("DeleteEmailTemplatesMaster API called for ID: {Id}.", id);
