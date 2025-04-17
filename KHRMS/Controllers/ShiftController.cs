@@ -71,7 +71,7 @@ namespace KHRMS
         //        Data = shift
         //    });
         //}
-        [HttpGet("GetShiftById/{id}")]
+        [HttpGet("GetShiftById")]
         public async Task<IActionResult> GetShiftById(long id)
         {
             Log.Information("ShiftController - GetShiftById called for ID: {Id}", id);
@@ -178,18 +178,18 @@ namespace KHRMS
         //        Data = true
         //    });
         //}
-        [HttpPut("UpdateShift/{id}")]
-        public async Task<IActionResult> Update(long id, [FromBody] ShiftMaster shiftMaster)
+        [HttpPut("UpdateShift")]
+        public async Task<IActionResult> Update([FromBody] ShiftMaster shiftMaster)
         {
-            Log.Information("ShiftController - Update called for ID: {Id}", id);
+            Log.Information("ShiftController - Update called for ID: {Id}", shiftMaster.Id);
 
-            if (id != shiftMaster.Id)
+            if (shiftMaster.Id == null)
             {
-                Log.Warning("ShiftController - ID mismatch. Route ID: {RouteId}, Body ID: {BodyId}", id, shiftMaster.Id);
+                Log.Warning("ShiftController - ID Not Found. Route ID: {RouteId}, Body ID: {BodyId}", shiftMaster.Id);
                 return BadRequest(new ApiResponse<bool>
                 {
                     StatusCode = (int)HttpStatusCode.BadRequest,
-                    Message = "ID mismatch between route and payload.",
+                    Message = "ID Does Not Found!",
                     Data = false
                 });
             }
@@ -207,7 +207,7 @@ namespace KHRMS
 
             await _shiftService.UpdateShiftAsync(shiftMaster);
 
-            Log.Information("ShiftController - Shift updated for ID: {Id}", id);
+            Log.Information("ShiftController - Shift updated for ID: {Id}", shiftMaster.Id);
 
             return Ok(new ApiResponse<bool>
             {
@@ -245,7 +245,7 @@ namespace KHRMS
         //    });
         //}
 
-        [HttpDelete("DeleteShift/{id}")]
+        [HttpDelete("DeleteShift")]
         public async Task<IActionResult> DeleteShift(long id)
         {
             Log.Information("ShiftController - DeleteShift called for ID: {Id}", id);

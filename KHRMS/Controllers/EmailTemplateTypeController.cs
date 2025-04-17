@@ -173,7 +173,7 @@ namespace KHRMS
         //}
 
         [HttpDelete]
-        [Route("DeleteEmailTemplateType/{id}")]
+        [Route("DeleteEmailTemplateType")]
         public async Task<IActionResult> DeletEmailTemplateType(long id)
         {
             Log.Information("DeleteEmailTemplateType API called for ID: {Id}", id);

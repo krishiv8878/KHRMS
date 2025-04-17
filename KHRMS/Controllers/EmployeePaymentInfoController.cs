@@ -85,7 +85,7 @@ namespace KHRMS
         //    });
         //}
         [HttpGet]
-        [Route("GetPaymentInfoProfileById/{id}")]
+        [Route("GetPaymentInfoProfileById")]
         public async Task<IActionResult> GetById(long id)
         {
             Log.Information("EmployeePaymentInfoController - GetPaymentInfoProfileById called with ID: {Id}", id);
@@ -187,14 +187,14 @@ namespace KHRMS
         //    });
         //}
         [HttpPut]
-        [Route("UpdatePaymentInfo/{id}")]
-        public async Task<IActionResult> Update(long id, [FromBody] EmployeePaymentInfo entity)
+        [Route("UpdatePaymentInfo")]
+        public async Task<IActionResult> Update([FromBody] EmployeePaymentInfo entity)
         {
-            Log.Information("EmployeePaymentInfoController - UpdatePaymentInfo called for ID: {Id}", id);
+            Log.Information("EmployeePaymentInfoController - UpdatePaymentInfo called for ID: {Id}", entity.Id);
 
-            if (!ModelState.IsValid || id != entity.Id)
+            if (!ModelState.IsValid || entity.Id == null)
             {
-                Log.Warning("EmployeePaymentInfoController - Invalid model state or ID mismatch for UpdatePaymentInfo.");
+                Log.Warning("EmployeePaymentInfoController - Invalid model state or ID Not Found for UpdatePaymentInfo.");
                 return BadRequest(new ApiResponse<bool>
                 {
                     StatusCode = (int)HttpStatusCode.BadRequest,
@@ -204,7 +204,7 @@ namespace KHRMS
             }
 
             await _employeePaymentInfoService.UpdateAsync(entity);
-            Log.Information("EmployeePaymentInfoController - Payment info updated successfully for ID: {Id}", id);
+            Log.Information("EmployeePaymentInfoController - Payment info updated successfully for ID: {Id}", entity.Id);
 
             return Ok(new ApiResponse<bool>
             {
@@ -232,7 +232,7 @@ namespace KHRMS
         //    });
         //}
         [HttpDelete]
-        [Route("DeletePaymentInfo/{id}")]
+        [Route("DeletePaymentInfo")]
         public async Task<IActionResult> Delete(long id)
         {
             Log.Information("EmployeePaymentInfoController - DeletePaymentInfo called with ID: {Id}", id);

@@ -211,7 +211,7 @@ namespace KHRMS
         //        return BadRequest(response);
         //    }
         //}
-        [HttpDelete("DeleteCandidate/{candidateId}")]
+        [HttpDelete("DeleteCandidate")]
         public async Task<IActionResult> DeleteCandidate(long candidateId)
         {
             Log.Information("DeleteCandidate API called for ID {CandidateId}.", candidateId);

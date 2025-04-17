@@ -145,22 +145,22 @@ namespace KHRMS
         //    }
         //}
 
-        [HttpPut("UpdateLeaveType/{id}")]
-        public async Task<IActionResult> UpdateLeaveType(long id, [FromBody] LeaveType leaveType)
+        [HttpPut("UpdateLeaveType")]
+        public async Task<IActionResult> UpdateLeaveType([FromBody] LeaveType leaveType)
         {
-            Log.Information("LeaveTypeController - UpdateLeaveType called for ID: {Id}", id);
+            Log.Information("LeaveTypeController - UpdateLeaveType called for ID: {Id}", leaveType.Id);
 
-            if (id != leaveType.Id)
+            if (leaveType.Id == null)
             {
-                Log.Warning("LeaveTypeController - ID mismatch: URL ID {Id}, Body ID {BodyId}", id, leaveType.Id);
-                return BadRequest("ID mismatch.");
+                Log.Warning("LeaveTypeController - ID Not Found: URL ID {Id}, Body ID {BodyId}",  leaveType.Id);
+                return BadRequest("ID Does Not Exist!");
             }
 
             var result = await _leaveTypeService.UpdateLeaveType(leaveType);
 
             if (result)
             {
-                Log.Information("LeaveTypeController - Leave type updated successfully for ID: {Id}", id);
+                Log.Information("LeaveTypeController - Leave type updated successfully for ID: {Id}", leaveType.Id);
                 return Ok(new ApiResponse<bool>
                 {
                     StatusCode = (int)HttpStatusCode.OK,
@@ -169,7 +169,7 @@ namespace KHRMS
                 });
             }
 
-            Log.Warning("LeaveTypeController - Failed to update leave type for ID: {Id}", id);
+            Log.Warning("LeaveTypeController - Failed to update leave type for ID: {Id}", leaveType.Id);
             return BadRequest(new ApiResponse<bool>
             {
                 StatusCode = (int)HttpStatusCode.BadRequest,
@@ -206,7 +206,7 @@ namespace KHRMS
         //    }
         //}
 
-        [HttpDelete("DeleteLeaveType/{id}")]
+        [HttpDelete("DeleteLeaveType")]
         public async Task<IActionResult> DeleteLeaveType(long id)
         {
             Log.Information("LeaveTypeController - DeleteLeaveType called for ID: {Id}", id);

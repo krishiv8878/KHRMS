@@ -76,7 +76,7 @@ namespace KHRMS
         //        Data = document
         //    });
         //}
-        [HttpGet("GetDocument/{id}")]
+        [HttpGet("GetDocument")]
         public async Task<IActionResult> GetDocument(long id)
         {
             Log.Information("EmployeeDocumentController - GetDocument called with ID: {Id}", id);
@@ -257,7 +257,7 @@ namespace KHRMS
 
 
         //}
-        [HttpGet("View/{id}")]
+        [HttpGet("View")]
         public async Task<IActionResult> ViewFile(long id)
         {
             Log.Information("EmployeeDocumentController - ViewFile called with ID: {Id}", id);
@@ -320,7 +320,7 @@ namespace KHRMS
         //    }
         //}
 
-        [HttpDelete("DeleteDocument/{id}")]
+        [HttpDelete("DeleteDocument")]
         public async Task<IActionResult> DeleteDocument(long id)
         {
             Log.Information("EmployeeDocumentController - DeleteDocument called with ID: {Id}", id);

@@ -158,22 +158,22 @@ namespace KHRMS.Controllers
         //        return BadRequest(response);
         //    }
         //}
-        [HttpPut("UpdateProjectMaster/{id}")]
-        public async Task<IActionResult> UpdateProjectMaster(long id, [FromBody] ProjectMaster projectMaster)
+        [HttpPut("UpdateProjectMaster")]
+        public async Task<IActionResult> UpdateProjectMaster([FromBody] ProjectMaster projectMaster)
         {
-            Log.Information("ProjectMasterController - UpdateProjectMaster called for ID: {Id}", id);
+            Log.Information("ProjectMasterController - UpdateProjectMaster called for ID: {Id}", projectMaster.Id);
 
-            if (id != projectMaster.Id)
+            if (projectMaster.Id == null)
             {
-                Log.Warning("ProjectMasterController - ID mismatch: URL ID {Id}, Body ID {BodyId}", id, projectMaster.Id);
-                return BadRequest("ID mismatch.");
+                Log.Warning("ProjectMasterController - ID Not Found: URL ID {Id}, Body ID {BodyId}", projectMaster.Id);
+                return BadRequest("ID Does not Exist!");
             }
 
             var result = await _projectMasterService.UpdateProjectMaster(projectMaster);
 
             if (result)
             {
-                Log.Information("ProjectMasterController - Project master updated for ID: {Id}", id);
+                Log.Information("ProjectMasterController - Project master updated for ID: {Id}", projectMaster.Id);
                 return Ok(new ApiResponse<bool>
                 {
                     StatusCode = (int)HttpStatusCode.OK,
@@ -182,7 +182,7 @@ namespace KHRMS.Controllers
                 });
             }
 
-            Log.Warning("ProjectMasterController - Failed to update project master for ID: {Id}", id);
+            Log.Warning("ProjectMasterController - Failed to update project master for ID: {Id}", projectMaster.Id);
             return BadRequest(new ApiResponse<bool>
             {
                 StatusCode = (int)HttpStatusCode.BadRequest,
@@ -222,7 +222,7 @@ namespace KHRMS.Controllers
         //        return BadRequest(response);
         //    }
         //}
-        [HttpDelete("DeleteProjectMaster/{id}")]
+        [HttpDelete("DeleteProjectMaster")]
         public async Task<IActionResult> DeleteProjectMaster(long id)
         {
             Log.Information("ProjectMasterController - DeleteProjectMaster called for ID: {Id}", id);
