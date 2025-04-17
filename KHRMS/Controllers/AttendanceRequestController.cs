@@ -81,7 +81,7 @@ namespace KHRMS.Controllers
         //    return Ok(response);
         //}
 
-        [HttpGet("GetAttendanceRequestById/{id}")]
+        [HttpGet("GetAttendanceRequestById")]
         public async Task<IActionResult> GetAttendanceRequestById(long id)
         {
             Log.Information("GetAttendanceRequestById API called for ID {Id}.", id);
@@ -249,7 +249,7 @@ namespace KHRMS.Controllers
         //    return Ok(response);
         //}
 
-        [HttpDelete("DeleteAttendanceRequest/{id}")]
+        [HttpDelete("DeleteAttendanceRequest")]
         public async Task<IActionResult> DeleteAttendanceRequest(long id)
         {
             Log.Information("DeleteAttendanceRequest API called for ID {Id}.", id);

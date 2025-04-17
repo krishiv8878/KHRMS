@@ -88,7 +88,7 @@ namespace KHRMS
         //    return Ok(response);
         //}
 
-        [HttpGet("GetLeaveRequestById/{id}")]
+        [HttpGet("GetLeaveRequestById")]
         public async Task<IActionResult> GetById(int id)
         {
             Log.Information("LeaveRequestController - GetLeaveRequestById called with ID: {Id}", id);
@@ -211,21 +211,21 @@ namespace KHRMS
         //        return BadRequest(response);
         //    }
         //}
-        [HttpPut("UpdateLeaveRequest/{id}")]
-        public async Task<IActionResult> Update(long id, [FromBody] LeaveRequest leaveRequest)
+        [HttpPut("UpdateLeaveRequest")]
+        public async Task<IActionResult> Update([FromBody] LeaveRequest leaveRequest)
         {
-            Log.Information("LeaveRequestController - UpdateLeaveRequest called for ID: {Id}", id);
+            Log.Information("LeaveRequestController - UpdateLeaveRequest called for ID: {Id}", leaveRequest.Id);
 
-            if (id != leaveRequest.Id)
+            if (leaveRequest.Id == null)
             {
-                Log.Warning("LeaveRequestController - ID mismatch: URL ID {Id}, Body ID {BodyId}", id, leaveRequest.Id);
-                return BadRequest("ID mismatch.");
+                Log.Warning("LeaveRequestController - ID Not Found: URL ID {Id}, Body ID {BodyId}", leaveRequest.Id);
+                return BadRequest("ID Does Not Exist.");
             }
 
             var result = await _leaveRequestTypeService.UpdateLeaveRequestType(leaveRequest);
             if (result)
             {
-                Log.Information("LeaveRequestController - Leave request updated successfully for ID: {Id}", id);
+                Log.Information("LeaveRequestController - Leave request updated successfully for ID: {Id}", leaveRequest.Id);
                 return Ok(new ApiResponse<bool>
                 {
                     StatusCode = (int)HttpStatusCode.OK,
@@ -234,7 +234,7 @@ namespace KHRMS
                 });
             }
 
-            Log.Warning("LeaveRequestController - Failed to update leave request for ID: {Id}", id);
+            Log.Warning("LeaveRequestController - Failed to update leave request for ID: {Id}", leaveRequest.Id);
             return BadRequest(new ApiResponse<bool>
             {
                 StatusCode = (int)HttpStatusCode.BadRequest,
@@ -270,7 +270,7 @@ namespace KHRMS
         //        return BadRequest(response);
         //    }
         //}
-        [HttpDelete("DeleteLeaveRequest/{id}")]
+        [HttpDelete("DeleteLeaveRequest")]
         public async Task<IActionResult> Delete(long id)
         {
             Log.Information("LeaveRequestController - DeleteLeaveRequest called for ID: {Id}", id);

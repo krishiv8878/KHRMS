@@ -157,22 +157,22 @@ namespace KHRMS.Controllers
         //        return BadRequest(response);
         //    }
         //}
-        [HttpPut("UpdateRole/{id}")]
-        public async Task<IActionResult> UpdateRole(long id, RoleMaster roleMaster)
+        [HttpPut("UpdateRole")]
+        public async Task<IActionResult> UpdateRole(RoleMaster roleMaster)
         {
-            Log.Information("RoleMasterController - UpdateRole called for ID: {Id}", id);
+            Log.Information("RoleMasterController - UpdateRole called for ID: {Id}", roleMaster.Id);
 
-            if (id != roleMaster.Id)
+            if (roleMaster.Id == null)
             {
-                Log.Warning("RoleMasterController - ID mismatch: URL ID {Id}, Body ID {BodyId}", id, roleMaster.Id);
-                return BadRequest("ID mismatch.");
+                Log.Warning("RoleMasterController - ID Not Found: URL ID {Id}, Body ID {BodyId}", roleMaster.Id);
+                return BadRequest("ID Does not Exist");
             }
 
             var result = await _roleMasterService.UpdateRoleMaster(roleMaster);
 
             if (result)
             {
-                Log.Information("RoleMasterController - Role updated successfully for ID: {Id}", id);
+                Log.Information("RoleMasterController - Role updated successfully for ID: {Id}", roleMaster.Id);
                 return Ok(new ApiResponse<bool>
                 {
                     StatusCode = (int)HttpStatusCode.OK,
@@ -181,7 +181,7 @@ namespace KHRMS.Controllers
                 });
             }
 
-            Log.Warning("RoleMasterController - Failed to update role for ID: {Id}", id);
+            Log.Warning("RoleMasterController - Failed to update role for ID: {Id}", roleMaster.Id);
             return BadRequest(new ApiResponse<bool>
             {
                 StatusCode = (int)HttpStatusCode.BadRequest,
@@ -221,7 +221,7 @@ namespace KHRMS.Controllers
         //        return BadRequest(response);
         //    }
         //}
-        [HttpDelete("DeleteRole/{id}")]
+        [HttpDelete("DeleteRole")]
         public async Task<IActionResult> DeleteRole(long id)
         {
             Log.Information("RoleMasterController - DeleteRole called for ID: {Id}", id);

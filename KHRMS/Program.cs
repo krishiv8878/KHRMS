@@ -145,12 +145,15 @@ builder.Services.AddSession(options =>
     options.IdleTimeout = TimeSpan.FromHours(1);
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
+    options.Cookie.SameSite = SameSiteMode.Lax; 
+    options.Cookie.SecurePolicy = CookieSecurePolicy.None;
 });
 
 // ✅ Add CORS
 builder.Services.AddCors(p => p.AddPolicy("corspolice", corsBuilder =>
 {
-    corsBuilder.AllowAnyMethod().AllowAnyOrigin().AllowAnyHeader();
+    corsBuilder.WithOrigins("http://localhost:4200")
+    .AllowAnyMethod().AllowAnyHeader().AllowCredentials();
 }));
 
 // ✅ Add controllers, Swagger, etc.

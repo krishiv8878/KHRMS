@@ -78,7 +78,7 @@ namespace KHRMS
         //    return Ok(response);
         //}
         [HttpGet]
-        [Route("GetByEmployeeId/{employeeId}")]
+        [Route("GetByEmployeeId")]
         public async Task<IActionResult> GetByEmployeeId(long employeeId)
         {
             Log.Information("EmployeeAttendanceController - GetByEmployeeId called for ID: {EmployeeId}", employeeId);
@@ -220,7 +220,7 @@ namespace KHRMS
 
         //}
         [HttpDelete]
-        [Route("DeleteEmployeeAttendanceRequest/{id}")]
+        [Route("DeleteEmployeeAttendanceRequest")]
         public async Task<IActionResult> DeleteEmployeeAttendanceRequest(long id)
         {
             Log.Information("EmployeeAttendanceController - DeleteEmployeeAttendanceRequest called for ID: {Id}", id);

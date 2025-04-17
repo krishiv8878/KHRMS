@@ -81,7 +81,7 @@ namespace KHRMS
         //}
 
         [HttpGet]
-        [Route("GetByTemplateTypeId/{TemplateTypeId}")]
+        [Route("GetByTemplateTypeId")]
         public async Task<IActionResult> GetByTemplateTypeId(long templateTypeId)
         {
             Log.Information("GetByTemplateTypeId API called with TemplateTypeId: {TemplateTypeId}.", templateTypeId);
@@ -229,7 +229,7 @@ namespace KHRMS
         //        Data = true
         //    });
         //}
-        [HttpDelete("DeleteemailTemplatesMaster/{id:long}")]
+        [HttpDelete("DeleteemailTemplatesMaster")]
         public async Task<IActionResult> DeleteemailTemplatesMaster(long id)
         {
             Log.Information("DeleteEmailTemplatesMaster API called for ID: {Id}.", id);
