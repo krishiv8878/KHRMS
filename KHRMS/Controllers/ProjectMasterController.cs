@@ -16,25 +16,7 @@ namespace KHRMS.Controllers
         /// <summary>
         /// Get the list of projectMaster
         /// </summary>
-        /// <returns></returns>
-        //[HttpGet]
-        //[Route("GetProjectMaster")]
-        //public async Task<IActionResult> GetProjectMaster()
-        //{
-        //    var projectMaster = await _projectMasterService.GetAllProjectMaster();
-        //    if (projectMaster == null)
-        //    {
-        //        return NotFound();
-        //    }
-        //    // Use the wrapper class to create a consistent response
-        //    var response = new ApiResponse<List<ProjectMaster>>
-        //    {
-        //        StatusCode = (int)HttpStatusCode.OK,
-        //        Message = projectMaster.Any() ? ApiMessageConstant.ProjectMasterFound : ApiMessageConstant.ProjectMasterNotFound,
-        //        Data = projectMaster.ToList()
-        //    };
-        //    return Ok(response);
-        //}
+        /// <returns></returns>   
 
         [HttpGet("GetProjectMaster")]
         public async Task<IActionResult> GetProjectMaster()
@@ -63,37 +45,11 @@ namespace KHRMS.Controllers
             });
         }
 
+
         /// <summary>
         /// Add a new ProjectMaster
         /// </summary>
 
-        //[HttpPost]
-        //[Route("AddProjectMaster")]
-        //public async Task<IActionResult> AddProjectMaster(ProjectMaster projectMaster)
-        //{
-        //    var isProjectMasterAdded = await _projectMasterService.AddProjectMaster(projectMaster);
-        //    if (isProjectMasterAdded)
-        //    {
-        //        // Use the wrapper class to create a consistent response
-        //        var response = new ApiResponse<bool>
-        //        {
-        //            StatusCode = (int)HttpStatusCode.OK,
-        //            Message = ApiMessageConstant.ProjectMasterAdded,
-        //            Data = isProjectMasterAdded
-        //        };
-        //        return Ok(response);
-        //    }
-        //    else
-        //    {
-        //        var response = new ApiResponse<bool>
-        //        {
-        //            StatusCode = (int)HttpStatusCode.BadRequest,
-        //            Message = ApiMessageConstant.ProjectMasterNotAdded,
-        //            Data = isProjectMasterAdded
-        //        };
-        //        return BadRequest(response);
-        //    }
-        //}
         [HttpPost("AddProjectMaster")]
         public async Task<IActionResult> AddProjectMaster([FromBody] ProjectMaster projectMaster)
         {
@@ -127,37 +83,11 @@ namespace KHRMS.Controllers
             });
         }
 
+
         /// <summary>
         /// Update a existing candidate
         /// </summary>
 
-        //[HttpPut]
-        //[Route("UpdateProjectMaster")]
-        //public async Task<IActionResult> UpdateProjectMaster(ProjectMaster projectMaster)
-        //{
-        //    var isProjectMasterEdited = await _projectMasterService.UpdateProjectMaster(projectMaster);
-        //    if (isProjectMasterEdited)
-        //    {
-        //        // Use the wrapper class to create a consistent response
-        //        var response = new ApiResponse<bool>
-        //        {
-        //            StatusCode = (int)HttpStatusCode.OK,
-        //            Message = ApiMessageConstant.ProjectMasterUpdated,
-        //            Data = isProjectMasterEdited
-        //        };
-        //        return Ok(response);
-        //    }
-        //    else
-        //    {
-        //        var response = new ApiResponse<bool>
-        //        {
-        //            StatusCode = (int)HttpStatusCode.BadRequest,
-        //            Message = ApiMessageConstant.ProjectMasterNotUpdated,
-        //            Data = isProjectMasterEdited
-        //        };
-        //        return BadRequest(response);
-        //    }
-        //}
         [HttpPut("UpdateProjectMaster/{id}")]
         public async Task<IActionResult> UpdateProjectMaster(long id, [FromBody] ProjectMaster projectMaster)
         {
@@ -195,33 +125,6 @@ namespace KHRMS.Controllers
         /// Delete existing candidate
         /// </summary>
 
-        //[HttpDelete]
-        //[Route("DeleteProjectMaster")]
-        //public async Task<IActionResult> DeleteCandidate(long projectMasterId)
-        //{
-        //    var isProjectMasterDeleted = await _projectMasterService.DeleteProjectMaster(projectMasterId);
-        //    if (isProjectMasterDeleted)
-        //    {
-        //        // Use the wrapper class to create a consistent response
-        //        var response = new ApiResponse<bool>
-        //        {
-        //            StatusCode = (int)HttpStatusCode.OK,
-        //            Message = ApiMessageConstant.ProjectMasterDeleted,
-        //            Data = isProjectMasterDeleted
-        //        };
-        //        return Ok(response);
-        //    }
-        //    else
-        //    {
-        //        var response = new ApiResponse<bool>
-        //        {
-        //            StatusCode = (int)HttpStatusCode.BadRequest,
-        //            Message = ApiMessageConstant.ProjectMasterNotDeleted,
-        //            Data = isProjectMasterDeleted
-        //        };
-        //        return BadRequest(response);
-        //    }
-        //}
         [HttpDelete("DeleteProjectMaster/{id}")]
         public async Task<IActionResult> DeleteProjectMaster(long id)
         {

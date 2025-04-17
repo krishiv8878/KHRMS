@@ -24,5 +24,7 @@ namespace KHRMS.Services.Request
 
         public long ManagerId { get; set; }
         public string ManagerName { get; set; }
+        public string? PrimaryEmailAddress { get; set; }
+
     }
 }
