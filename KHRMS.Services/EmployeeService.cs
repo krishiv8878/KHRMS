@@ -1,5 +1,6 @@
 ﻿using KHRMS.Core;
 using KHRMS.Services.Request;
+using Microsoft.AspNetCore.Identity; // Add this for PasswordHasher
 
 namespace KHRMS.Services
 {
@@ -8,14 +9,60 @@ namespace KHRMS.Services
         public IUnitOfWork _unitOfWork = unitOfWork;
         public ISendEmailService _sendEmailService = emailRepository;
 
+        //public async Task<bool> CreateEmployee(EmployeeRequestModel employeeRequestModel)
+        //{
+        //    if (employeeRequestModel == null)
+        //        return false;
+        //    // Find the most senior employee to assign as a manager
+        //    var seniorEmployee = (await _unitOfWork.Employees.GetAll())
+        //        .OrderBy(emp => emp.DateOfJoining)  // Oldest employee (seniority)
+        //        .FirstOrDefault();
+        //    var newEmployee = new Employee
+        //    {
+        //        EmployeeCode = employeeRequestModel.EmployeeCode,
+        //        FirstName = employeeRequestModel.FirstName,
+        //        LastName = employeeRequestModel.LastName,
+        //        EmailAddress = employeeRequestModel.EmailAddress,
+        //        MobileNumber = employeeRequestModel.MobileNumber,
+        //        DesignationId = employeeRequestModel.DesignationId,
+        //        DateOfJoining = employeeRequestModel.DateOfJoining,
+        //        Gender = employeeRequestModel.Gender,
+        //        CurrentAddress = employeeRequestModel.CurrentAddress,
+        //        PermanentAddress = employeeRequestModel.PermanentAddress,
+        //        IsActive = employeeRequestModel.IsActive,
+        //        CreatedDate = DateTime.Now,
+        //        ShiftIds = employeeRequestModel.ShiftId,
+        //    };
+        //    await _unitOfWork.Employees.Add(newEmployee);
+        //    var result = _unitOfWork.Save();
+        //    if (result > 0 && employeeRequestModel.RoleIds?.Any() == true)
+        //    {
+        //        var roleMappings = employeeRequestModel.RoleIds.Select(roleId => new EmployeeRoleMapping
+        //        {
+        //            EmployeeId = newEmployee.Id,
+        //            RoleId = roleId,
+        //            IsActive = true,
+        //            CreatedDate = DateTime.Now
+        //        }).ToList();
+
+        //        foreach (var roleMapping in roleMappings)
+        //        {
+        //            await _unitOfWork.EmployeeRoleMappings.Add(roleMapping);
+        //        }
+        //        _unitOfWork.Save();
+        //    }
+        //    return result > 0;
+        //}
+
         public async Task<bool> CreateEmployee(EmployeeRequestModel employeeRequestModel)
         {
             if (employeeRequestModel == null)
                 return false;
-            // Find the most senior employee to assign as a manager
+
             var seniorEmployee = (await _unitOfWork.Employees.GetAll())
-                .OrderBy(emp => emp.DateOfJoining)  // Oldest employee (seniority)
+                .OrderBy(emp => emp.DateOfJoining)
                 .FirstOrDefault();
+
             var newEmployee = new Employee
             {
                 EmployeeCode = employeeRequestModel.EmployeeCode,
@@ -23,6 +70,7 @@ namespace KHRMS.Services
                 LastName = employeeRequestModel.LastName,
                 EmailAddress = employeeRequestModel.EmailAddress,
                 MobileNumber = employeeRequestModel.MobileNumber,
+                PrimaryEmailAddress = employeeRequestModel.PrimaryEmailAddress, 
                 DesignationId = employeeRequestModel.DesignationId,
                 DateOfJoining = employeeRequestModel.DateOfJoining,
                 Gender = employeeRequestModel.Gender,
@@ -32,26 +80,51 @@ namespace KHRMS.Services
                 CreatedDate = DateTime.Now,
                 ShiftIds = employeeRequestModel.ShiftId,
             };
+
             await _unitOfWork.Employees.Add(newEmployee);
             var result = _unitOfWork.Save();
-            if (result > 0 && employeeRequestModel.RoleIds?.Any() == true)
-            {
-                var roleMappings = employeeRequestModel.RoleIds.Select(roleId => new EmployeeRoleMapping
-                {
-                    EmployeeId = newEmployee.Id,
-                    RoleId = roleId,
-                    IsActive = true,
-                    CreatedDate = DateTime.Now
-                }).ToList();
 
-                foreach (var roleMapping in roleMappings)
+
+            // Add UserRegistration
+            var defaultPassword = "System@123";
+            var passwordHasher = new PasswordHasher<UserRegistration>();
+
+            var userRegistration = new UserRegistration
+            {
+                FirstName = newEmployee.FirstName,
+                LastName = newEmployee.LastName,
+                Email = newEmployee.EmailAddress,
+                MobileNumber = newEmployee.MobileNumber,
+                Address = newEmployee.CurrentAddress,
+                Password = passwordHasher.HashPassword(null, defaultPassword),
+                CreatedDate = DateTime.Now
+            };
+
+            await _unitOfWork.UserRegistrations.Add(userRegistration);
+            var regResult = _unitOfWork.Save();
+
+            // Add UserLogin
+            if (regResult > 0)
+            {
+                var userLogin = new KHRMS.Core.UserLogin
                 {
-                    await _unitOfWork.EmployeeRoleMappings.Add(roleMapping);
-                }
+                    UserId = userRegistration.Id,
+                    UserName = userRegistration.Email,
+                    Email = userRegistration.Email,
+                    Password = userRegistration.Password,
+                    CreatedDate = DateTime.Now,
+                    IsActive = true,
+                    IsDeleted = false
+                };
+
+                await _unitOfWork.UserLogins.Add(userLogin);
                 _unitOfWork.Save();
             }
+
             return result > 0;
         }
+
+
         public async Task<bool> DeleteEmployee(long employeeId)
         {
             if (employeeId > 0)
@@ -105,7 +178,7 @@ namespace KHRMS.Services
                 rolenames = employeeroleMapping
                     .Where(mapping => mapping.EmployeeId == emp.Id && mapping.IsActive)
                     .Select(mapping => mapping.RoleId)
-                    .Where(roleId => rolemaster.ContainsKey(roleId))  
+                    .Where(roleId => rolemaster.ContainsKey(roleId))
                     .Select(roleId => rolemaster[roleId].RoleName)
                     .ToList(),
                 ManagerName = employeeDictionary.ContainsKey(emp.ManagerId) ? $"{employeeDictionary[emp.ManagerId].FirstName} {employeeDictionary[emp.ManagerId].LastName}" : "Manager Not Assigned"
@@ -163,7 +236,7 @@ namespace KHRMS.Services
                 .ToList();
             foreach (var roleMapping in existingRoleMappings.Where(r => r.IsActive))
             {
-                 roleMapping.IsActive = false;
+                roleMapping.IsActive = false;
                 roleMapping.UpdatedDate = DateTime.Now;
                 _unitOfWork.EmployeeRoleMappings.Update(roleMapping);
             }
@@ -206,7 +279,7 @@ namespace KHRMS.Services
                 .Select(emp => new EmployeeRequestModel
                 {
                     Id = emp.Id,
-                    ManagerName = emp.FirstName+" "+emp.LastName,
+                    ManagerName = emp.FirstName + " " + emp.LastName,
                     ManagerId = emp.ManagerId,
                 })
                 .ToList();

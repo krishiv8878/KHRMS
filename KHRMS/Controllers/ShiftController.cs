@@ -13,23 +13,12 @@ namespace KHRMS
     /// </summary>
     [Route("api/[controller]")]
     [ApiController]
-    public class ShiftController(IShiftService shiftService ) : ControllerBase
+    public class ShiftController(IShiftService shiftService) : ControllerBase
 
     {
         public readonly IShiftService _shiftService = shiftService;
 
 
-        //[HttpGet("GetAllShifts")]
-        //public async Task<IActionResult> GetAllShifts()
-        //{
-        //    var entities = await _shiftService.GetAllShiftsAsync();
-        //    return Ok(new ApiResponse<IEnumerable<ShiftMaster>>
-        //    {
-        //        StatusCode = (int)HttpStatusCode.OK,
-        //        Message = ApiMessageConstant.AllEmployeeShiftRecordRequestsFound,
-        //        Data = entities
-        //    });
-        //}
         [HttpGet("GetAllShifts")]
         public async Task<IActionResult> GetAllShifts()
         {
@@ -46,32 +35,14 @@ namespace KHRMS
                 Data = shifts
             });
         }
+
+
         /// <summary>
         /// Retrieves employee shift information by ID.
         /// </summary>
         /// <param name="id">Employee Shift Info ID</param>
 
-        //[HttpGet("GetShiftById/{id}")]
-        //public async Task<IActionResult> GetShiftById(long id)
-        //{
-        //    var shift = await _shiftService.GetShiftByIdAsync(id);
-        //    if (shift == null)
-        //    {
-        //        return NotFound(new ApiResponse<ShiftMaster>
-        //        {
-        //            StatusCode = (int)HttpStatusCode.NotFound,
-        //            Message = ApiMessageConstant.EmployeeShiftRequestsNotFound,
-        //            Data = null
-        //        });
-        //    }
-        //    return Ok(new ApiResponse<ShiftMaster>
-        //    {
-        //        StatusCode = (int)HttpStatusCode.OK,
-        //        Message = ApiMessageConstant.EmployeeShiftRequestsFound,
-        //        Data = shift
-        //    });
-        //}
-        [HttpGet("GetShiftById")]
+        [HttpGet("GetShiftById/{id}")]
         public async Task<IActionResult> GetShiftById(long id)
         {
             Log.Information("ShiftController - GetShiftById called for ID: {Id}", id);
@@ -104,27 +75,7 @@ namespace KHRMS
         /// </summary>
         /// <param name="shift">Employee Shift Info object</param>
 
-        //[HttpPost("CreateShiftType")]
-        //public async Task<IActionResult> AddShift(ShiftMaster shift)
-        //{
-        //    if (!ModelState.IsValid)
-        //    {
-        //        return BadRequest(new ApiResponse<bool>
-        //        {
-        //            StatusCode = (int)HttpStatusCode.BadRequest,
-        //            Message = ApiMessageConstant.InvalidDataofShiftInfo,
-        //            Data = false
-        //        });
-        //    }
-        //    await _shiftService.AddShiftAsync(shift);
-        //    CreatedAtAction(nameof(GetShiftById), new { id = shift.Id }, shift);
-        //    return Ok(new ApiResponse<bool>
-        //    {
-        //        StatusCode = (int)HttpStatusCode.OK,
-        //        Message = ApiMessageConstant.EmployeeShifttInfoAdd,
-        //        Data = true
-        //    });
-        //}
+
         [HttpPost("CreateShiftType")]
         public async Task<IActionResult> AddShift([FromBody] ShiftMaster shift)
         {
@@ -158,28 +109,8 @@ namespace KHRMS
         /// </summary>
         /// <param name="shiftMaster">Updated Employee Shift Info object</param>
 
-        //[HttpPut("UpdateShift")]
-        //public async Task<IActionResult> Update(ShiftMaster shiftMaster)
-        //{
-        //    if (!ModelState.IsValid)
-        //    {
-        //        return BadRequest(new ApiResponse<bool>
-        //        {
-        //            StatusCode = (int)HttpStatusCode.BadRequest,
-        //            Message = ApiMessageConstant.InvalidData,
-        //            Data = false
-        //        });
-        //    }
-        //    await _shiftService.UpdateShiftAsync(shiftMaster);
-        //    return Ok(new ApiResponse<bool>
-        //    {
-        //        StatusCode = (int)HttpStatusCode.OK,
-        //        Message = ApiMessageConstant.ShiftInfoeRequestUpdated,
-        //        Data = true
-        //    });
-        //}
-        [HttpPut("UpdateShift")]
-        public async Task<IActionResult> Update([FromBody] ShiftMaster shiftMaster)
+        [HttpPut("UpdateShift/{id}")]
+        public async Task<IActionResult> Update(long id, [FromBody] ShiftMaster shiftMaster)
         {
             Log.Information("ShiftController - Update called for ID: {Id}", shiftMaster.Id);
 
@@ -222,28 +153,6 @@ namespace KHRMS
         /// </summary>
         /// <param name="id">Employee shift Info ID</param>
 
-        //[HttpDelete("DeleteShift/{id}")]
-        //public async Task<IActionResult> DeleteShift(long id)
-        //{
-        //    var shift = await _shiftService.GetShiftByIdAsync(id);
-        //    if (shift == null)
-        //    {
-        //        return NotFound(new ApiResponse<ShiftMaster>
-        //        {
-        //            StatusCode = (int)HttpStatusCode.NotFound,
-        //            Message = ApiMessageConstant.EmployeeShiftRequestsNotFound,
-        //            Data = null
-        //        });
-        //    }
-
-        //    await _shiftService.DeleteShiftAsync(id);
-        //    return Ok(new ApiResponse<bool>
-        //    {
-        //        StatusCode = (int)HttpStatusCode.OK,
-        //        Message = ApiMessageConstant.ShiftInfoRequestDeleted,
-        //        Data = true
-        //    });
-        //}
 
         [HttpDelete("DeleteShift")]
         public async Task<IActionResult> DeleteShift(long id)

@@ -16,19 +16,6 @@ namespace KHRMS
         private readonly IEmailService _emailService = emailService;
 
 
-
-        //[HttpGet("GetAll")]
-        //public async Task<IActionResult> GetAll()
-        //{
-        //    var emails = await _emailService.GetAllAsync();
-        //    return Ok(new ApiResponse<IEnumerable<Email>>
-        //    {
-        //        StatusCode = (int)HttpStatusCode.OK,
-        //        Message = ApiMessageConstant.AllEmailsFound,
-        //        Data = emails
-        //    });
-        //}
-
         [HttpGet("GetAll")]
         public async Task<IActionResult> GetAll()
         {
@@ -54,30 +41,6 @@ namespace KHRMS
                 Data = emails
             });
         }
-
-        //[HttpGet]
-        //[Route("GetByTemplateId/{TemplateId}")]
-        //public async Task<IActionResult> GetByTemplateId(long templateid)
-        //{
-        //    var emailTemplates = await _emailService.GetByEmailTemplatesIdAsync(templateid);
-        //    if (emailTemplates == null)
-        //    {
-        //        return NotFound(new ApiResponse<Email>
-        //        {
-        //            StatusCode = (int)HttpStatusCode.NotFound,
-        //            Message = ApiMessageConstant.AllEmailTemplateNotFound,
-        //            Data = null
-        //        });
-        //    }
-        //    var response = new ApiResponse<Email>
-        //    {
-        //        StatusCode = (int)HttpStatusCode.OK,
-        //        Message = ApiMessageConstant.AllEmailsFound,
-        //        Data = emailTemplates
-        //    };
-
-        //    return Ok(response);
-        //}
 
         [HttpGet]
         [Route("GetByTemplateId")]
@@ -106,29 +69,6 @@ namespace KHRMS
             });
         }
 
-        //[HttpPost]
-        //[Route("AddEmails")]
-        //public async Task<IActionResult> AddEmails([FromBody] Email emails)
-        //{
-        //    if (!ModelState.IsValid)
-        //    {
-        //        return BadRequest(new ApiResponse<bool>
-        //        {
-        //            StatusCode = (int)HttpStatusCode.BadRequest,
-        //            Message = ApiMessageConstant.InvalidDataofEmails,
-        //            Data = false
-        //        });
-        //    }
-        //    await _emailService.AddAsync(emails);
-        //    var response = new ApiResponse<bool>
-        //    {
-        //        StatusCode = (int)HttpStatusCode.OK,
-        //        Message = ApiMessageConstant.EmailsAdd,
-        //        Data = true
-        //    };
-        //    return Ok(response);
-        //}
-
         [HttpPost("AddEmails")]
         public async Task<IActionResult> AddEmails([FromBody] Email email)
         {
@@ -144,29 +84,6 @@ namespace KHRMS
             });
         }
 
-        //[HttpPut]
-        //[Route("UpdateEmails")]
-        //public async Task<IActionResult> UpdateEmails(Email emails)
-        //{
-        //    if (!ModelState.IsValid)
-        //    {
-        //        return BadRequest(new ApiResponse<bool>
-        //        {
-        //            StatusCode = (int)HttpStatusCode.BadRequest,
-        //            Message = ApiMessageConstant.InvalidDataofEmails,
-        //            Data = false
-        //        });
-        //    }
-        //    await _emailService.UpdateAsync(emails);
-        //    var response = new ApiResponse<bool>
-        //    {
-        //        StatusCode = (int)HttpStatusCode.OK,
-        //        Message = ApiMessageConstant.EmailsUpdated,
-        //        Data = true
-        //    };
-        //    return Ok(response);
-
-        //}
         [HttpPut("UpdateEmails")]
         public async Task<IActionResult> UpdateEmails([FromBody] Email email)
         {
@@ -194,27 +111,7 @@ namespace KHRMS
             });
         }
 
-
-
-        //[HttpDelete]
-        //[Route("Deleteemails/{id}")]
-        //public async Task<IActionResult> Deleteemails(long id)
-        //{
-
-        //    var emails = await _emailService.GetByIdAsync(id);
-        //    if (emails == null)
-        //        return NotFound();
-
-        //    await _emailService.DeleteAsync(id);
-        //    return Ok(new ApiResponse<bool>
-        //    {
-        //        StatusCode = (int)HttpStatusCode.OK,
-        //        Message = ApiMessageConstant.EmailsDeleted,
-        //        Data = true
-        //    });
-
-        //}
-        [HttpDelete("Deleteemails")]
+        [HttpDelete("Deleteemails/{id:long}")]
         public async Task<IActionResult> Deleteemails(long id)
         {
             Log.Information("DeleteEmails API called for ID {Id}.", id);
