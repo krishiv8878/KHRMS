@@ -29,9 +29,9 @@ namespace KHRMS.Controllers
             if (roles == null || !roles.Any())
             {
                 Log.Warning("RoleMasterController - No roles found.");
-                return NotFound(new ApiResponse<List<RoleMaster>>
+                return Ok(new ApiResponse<List<RoleMaster>>
                 {
-                    StatusCode = (int)HttpStatusCode.NotFound,
+                    StatusCode = (int)HttpStatusCode.OK,
                     Message = ApiMessageConstant.NoRoleMasterFound,
                     Data = null
                 });
@@ -100,7 +100,7 @@ namespace KHRMS.Controllers
             if (roleMaster.Id == null)
             {
                 Log.Warning("RoleMasterController - ID Not Found: URL ID {Id}, Body ID {BodyId}", roleMaster.Id);
-                return BadRequest("ID Does not Exist");
+                return Ok("ID Does not Exist");
             }
 
             var result = await _roleMasterService.UpdateRoleMaster(roleMaster);

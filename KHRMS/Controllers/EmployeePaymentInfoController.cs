@@ -30,9 +30,9 @@ namespace KHRMS
             if (entities == null || !entities.Any())
             {
                 Log.Warning("EmployeePaymentInfoController - No payment info records found.");
-                return NotFound(new ApiResponse<IEnumerable<EmployeePaymentInfo>>
+                return Ok(new ApiResponse<IEnumerable<EmployeePaymentInfo>>
                 {
-                    StatusCode = (int)HttpStatusCode.NotFound,
+                    StatusCode = (int)HttpStatusCode.OK,
                     Message = ApiMessageConstant.EmployeePaymentRequestsNotFound,
                     Data = null
                 });
@@ -63,9 +63,9 @@ namespace KHRMS
             if (entity == null)
             {
                 Log.Warning("EmployeePaymentInfoController - No record found for ID: {Id}", id);
-                return NotFound(new ApiResponse<EmployeePaymentInfo>
+                return Ok(new ApiResponse<EmployeePaymentInfo>
                 {
-                    StatusCode = (int)HttpStatusCode.NotFound,
+                    StatusCode = (int)HttpStatusCode.OK,
                     Message = ApiMessageConstant.EmployeePaymentRequestsNotFound,
                     Data = null
                 });
@@ -159,9 +159,9 @@ namespace KHRMS
             if (paymentinfo == null)
             {
                 Log.Warning("EmployeePaymentInfoController - Payment info not found for ID: {Id}", id);
-                return NotFound(new ApiResponse<bool>
+                return Ok(new ApiResponse<bool>
                 {
-                    StatusCode = (int)HttpStatusCode.NotFound,
+                    StatusCode = (int)HttpStatusCode.OK,
                     Message = ApiMessageConstant.EmployeePaymentRequestsNotFound,
                     Data = false
                 });

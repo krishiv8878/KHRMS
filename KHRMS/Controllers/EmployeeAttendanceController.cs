@@ -25,9 +25,9 @@ namespace KHRMS
             if (attendances == null || !attendances.Any())
             {
                 Log.Warning("EmployeeAttendanceController - No attendance records found.");
-                return NotFound(new ApiResponse<IEnumerable<EmployeeAttendance>>
+                return Ok(new ApiResponse<IEnumerable<EmployeeAttendance>>
                 {
-                    StatusCode = (int)HttpStatusCode.NotFound,
+                    StatusCode = (int)HttpStatusCode.OK,
                     Message = ApiMessageConstant.AttendanceRequestsNotFound,
                     Data = null
                 });
@@ -53,9 +53,9 @@ namespace KHRMS
             if (attendances == null)
             {
                 Log.Warning("EmployeeAttendanceController - Attendance not found for ID: {EmployeeId}", employeeId);
-                return NotFound(new ApiResponse<EmployeeAttendance>
+                return Ok(new ApiResponse<EmployeeAttendance>
                 {
-                    StatusCode = (int)HttpStatusCode.NotFound,
+                    StatusCode = (int)HttpStatusCode.OK,
                     Message = ApiMessageConstant.AttendanceRequestNotFound,
                     Data = null
                 });
@@ -136,9 +136,9 @@ namespace KHRMS
             if (attendance == null)
             {
                 Log.Warning("EmployeeAttendanceController - Attendance with ID: {Id} not found.", id);
-                return NotFound(new ApiResponse<bool>
+                return Ok(new ApiResponse<bool>
                 {
-                    StatusCode = (int)HttpStatusCode.NotFound,
+                    StatusCode = (int)HttpStatusCode.OK,
                     Message = ApiMessageConstant.AttendanceRequestNotFound,
                     Data = false
                 });

@@ -27,9 +27,9 @@ namespace KHRMS.Controllers
             if (employeeroleMapping == null || !employeeroleMapping.Any())
             {
                 Log.Warning("EmployeeRoleMappingController - No employee role mappings found.");
-                return NotFound(new ApiResponse<List<EmployeeRoleMapping>>
+                return Ok(new ApiResponse<List<EmployeeRoleMapping>>
                 {
-                    StatusCode = (int)HttpStatusCode.NotFound,
+                    StatusCode = (int)HttpStatusCode.OK,
                     Message = ApiMessageConstant.NoEmployeeRoleMappingFound,
                     Data = null
                 });

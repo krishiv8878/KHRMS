@@ -84,11 +84,11 @@ public class RoleMasterControllerTests
     public async Task UpdateRole_ShouldReturnOk_WhenRoleIsUpdated()
     {
         // Arrange
-        var role = new RoleMaster { Id = 1, RoleName = "Supervisor" };
+        var role = new RoleMaster {RoleName = "Supervisor" };
         _mockService.Setup(service => service.UpdateRoleMaster(role)).ReturnsAsync(true);
 
         // Act
-        var result = await _controller.UpdateRole(role.Id, role);
+        var result = await _controller.UpdateRole(role);
         var okResult = result as OkObjectResult;
 
         // Assert
@@ -110,7 +110,7 @@ public class RoleMasterControllerTests
         _mockService.Setup(service => service.UpdateRoleMaster(role)).ReturnsAsync(false);
 
         // Act
-        var result = await _controller.UpdateRole(role.Id, role);
+        var result = await _controller.UpdateRole(role);
         var badRequestResult = result as BadRequestObjectResult;
 
         // Assert

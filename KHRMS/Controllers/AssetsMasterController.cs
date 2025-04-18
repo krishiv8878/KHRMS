@@ -23,9 +23,9 @@ namespace KHRMS.Controllers
             if (assetsMaster == null || !assetsMaster.Any())
             {
                 Log.Information("No AssetsMaster records found.");
-                return NotFound(new ApiResponse<List<AssetsMaster>>
+                return Ok(new ApiResponse<List<AssetsMaster>>
                 {
-                    StatusCode = (int)HttpStatusCode.NotFound,
+                    StatusCode = (int)HttpStatusCode.OK,
                     Message = ApiMessageConstant.AssetsMasterNotFound,
                     Data = null
                 });
@@ -77,10 +77,10 @@ namespace KHRMS.Controllers
             if (!isUpdated)
             {
                 Log.Warning("Failed to update AssetsMaster with ID {AssetsMasterId}.", assetsMaster.Id);
-                return BadRequest(new ApiResponse<bool>
+                return Ok(new ApiResponse<bool>
                 {
-                    StatusCode = (int)HttpStatusCode.BadRequest,
-                    Message = ApiMessageConstant.AssetsMasterNotUpdated,
+                    StatusCode = (int)HttpStatusCode.OK,
+                    Message = ApiMessageConstant.AssetsMasterNotFound,
                     Data = false
                 });
             }
@@ -105,10 +105,10 @@ namespace KHRMS.Controllers
             if (!isDeleted)
             {
                 Log.Warning("Failed to delete AssetsMaster with ID {AssetsMasterId}.", AssetsMasterId);
-                return BadRequest(new ApiResponse<bool>
+                return Ok(new ApiResponse<bool>
                 {
-                    StatusCode = (int)HttpStatusCode.BadRequest,
-                    Message = ApiMessageConstant.AssetsMasterNotDeleted,
+                    StatusCode = (int)HttpStatusCode.OK,
+                    Message = ApiMessageConstant.AssetsMasterNotFound,
                     Data = false
                 });
             }

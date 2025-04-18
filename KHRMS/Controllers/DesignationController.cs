@@ -22,7 +22,7 @@ namespace KHRMS
             if (designations == null || !designations.Any())
             {
                 Log.Information("No designations found.");
-                return NotFound(new ApiResponse<List<Designation>>
+                return Ok(new ApiResponse<List<Designation>>
                 {
                     StatusCode = (int)HttpStatusCode.NotFound,
                     Message = ApiMessageConstant.DesignationNotFound,
@@ -73,10 +73,10 @@ namespace KHRMS
             if (!isDesignationEdited)
             {
                 Log.Warning("Failed to update designation.");
-                return BadRequest(new ApiResponse<bool>
+                return Ok(new ApiResponse<bool>
                 {
-                    StatusCode = (int)HttpStatusCode.BadRequest,
-                    Message = ApiMessageConstant.DesignationNotUpdated,
+                    StatusCode = (int)HttpStatusCode.OK,
+                    Message = ApiMessageConstant.DesignationNotFound,
                     Data = false
                 });
             }
@@ -99,10 +99,10 @@ namespace KHRMS
             if (!isDesignationDeleted)
             {
                 Log.Warning("Failed to delete designation with ID {DesignationId}.", designationId);
-                return BadRequest(new ApiResponse<bool>
+                return Ok(new ApiResponse<bool>
                 {
-                    StatusCode = (int)HttpStatusCode.BadRequest,
-                    Message = ApiMessageConstant.DesignationNotDeleted,
+                    StatusCode = (int)HttpStatusCode.OK,
+                    Message = ApiMessageConstant.DesignationNotFound,
                     Data = false
                 });
             }

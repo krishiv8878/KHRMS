@@ -23,9 +23,9 @@ namespace KHRMS
             if (leaveTypeList == null || !leaveTypeList.Any())
             {
                 Log.Warning("LeaveTypeController - No leave types found.");
-                return NotFound(new ApiResponse<List<LeaveType>>
+                return Ok(new ApiResponse<List<LeaveType>>
                 {
-                    StatusCode = (int)HttpStatusCode.NotFound,
+                    StatusCode = (int)HttpStatusCode.OK,
                     Message = ApiMessageConstant.LeaveTypeNotFound,
                     Data = null
                 });
@@ -83,7 +83,7 @@ namespace KHRMS
             if (leaveType.Id == null)
             {
                 Log.Warning("LeaveTypeController - ID Not Found: URL ID {Id}, Body ID {BodyId}",  leaveType.Id);
-                return BadRequest("ID Does Not Exist!");
+                return Ok("ID Does Not Exist!");
             }
 
             var result = await _leaveTypeService.UpdateLeaveType(leaveType);

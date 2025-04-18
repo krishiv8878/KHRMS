@@ -25,9 +25,9 @@ namespace KHRMS
             if (emails == null || !emails.Any())
             {
                 Log.Information("No emails found.");
-                return NotFound(new ApiResponse<IEnumerable<Email>>
+                return Ok(new ApiResponse<IEnumerable<Email>>
                 {
-                    StatusCode = (int)HttpStatusCode.NotFound,
+                    StatusCode = (int)HttpStatusCode.OK,
                     Message = ApiMessageConstant.EmailNotFound,
                     Data = null
                 });
@@ -52,9 +52,9 @@ namespace KHRMS
             if (emailTemplate == null)
             {
                 Log.Warning("No email template found for TemplateId {TemplateId}.", templateId);
-                return NotFound(new ApiResponse<Email>
+                return Ok(new ApiResponse<Email>
                 {
-                    StatusCode = (int)HttpStatusCode.NotFound,
+                    StatusCode = (int)HttpStatusCode.OK,
                     Message = ApiMessageConstant.AllEmailTemplateNotFound,
                     Data = null
                 });
@@ -92,10 +92,10 @@ namespace KHRMS
             if (!ModelState.IsValid)
             {
                 Log.Warning("UpdateEmails API received invalid model.");
-                return BadRequest(new ApiResponse<bool>
+                return NotFound(new ApiResponse<bool>
                 {
-                    StatusCode = (int)HttpStatusCode.BadRequest,
-                    Message = "Invalid email data",
+                    StatusCode = (int)HttpStatusCode.NotFound,
+                    Message = ApiMessageConstant.EmailNotFound,
                     Data = false
                 });
             }
@@ -120,9 +120,9 @@ namespace KHRMS
             if (existingEmail == null)
             {
                 Log.Warning("Email with ID {Id} not found.", id);
-                return NotFound(new ApiResponse<bool>
+                return Ok(new ApiResponse<bool>
                 {
-                    StatusCode = (int)HttpStatusCode.NotFound,
+                    StatusCode = (int)HttpStatusCode.OK,
                     Message = ApiMessageConstant.EmailNotFound,
                     Data = false
                 });

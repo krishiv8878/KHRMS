@@ -89,7 +89,7 @@ namespace KHRMS.UnitTest.ControllerTests
             _mock.Setup(x => x.UpdateShiftAsync(It.IsAny<ShiftMaster>())).Returns(Task.CompletedTask);
 
             // Act
-            var result = await _controller.Update(updatedShiftMaster.Id, updatedShiftMaster);
+            var result = await _controller.Update(updatedShiftMaster);
             var okResult = result as OkObjectResult;
 
             // Assert
