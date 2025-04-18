@@ -85,9 +85,9 @@ namespace KHRMS
             if (document == null)
             {
                 Log.Warning("EmployeeDocumentController - Document not found with ID: {Id}", id);
-                return NotFound(new ApiResponse<EmployeeDocumentInfo>
+                return Ok(new ApiResponse<EmployeeDocumentInfo>
                 {
-                    StatusCode = (int)HttpStatusCode.NotFound,
+                    StatusCode = (int)HttpStatusCode.OK,
                     Message = ApiMessageConstant.EmployeeDocumentNotFound,
                     Data = null
                 });
@@ -172,7 +172,7 @@ namespace KHRMS
             if (file == null || file.Length == 0)
             {
                 Log.Warning("EmployeeDocumentController - Invalid file upload attempt.");
-                return BadRequest("File is not provided or empty.");
+                return Ok("File is not provided or empty.");
             }
 
             if (string.IsNullOrWhiteSpace(documentName))
@@ -266,7 +266,7 @@ namespace KHRMS
             if (document == null)
             {
                 Log.Warning("EmployeeDocumentController - Document not found for ID: {Id}", id);
-                return NotFound("Document not found.");
+                return Ok("Document not found.");
             }
 
             var filePath = document.FilePath;
@@ -338,10 +338,10 @@ namespace KHRMS
             }
 
             Log.Error("EmployeeDocumentController - Failed to delete document with ID: {Id}", id);
-            return BadRequest(new ApiResponse<bool>
+            return Ok(new ApiResponse<bool>
             {
-                StatusCode = (int)HttpStatusCode.BadRequest,
-                Message = ApiMessageConstant.DocumentRequestNotDeleted,
+                StatusCode = (int)HttpStatusCode.OK,
+                Message = ApiMessageConstant.EmployeeDocumentNotFound,
                 Data = false
             });
         }

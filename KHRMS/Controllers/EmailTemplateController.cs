@@ -39,9 +39,9 @@ namespace KHRMS
             if (emailTemplates == null || !emailTemplates.Any())
             {
                 Log.Warning("No email templates found.");
-                return NotFound(new ApiResponse<IEnumerable<EmailTemplatesMaster>>
+                return Ok(new ApiResponse<IEnumerable<EmailTemplatesMaster>>
                 {
-                    StatusCode = (int)HttpStatusCode.NotFound,
+                    StatusCode = (int)HttpStatusCode.OK,
                     Message = ApiMessageConstant.AllEmailTemplateNotFound,
                     Data = null
                 });
@@ -90,9 +90,9 @@ namespace KHRMS
             if (emailTemplate == null)
             {
                 Log.Warning("Email template not found for TemplateTypeId: {TemplateTypeId}.", templateTypeId);
-                return NotFound(new ApiResponse<EmailTemplatesMaster>
+                return Ok(new ApiResponse<EmailTemplatesMaster>
                 {
-                    StatusCode = (int)HttpStatusCode.NotFound,
+                    StatusCode = (int)HttpStatusCode.OK,
                     Message = ApiMessageConstant.AllEmailTemplateNotFound,
                     Data = null
                 });
@@ -187,9 +187,9 @@ namespace KHRMS
             if (!ModelState.IsValid)
             {
                 Log.Warning("Invalid data provided for updating email template.");
-                return BadRequest(new ApiResponse<bool>
+                return NotFound(new ApiResponse<bool>
                 {
-                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    StatusCode = (int)HttpStatusCode.NotFound,
                     Message = ApiMessageConstant.InvalidDataofEmailTemplate,
                     Data = false
                 });
@@ -238,9 +238,9 @@ namespace KHRMS
             if (emailTemplate == null)
             {
                 Log.Warning("Email template not found for ID: {Id}.", id);
-                return NotFound(new ApiResponse<bool>
+                return Ok(new ApiResponse<bool>
                 {
-                    StatusCode = (int)HttpStatusCode.NotFound,
+                    StatusCode = (int)HttpStatusCode.OK,
                     Message = ApiMessageConstant.AllEmailTemplateNotFound,
                     Data = false
                 });

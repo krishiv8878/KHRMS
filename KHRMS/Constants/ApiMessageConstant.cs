@@ -9,11 +9,10 @@ namespace KHRMS
         public static readonly string CandidateNotAdded = "Candidate is not saved successfully";
         public static readonly string CandidateUpdated = "Candidate updated successfully";
         public static readonly string CandidateNotUpdated = "Candidate is not updated successfully";
-        public static readonly string NoSkillFound = "No Skills found!";
         public static readonly string CandidateFound = "Candidates retrieved successfully";
         public static readonly string CandidateDeleted = "Candidate is deleted successfully";
         public static readonly string CandidateNotDeleted = "Candidate is not deleted successfully";
-        public static readonly string NoCandidateFound = "No Skills found!";
+        public static readonly string NoCandidateFound = "No Candidate found!";
 
 
         /// <summary>
@@ -26,6 +25,7 @@ namespace KHRMS
         public static readonly string SkillNotUpdated = "Skill is not updated successfully";
         public static readonly string SkillDeleted = "Skill is deleted successfully";
         public static readonly string SkillNotDeleted = "Skill is not deleted successfully";
+        public static readonly string NoSkillFound = "No Skills found!";
 
 
         /// <summary>

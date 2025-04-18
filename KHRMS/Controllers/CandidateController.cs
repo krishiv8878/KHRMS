@@ -1,6 +1,7 @@
 ﻿using KHRMS.Core;
 using KHRMS.Infrastructure;
 using KHRMS.Services;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Serilog;
 using System.Net;
@@ -44,7 +45,7 @@ namespace KHRMS
             if (candidates == null || !candidates.Any())
             {
                 Log.Information("No candidate records found.");
-                return NotFound(new ApiResponse<List<Candidate>>
+                return Ok(new ApiResponse<List<Candidate>>
                 {
                     StatusCode = (int)HttpStatusCode.NotFound,
                     Message = ApiMessageConstant.NoCandidateFound,

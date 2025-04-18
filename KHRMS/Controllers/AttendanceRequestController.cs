@@ -42,9 +42,9 @@ namespace KHRMS.Controllers
             if (attendanceRequests == null || !attendanceRequests.Any())
             {
                 Log.Information("No AttendanceRequest records found.");
-                return NotFound(new ApiResponse<List<AttendanceRequest>>
+                return Ok(new ApiResponse<List<AttendanceRequest>>
                 {
-                    StatusCode = (int)HttpStatusCode.NotFound,
+                    StatusCode = (int)HttpStatusCode.OK,
                     Message = ApiMessageConstant.AttendanceRequestsNotFound,
                     Data = null
                 });
@@ -90,9 +90,9 @@ namespace KHRMS.Controllers
             if (attendanceRequest == null)
             {
                 Log.Information("AttendanceRequest with ID {Id} not found.", id);
-                return NotFound(new ApiResponse<AttendanceRequest>
+                return Ok(new ApiResponse<AttendanceRequest>
                 {
-                    StatusCode = (int)HttpStatusCode.NotFound,
+                    StatusCode = (int)HttpStatusCode.OK,
                     Message = ApiMessageConstant.AttendanceRequestNotFound,
                     Data = null
                 });

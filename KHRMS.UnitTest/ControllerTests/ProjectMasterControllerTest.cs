@@ -105,7 +105,7 @@ namespace KHRMS.UnitTest.ControllerTests
             mock.Setup(x => x.UpdateProjectMaster(updateprojectmaster)).ReturnsAsync(true);
 
             // Act
-            var result = await controller.UpdateProjectMaster(updateprojectmaster.Id, updateprojectmaster);
+            var result = await controller.UpdateProjectMaster(updateprojectmaster);
 
             // Assert
             Assert.NotNull(result);

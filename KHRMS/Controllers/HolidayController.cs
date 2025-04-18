@@ -46,9 +46,9 @@ namespace KHRMS
             if (holidays == null || !holidays.Any())
             {
                 Log.Warning("HolidayController - No holidays found.");
-                return NotFound(new ApiResponse<List<Holiday>>
+                return Ok(new ApiResponse<List<Holiday>>
                 {
-                    StatusCode = (int)HttpStatusCode.NotFound,
+                    StatusCode = (int)HttpStatusCode.OK,
                     Message = ApiMessageConstant.NoHolidayFound,
                     Data = null
                 });

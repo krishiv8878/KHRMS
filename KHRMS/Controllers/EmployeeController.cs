@@ -45,9 +45,9 @@ namespace KHRMS
             if (employees == null || !employees.Any())
             {
                 Log.Warning("EmployeeController - No employees found.");
-                return NotFound(new ApiResponse<List<EmployeeRequestModel>>
+                return Ok(new ApiResponse<List<EmployeeRequestModel>>
                 {
-                    StatusCode = (int)HttpStatusCode.NotFound,
+                    StatusCode = (int)HttpStatusCode.OK,
                     Message = ApiMessageConstant.NoEmployeeFound,
                     Data = null
                 });
@@ -270,10 +270,10 @@ namespace KHRMS
             else
             {
                 Log.Error("EmployeeController - Failed to delete employee with ID: {EmployeeId}", employeeId);
-                return BadRequest(new ApiResponse<bool>
+                return Ok(new ApiResponse<bool>
                 {
-                    StatusCode = (int)HttpStatusCode.BadRequest,
-                    Message = ApiMessageConstant.EmployeeNotDeleted,
+                    StatusCode = (int)HttpStatusCode.OK,
+                    Message = ApiMessageConstant.NoEmployeeFound,
                     Data = false
                 });
             }

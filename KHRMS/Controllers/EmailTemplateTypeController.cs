@@ -37,9 +37,9 @@ namespace KHRMS
             if (types == null || !types.Any())
             {
                 Log.Warning("No email template types found.");
-                return NotFound(new ApiResponse<IEnumerable<EmailTemplateTypeMaster>>
+                return Ok(new ApiResponse<IEnumerable<EmailTemplateTypeMaster>>
                 {
-                    StatusCode = (int)HttpStatusCode.NotFound,
+                    StatusCode = (int)HttpStatusCode.OK,
                     Message = ApiMessageConstant.AllEmailTemplateTypeNotFound,
                     Data = null
                 });
@@ -134,9 +134,9 @@ namespace KHRMS
             if (!ModelState.IsValid)
             {
                 Log.Warning("Invalid model state while updating email template type.");
-                return BadRequest(new ApiResponse<bool>
+                return NotFound(new ApiResponse<bool>
                 {
-                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    StatusCode = (int)HttpStatusCode.NotFound,
                     Message = ApiMessageConstant.InvalidDataofEmailTemplateType,
                     Data = false
                 });
@@ -182,9 +182,9 @@ namespace KHRMS
             if (type == null)
             {
                 Log.Warning("Email template type with ID: {Id} not found.", id);
-                return NotFound(new ApiResponse<bool>
+                return Ok(new ApiResponse<bool>
                 {
-                    StatusCode = (int)HttpStatusCode.NotFound,
+                    StatusCode = (int)HttpStatusCode.OK,
                     Message = ApiMessageConstant.AllEmailTemplateTypeNotFound,
                     Data = false
                 });

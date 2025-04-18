@@ -89,7 +89,7 @@ namespace KHRMS.UnitTest.ControllerTests
             _mockService.Setup(service => service.UpdateAsync(updatedPaymentInfo)).Returns(Task.CompletedTask);
 
             // Act
-            var result = await _controller.Update(1, updatedPaymentInfo);
+            var result = await _controller.Update(updatedPaymentInfo);
             var okResult = result as OkObjectResult;
 
             // Assert

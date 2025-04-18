@@ -81,9 +81,9 @@ namespace KHRMS
             if (shift == null)
             {
                 Log.Warning("ShiftController - Shift not found for ID: {Id}", id);
-                return NotFound(new ApiResponse<ShiftMaster>
+                return Ok(new ApiResponse<ShiftMaster>
                 {
-                    StatusCode = (int)HttpStatusCode.NotFound,
+                    StatusCode = (int)HttpStatusCode.OK,
                     Message = ApiMessageConstant.EmployeeShiftRequestsNotFound,
                     Data = null
                 });
@@ -186,9 +186,9 @@ namespace KHRMS
             if (shiftMaster.Id == null)
             {
                 Log.Warning("ShiftController - ID Not Found. Route ID: {RouteId}, Body ID: {BodyId}", shiftMaster.Id);
-                return BadRequest(new ApiResponse<bool>
+                return Ok(new ApiResponse<bool>
                 {
-                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    StatusCode = (int)HttpStatusCode.OK,
                     Message = "ID Does Not Found!",
                     Data = false
                 });
@@ -254,9 +254,9 @@ namespace KHRMS
             if (shift == null)
             {
                 Log.Warning("ShiftController - Shift not found for deletion with ID: {Id}", id);
-                return NotFound(new ApiResponse<ShiftMaster>
+                return Ok(new ApiResponse<ShiftMaster>
                 {
-                    StatusCode = (int)HttpStatusCode.NotFound,
+                    StatusCode = (int)HttpStatusCode.OK,
                     Message = ApiMessageConstant.EmployeeShiftRequestsNotFound,
                     Data = null
                 });

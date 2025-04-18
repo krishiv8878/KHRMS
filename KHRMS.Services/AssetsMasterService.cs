@@ -73,6 +73,7 @@ namespace KHRMS.Services
                     assetsMasterDetail.AssetsMasterName = assetsMaster.AssetsMasterName;
                     assetsMasterDetail.Description = assetsMaster.Description;
                     assetsMasterDetail.UpdatedDate = DateTime.Now;
+                    assetsMasterDetail.SerialNumber = assetsMaster.SerialNumber;
                     // ✅ Ensure IsActive status is updated
                     assetsMasterDetail.IsActive = assetsMaster.IsActive;
                     _unitOfWork.AssetsMasters.Update(assetsMasterDetail);

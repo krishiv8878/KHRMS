@@ -46,9 +46,9 @@ namespace KHRMS.Controllers
             if (projectList == null || !projectList.Any())
             {
                 Log.Warning("ProjectMasterController - No project master records found.");
-                return NotFound(new ApiResponse<List<ProjectMaster>>
+                return Ok(new ApiResponse<List<ProjectMaster>>
                 {
-                    StatusCode = (int)HttpStatusCode.NotFound,
+                    StatusCode = (int)HttpStatusCode.OK,
                     Message = ApiMessageConstant.ProjectMasterNotFound,
                     Data = null
                 });
@@ -166,7 +166,7 @@ namespace KHRMS.Controllers
             if (projectMaster.Id == null)
             {
                 Log.Warning("ProjectMasterController - ID Not Found: URL ID {Id}, Body ID {BodyId}", projectMaster.Id);
-                return BadRequest("ID Does not Exist!");
+                return Ok("ID Does not Exist!");
             }
 
             var result = await _projectMasterService.UpdateProjectMaster(projectMaster);
