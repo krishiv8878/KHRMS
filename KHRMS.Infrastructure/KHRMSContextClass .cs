@@ -18,6 +18,17 @@ namespace KHRMS.Infrastructure
         public DbSet<AssetsMaster> AssetsMasters { get; set; }
         public DbSet<LeaveType> LeaveType { get; set; }
         public DbSet<UserLogin> UserLogins { get; set; }
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            // Set UserLogin ID to start from 1001
+            modelBuilder.Entity<UserLogin>(entity =>
+            {
+                entity.Property(e => e.Id)
+                      .UseIdentityColumn(seed: 1001, increment: 1);
+            });
+        }
         public DbSet<ProjectMaster> ProjectMasters { get; set; }
         public DbSet<UserRegistration> UserRegistrations { get; set; }
         public DbSet<RoleMaster> RoleMasters { get; set; }

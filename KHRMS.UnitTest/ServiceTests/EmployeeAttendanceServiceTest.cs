@@ -15,36 +15,54 @@ namespace KHRMS.UnitTest.ServiceTests
         [Fact]
         public async Task Add_Async_ShouldSucceed_WhenDataIsValid()
         {
+            var baseDate = new DateTime(1, 1, 1); // represents time-only values
+
+            var employeeAttendance = new EmployeeAttendance()
+            {
+                Id = 1,
+                ClockIn = DateTime.Now,
+                ClockOut = DateTime.Now.AddHours(7),
+                EmployeeId = 1,
+                TotalHours = baseDate.AddHours(7),
+                EffectiveHours = baseDate.AddHours(6),
+            };
+
+            _mock.Setup(x => x.AddAsync(It.IsAny<EmployeeAttendance>())).Returns(Task.CompletedTask);
+
+            await _mock.Object.AddAsync(employeeAttendance);
+
+            _mock.Verify(x => x.AddAsync(It.Is<EmployeeAttendance>(e =>
+                e.Id == 1 &&
+                e.EmployeeId == 1 &&
+                e.TotalHours == baseDate.AddHours(7) &&
+                e.EffectiveHours == baseDate.AddHours(6)
+            )), Times.Once);
+        }
+
+        [Fact]
+        public async Task Add_Async_ShouldThrowException_WhenDataIsInvalid()
+        {
+            var baseDate = new DateTime(1, 1, 1); // Used to simulate duration values
+
             var employeeAttendance = new EmployeeAttendance()
             {
                 Id = 1,
                 ClockIn = DateTime.Now,
                 ClockOut = DateTime.Now,
-                EmployeeId = 1,
-                TotalHours = new TimeSpan(7),
-                EffectiveHours = new TimeSpan(6),
-            };
-            _mock.Setup(x => x.AddAsync(It.IsAny<EmployeeAttendance>())).Returns(Task.CompletedTask);
-            await _mock.Object.AddAsync(employeeAttendance);
-            _mock.Verify(x => x.AddAsync(It.IsAny<EmployeeAttendance>()), Times.Once);
-        }
-        [Fact]
-        public async Task Add_Async_ShouldThrowException_WhenDataIsInvalid()
-        {
-            var employeeaAttendance = new EmployeeAttendance()
-            {
-                Id = 1,
-                ClockIn = DateTime.Now,
-                ClockOut = DateTime.Now,
-                EmployeeId = 999,//employee does not exist
-                TotalHours = new TimeSpan(7),
-                EffectiveHours = new TimeSpan(6)
+                EmployeeId = 999, // employee does not exist
+                TotalHours = baseDate.AddHours(7),
+                EffectiveHours = baseDate.AddHours(6)
             };
 
-            _mock.Setup(x => x.AddAsync(It.IsAny<EmployeeAttendance>())).Throws(new ArgumentException("Invalid Data of EmployeeAttendance"));
-            var exception = await Assert.ThrowsAsync<ArgumentException>(() => _mock.Object.AddAsync(employeeaAttendance));
+            _mock.Setup(x => x.AddAsync(It.IsAny<EmployeeAttendance>()))
+                 .Throws(new ArgumentException("Invalid Data of EmployeeAttendance"));
+
+            var exception = await Assert.ThrowsAsync<ArgumentException>(() =>
+                _mock.Object.AddAsync(employeeAttendance));
+
             Assert.Equal("Invalid Data of EmployeeAttendance", exception.Message);
         }
+
         [Fact]
         public async Task Add_Async_ShouldThrowException_WhenDataIsNull()
         {
@@ -59,20 +77,41 @@ namespace KHRMS.UnitTest.ServiceTests
         [Fact]
         public async Task Get_AllAsync_ShouldReturnEmployeeAttendances_WhenDataExists()
         {
+            var baseDate = new DateTime(1, 1, 1); // Used to simulate durations
+
             var employeeAttendance = new List<EmployeeAttendance>
-            {
-                new EmployeeAttendance() {Id = 1,ClockIn=DateTime.Now,ClockOut=DateTime.Now,EmployeeId=1,TotalHours = new TimeSpan(7), EffectiveHours = new TimeSpan(6)},
-                new EmployeeAttendance() {Id = 2,ClockIn=DateTime.Now,ClockOut=DateTime.Now,EmployeeId=2,TotalHours = new TimeSpan(7), EffectiveHours = new TimeSpan(5)}
-            };
+    {
+        new EmployeeAttendance
+        {
+            Id = 1,
+            ClockIn = DateTime.Now,
+            ClockOut = DateTime.Now,
+            EmployeeId = 1,
+            TotalHours = baseDate.AddHours(7),
+            EffectiveHours = baseDate.AddHours(6)
+        },
+        new EmployeeAttendance
+        {
+            Id = 2,
+            ClockIn = DateTime.Now,
+            ClockOut = DateTime.Now,
+            EmployeeId = 2,
+            TotalHours = baseDate.AddHours(7),
+            EffectiveHours = baseDate.AddHours(5)
+        }
+    };
+
             _mock.Setup(x => x.GetAllAsync()).ReturnsAsync(employeeAttendance);
+
             var result = await _mock.Object.GetAllAsync();
 
             _mock.Verify(x => x.GetAllAsync(), Times.Once);
 
-            Assert.Equal(employeeAttendance.Count(), result.Count());
+            Assert.Equal(employeeAttendance.Count, result.Count());
             Assert.Contains(result, r => r.Id == 1);
             Assert.Contains(result, r => r.Id == 2);
         }
+
         [Fact]
         public async Task Get_AllAsync_ShouldThrowException_WhenNoDataExists()
         {
@@ -118,48 +157,63 @@ namespace KHRMS.UnitTest.ServiceTests
         [Fact]
         public async Task Update_Async_ShouldSucceed_WhenDataIsValid()
         {
+            var baseDate = new DateTime(1, 1, 1); // Base date to simulate duration
+
             var employeeAttendance = new EmployeeAttendance()
             {
                 Id = 1,
                 ClockIn = DateTime.Now,
                 ClockOut = DateTime.Now,
                 EmployeeId = 1,
-                TotalHours = new TimeSpan(7),
-                EffectiveHours = new TimeSpan(6),
+                TotalHours = baseDate.AddHours(7),
+                EffectiveHours = baseDate.AddHours(6),
             };
-            var updateEmployeeattendance = new EmployeeAttendance()
+
+            var updateEmployeeAttendance = new EmployeeAttendance()
             {
                 Id = 1,
                 ClockIn = DateTime.Now,
-                ClockOut = new DateTime(2025, 3, 17, 7, 0, 0),//update clockOut time
+                ClockOut = new DateTime(2025, 3, 17, 7, 0, 0), // Updated ClockOut
                 EmployeeId = 1,
-                TotalHours = new TimeSpan(10),
-                EffectiveHours = new TimeSpan(9),
+                TotalHours = baseDate.AddHours(10),
+                EffectiveHours = baseDate.AddHours(9),
             };
+
             _mock.Setup(x => x.UpdateAsync(It.IsAny<EmployeeAttendance>())).Returns(Task.CompletedTask);
 
-            await _mock.Object.UpdateAsync(updateEmployeeattendance);
+            await _mock.Object.UpdateAsync(updateEmployeeAttendance);
+
             _mock.Verify(x => x.UpdateAsync(It.Is<EmployeeAttendance>(r =>
-                        r.Id == updateEmployeeattendance.Id &&
-                        r.ClockOut == updateEmployeeattendance.ClockOut)), Times.Once);
+                r.Id == updateEmployeeAttendance.Id &&
+                r.ClockOut == updateEmployeeAttendance.ClockOut &&
+                r.TotalHours == baseDate.AddHours(10) &&
+                r.EffectiveHours == baseDate.AddHours(9)
+            )), Times.Once);
         }
+
 
         [Fact]
         public async Task Update_Async_ShouldThrowException_WhenAttendanceNotFound()
         {
+            var baseDate = new DateTime(1, 1, 1); // Base date for time-only logic
+
             var employeeAttendance = new EmployeeAttendance()
             {
-                Id = 999,//id does not exist
+                Id = 999, // ID does not exist
                 ClockIn = DateTime.Now,
                 ClockOut = DateTime.Now,
                 EmployeeId = 1,
-                TotalHours = new TimeSpan(7),
-                EffectiveHours = new TimeSpan(6),
+                TotalHours = baseDate.AddHours(7),
+                EffectiveHours = baseDate.AddHours(6),
             };
-            _mock.Setup(x => x.UpdateAsync(It.IsAny<EmployeeAttendance>())).Throws(new ArgumentException("EmployeeAttendance not found"));
 
-            var exception = await Assert.ThrowsAsync<ArgumentException>(() => _mock.Object.UpdateAsync(employeeAttendance));
+            _mock.Setup(x => x.UpdateAsync(It.IsAny<EmployeeAttendance>()))
+                 .Throws(new ArgumentException("EmployeeAttendance not found"));
+
+            var exception = await Assert.ThrowsAsync<ArgumentException>(() =>
+                _mock.Object.UpdateAsync(employeeAttendance));
+
             Assert.Equal("EmployeeAttendance not found", exception.Message);
         }
     }
-}
+    }
