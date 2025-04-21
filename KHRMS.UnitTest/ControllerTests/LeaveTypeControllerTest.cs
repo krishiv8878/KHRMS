@@ -69,7 +69,7 @@ namespace KHRMS.UnitTest.ControllerTests
             mock.Setup(x => x.UpdateLeaveType(leavetype)).ReturnsAsync(true);
 
             // Act
-            var result = await controller.UpdateLeaveType(1, leavetype);
+            var result = await controller.UpdateLeaveType(leavetype);
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);

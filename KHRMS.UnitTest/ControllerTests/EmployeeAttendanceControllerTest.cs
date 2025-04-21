@@ -1,4 +1,5 @@
 ﻿using KHRMS.Core;
+using KHRMS.Infrastructure;
 using KHRMS.Services;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
@@ -18,18 +19,23 @@ namespace KHRMS.UnitTest.ControllerTests
         [Fact]
         public async Task Add_EmployeeAttendance_WhenValidAttendanceProvided_ShouldAddSuccessfully()
         {
-            EmployeeAttendance employeeAttendance = new EmployeeAttendance()
+            var now = DateTime.Now;
+            var baseDate = new DateTime(1, 1, 1);
+
+            var employeeAttendance = new EmployeeAttendance()
             {
                 Id = 1,
-                ClockIn = DateTime.Now,
-                ClockOut = DateTime.Now,
+                ClockIn = now,
+                ClockOut = now.AddHours(9),
                 EmployeeId = 1,
-                TotalHours = new TimeSpan(7),
-                EffectiveHours = new TimeSpan(6),
+                TotalHours = baseDate.AddHours(9),
+                EffectiveHours = baseDate.AddHours(8),
             };
+
             _mock.Setup(x => x.AddAsync(It.IsAny<EmployeeAttendance>())).Returns(Task.CompletedTask);
 
-            var result = _controller.AddEmployeeAttendanceRequest(employeeAttendance);
+            var result = await _controller.AddEmployeeAttendanceRequest(employeeAttendance);
+
             Assert.NotNull(result);
             _mock.Verify(x => x.AddAsync(It.IsAny<EmployeeAttendance>()), Times.Once);
         }
@@ -37,24 +43,26 @@ namespace KHRMS.UnitTest.ControllerTests
         [Fact]
         public async Task Get_AllEmployeeAttendances_WhenCalled_ShouldReturnListOfAttendances()
         {
-            var employeeAttendance = new List<EmployeeAttendance>
+            var baseDate = new DateTime(1, 1, 1);
+
+            var employeeAttendanceList = new List<EmployeeAttendance>
             {
-                new EmployeeAttendance() {Id = 1,ClockIn=DateTime.Now,ClockOut=DateTime.Now,EmployeeId=1,TotalHours = new TimeSpan(7), EffectiveHours = new TimeSpan(6)},
-                new EmployeeAttendance() {Id = 2,ClockIn=DateTime.Now,ClockOut=DateTime.Now,EmployeeId=2,TotalHours = new TimeSpan(7), EffectiveHours = new TimeSpan(6),}
+                new EmployeeAttendance() { Id = 1, ClockIn = DateTime.Now, ClockOut = DateTime.Now.AddHours(8), EmployeeId = 1, TotalHours = baseDate.AddHours(8), EffectiveHours = baseDate.AddHours(7) },
+                new EmployeeAttendance() { Id = 2, ClockIn = DateTime.Now, ClockOut = DateTime.Now.AddHours(9), EmployeeId = 2, TotalHours = baseDate.AddHours(9), EffectiveHours = baseDate.AddHours(8) }
             };
-            _mock.Setup(x => x.GetAllAsync()).ReturnsAsync(employeeAttendance);
+
+            _mock.Setup(x => x.GetAllAsync()).ReturnsAsync(employeeAttendanceList);
+
             var result = await _controller.GetAll();
 
             var okResult = Assert.IsType<OkObjectResult>(result);
-
-            var returnValue = Assert.IsType<KHRMS.Infrastructure.ApiResponse<IEnumerable<EmployeeAttendance>>>(okResult.Value);
+            var returnValue = Assert.IsType<ApiResponse<IEnumerable<EmployeeAttendance>>>(okResult.Value);
 
             Assert.NotNull(result);
-            Assert.Equal(employeeAttendance.Count(), returnValue.Data.Count());
+            Assert.Equal(employeeAttendanceList.Count, returnValue.Data.Count());
             Assert.Contains(returnValue.Data, r => r.Id == 1);
             Assert.Contains(returnValue.Data, r => r.Id == 2);
             _mock.Verify(x => x.GetAllAsync(), Times.Once);
-
         }
 
         [Fact]
@@ -72,33 +80,27 @@ namespace KHRMS.UnitTest.ControllerTests
         [Fact]
         public async Task Update_EmployeeAttendance_WhenValidUpdateProvided_ShouldUpdateSuccessfully()
         {
-            var employeeAttendance = new EmployeeAttendance()
+            var now = DateTime.Now;
+            var baseDate = new DateTime(1, 1, 1);
+
+            var updateEmployeeAttendance = new EmployeeAttendance()
             {
                 Id = 1,
-                ClockIn = DateTime.Now,
-                ClockOut = DateTime.Now,
+                ClockIn = now,
+                ClockOut = now.AddHours(10), // updated ClockOut
                 EmployeeId = 1,
-                TotalHours = new TimeSpan(7),
-                EffectiveHours = new TimeSpan(6),
-            };
-            var updateEmployeeattendance = new EmployeeAttendance()
-            {
-                Id = 1,
-                ClockIn = DateTime.Now,
-                ClockOut = new DateTime(2025, 3, 17, 7, 0, 0),//update clockOut time
-                EmployeeId = 1,
-                TotalHours = new TimeSpan(7),
-                EffectiveHours = new TimeSpan(6),
+                TotalHours = baseDate.AddHours(10),
+                EffectiveHours = baseDate.AddHours(9),
             };
 
             _mock.Setup(x => x.UpdateAsync(It.IsAny<EmployeeAttendance>())).Returns(Task.CompletedTask);
 
-            var result = await _controller.UpdateEmployeeAttendanceRequest(updateEmployeeattendance);
-            Assert.NotNull(result);
+            var result = await _controller.UpdateEmployeeAttendanceRequest(updateEmployeeAttendance);
 
+            Assert.NotNull(result);
             _mock.Verify(x => x.UpdateAsync(It.Is<EmployeeAttendance>(r =>
-                r.Id == updateEmployeeattendance.Id &&
-                r.ClockOut == updateEmployeeattendance.ClockOut)), Times.Once());
+                r.Id == updateEmployeeAttendance.Id &&
+                r.ClockOut == updateEmployeeAttendance.ClockOut)), Times.Once);
         }
     }
 }

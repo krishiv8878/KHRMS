@@ -19,11 +19,17 @@ namespace KHRMS.Core
         public DateTime ClockOut { get; set; }
 
         [Required(ErrorMessage = "Total Hours is required")]
-        public TimeSpan TotalHours { get; set; } // ✅ Changed from DateTime to TimeSpan
+        public DateTime TotalHours { get; set; } //  Changed from DateTime to TimeSpan
 
         [Required(ErrorMessage = "Gross Hours is required")]
-        public TimeSpan EffectiveHours { get; set; }
+        public DateTime EffectiveHours { get; set; }
 
-       
+        [StringLength(500)]
+        public string? RegularizationReason { get; set; } // Reason provided by employee for irregularity
+
+        public bool IsRegularized { get; set; } = false; // Indicates if manager has approved the regularization
+
+        public DateTime? RegularizationRequestedDate { get; set; } // Timestamp when employee sent the request
     }
 }
+

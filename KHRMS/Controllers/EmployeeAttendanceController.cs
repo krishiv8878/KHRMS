@@ -153,6 +153,40 @@ namespace KHRMS
                 Data = true
             });
         }
+
+
+
+        [HttpPost("AddRegularizationRequest")]
+        public async Task<IActionResult> Create([FromBody] EmployeeAttendance attendance)
+        {
+            Log.Information("EmployeeAttendanceController - AddLeaveRequest called.");
+
+            if (attendance == null)
+            {
+                Log.Warning("EmployeeAttendanceController - Invalid Employee attendance request object.");
+                return BadRequest("Invalid data.");
+            }
+
+            var result = await _attendanceService.SendRegularizationRequestEmail(attendance);
+            if (result)
+            {
+                Log.Information("EmployeeAttendanceController - Regularization request added successfully.");
+                return Ok(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.OK,
+                    Message = ApiMessageConstant.RegularizationRequestTypeAdded,
+                    Data = true
+                });
+            }
+
+            Log.Warning("EmployeeAttendanceController - Failed to add Regularization request.");
+            return BadRequest(new ApiResponse<bool>
+            {
+                StatusCode = (int)HttpStatusCode.BadRequest,
+                Message = ApiMessageConstant.RegularizationRequestNotAdded,
+                Data = false
+            });
+        }
     }
 
 }
