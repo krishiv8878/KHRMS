@@ -13,6 +13,9 @@ namespace KHRMS.Services
 
 
 
+        public Task<bool> ApproveLeaveRequestAsync(int id);
+
+
     }
 }
 

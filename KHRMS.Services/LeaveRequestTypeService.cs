@@ -252,6 +252,22 @@ namespace KHRMS.Services
             return true;
         }
 
+
+        public async Task<bool> ApproveLeaveRequestAsync(int id)
+        {
+            var leaveRequest = await _unitOfWork.LeaveRequest.GetByIdAsync(id);
+
+            if (leaveRequest == null || leaveRequest.Status == "Approved")
+                return false;
+
+            leaveRequest.Status = "Approved";
+            leaveRequest.ApprovedDate = DateTime.UtcNow;
+
+            _unitOfWork.LeaveRequest.Update(leaveRequest);
+            return true;
+        }
+
+
         private string GetFormattedDate(DateTime date)
         {
             int day = date.Day;
