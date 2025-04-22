@@ -110,7 +110,7 @@ namespace KHRMS
         /// <param name="shiftMaster">Updated Employee Shift Info object</param>
 
         [HttpPut("UpdateShift/{id}")]
-        public async Task<IActionResult> Update(long id, [FromBody] ShiftMaster shiftMaster)
+        public async Task<IActionResult> Update([FromBody] ShiftMaster shiftMaster)
         {
             Log.Information("ShiftController - Update called for ID: {Id}", shiftMaster.Id);
 

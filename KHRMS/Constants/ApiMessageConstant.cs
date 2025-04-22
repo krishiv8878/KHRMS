@@ -154,7 +154,8 @@ namespace KHRMS
         public static readonly string AttendanceRequestDeleted = "Attendance request deleted successfully.";
         public static readonly string RegularizationRequestTypeAdded = "RegularizationRequest saved successfully";
         public static readonly string RegularizationRequestNotAdded = "RegularizationRequest is not saved syccessfully";
-
+        public static readonly string RegularizationRequestApproved = "RegularizationRequest is approved syccessfully";
+        public static readonly string RegularizationRequestNotApproved = "RegularizationRequest is rejected";
         public static readonly string InvalidData = "Invalid data provided.";
 
         /// <summary>

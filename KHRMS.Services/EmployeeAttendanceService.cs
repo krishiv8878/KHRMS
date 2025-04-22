@@ -150,8 +150,8 @@ namespace KHRMS.Services
             };
             await _unitOfWork.EmployeeAttendance.Add(regularizationRequest);
 
-
-            var employee = await _unitOfWork.Employees.GetById(attendance.EmployeeId);
+            _unitOfWork.Save();
+            var employee = await _unitOfWork.Employees.GetById(employeeId);
             if (employee == null)
                 throw new Exception("Employee not found.");
 
@@ -185,6 +185,61 @@ namespace KHRMS.Services
 
             return true;
         }
+
+
+        public async Task<bool> ApproveRegularizationRequestAsync(EmployeeAttendance attendance)
+        {
+            var attendanceRecord = await _unitOfWork.EmployeeAttendance.GetById(attendance.Id);
+            if (attendanceRecord == null || attendanceRecord.IsRegularized) return false;
+
+            var managerId = _userContext.GetCurrentEmployeeId();
+
+            var employee = await _unitOfWork.Employees.GetById(attendanceRecord.EmployeeId);
+            var manager = await _unitOfWork.Employees.GetById(managerId);
+
+            if (employee == null || manager == null) return false;
+
+            attendanceRecord.IsRegularized = true;
+            attendanceRecord.RegularizedBy = managerId;
+            attendanceRecord.RegularizedDate = DateTime.Now;
+            attendanceRecord.UpdatedDate = DateTime.Now;
+
+
+            _unitOfWork.EmployeeAttendance.Update(attendanceRecord);
+            var result = _unitOfWork.Save();
+
+            if (result <= 0) return false;
+
+            var dict = new Dictionary<string, string>
+    {
+        { "ManagerName", $"{manager.FirstName} {manager.LastName}" },
+        { "Date", attendanceRecord.ClockIn.ToString("dd-MM-yyyy") },
+        { "RegularizationReason", attendanceRecord.RegularizationReason ?? "No specific reason provided." },
+        { "LeaveReason", "RegularizationRequest Approval Request" },
+        { "EmployeeName", $"{employee.FirstName} {employee.LastName}" },
+        { "ManagerEmail", manager.EmailAddress }
+    };
+
+            string subject = $"Your Regularization Request for {attendanceRecord.ClockIn:dd-MM-yyyy} Has Been Approved";
+
+            try
+            {
+                await _sendEmailService.SendTemplateEmailAsync(
+                    employee.EmailAddress,
+                    subject,
+                    dict,
+                    "RegularizationRequestApproved"
+                );
+            }
+            catch (Exception ex)
+            {
+                // Optional: log the exception if needed
+                // Log.Error(ex, "Email sending failed for regularization approval.");
+            }
+
+            return true;
+        }
+
 
     }
 }
