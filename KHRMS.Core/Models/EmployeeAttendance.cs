@@ -30,6 +30,10 @@ namespace KHRMS.Core
         public bool IsRegularized { get; set; } = false; // Indicates if manager has approved the regularization
 
         public DateTime? RegularizationRequestedDate { get; set; } // Timestamp when employee sent the request
+
+        public long? RegularizedBy { get; set; } // ⬅ Optional: Manager who approved
+
+        public DateTime? RegularizedDate { get; set; } // ⬅ Optional: Date of approval
     }
 }
 

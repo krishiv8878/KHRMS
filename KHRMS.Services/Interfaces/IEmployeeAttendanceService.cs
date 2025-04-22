@@ -17,6 +17,9 @@ namespace KHRMS.Services
 
         Task<bool> SendRegularizationRequestEmail(EmployeeAttendance attendance);
 
+        Task<bool> ApproveRegularizationRequestAsync(EmployeeAttendance attendance);
+
+
     }
 }
 
