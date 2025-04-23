@@ -16,6 +16,7 @@ namespace KHRMS.Services
         Task UpdateExistingAsync(EmployeeAttendance attendance,EmployeeAttendance attendancebyid);
 
         Task<bool> SendRegularizationRequestEmail(EmployeeAttendance attendance);
+        Task<bool> ApproveRegularizationRequestAsync(EmployeeAttendance attendance);
 
     }
 }

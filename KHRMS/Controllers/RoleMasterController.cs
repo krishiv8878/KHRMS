@@ -93,7 +93,7 @@ namespace KHRMS.Controllers
         /// <returns></returns>
 
         [HttpPut("UpdateRole/{id}")]
-        public async Task<IActionResult> UpdateRole(long id, RoleMaster roleMaster)
+        public async Task<IActionResult> UpdateRole(RoleMaster roleMaster)
         {
             Log.Information("RoleMasterController - UpdateRole called for ID: {Id}", roleMaster.Id);
 

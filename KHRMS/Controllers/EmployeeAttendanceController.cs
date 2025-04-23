@@ -187,6 +187,45 @@ namespace KHRMS
                 Data = false
             });
         }
+
+
+        [HttpPost("ApproveRegularizationRequest")]
+        public async Task<IActionResult> ApproveRegularization([FromBody] EmployeeAttendance attendance)
+        {
+            Log.Information("EmployeeAttendanceController - ApproveRegularizationRequest called.");
+
+            if (attendance == null || attendance.Id == 0)
+            {
+                Log.Warning("EmployeeAttendanceController - Invalid attendance approval request object.");
+                return BadRequest(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = "Invalid attendance record provided.",
+                    Data = false
+                });
+            }
+
+            var result = await _attendanceService.ApproveRegularizationRequestAsync(attendance);
+            if (result)
+            {
+                Log.Information("EmployeeAttendanceController - Regularization request approved successfully.");
+                return Ok(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.OK,
+                    Message = ApiMessageConstant.RegularizationRequestApproved,
+                    Data = true
+                });
+            }
+
+            Log.Warning("EmployeeAttendanceController - Failed to approve regularization request.");
+            return BadRequest(new ApiResponse<bool>
+            {
+                StatusCode = (int)HttpStatusCode.BadRequest,
+                Message = ApiMessageConstant.RegularizationRequestNotApproved,
+                Data = false
+            });
+        }
+
     }
 
 }

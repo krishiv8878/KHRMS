@@ -89,7 +89,7 @@ namespace KHRMS.Controllers
         /// </summary>
 
         [HttpPut("UpdateProjectMaster/{id}")]
-        public async Task<IActionResult> UpdateProjectMaster(long id, [FromBody] ProjectMaster projectMaster)
+        public async Task<IActionResult> UpdateProjectMaster( [FromBody] ProjectMaster projectMaster)
         {
             Log.Information("ProjectMasterController - UpdateProjectMaster called for ID: {Id}", projectMaster.Id);
 
