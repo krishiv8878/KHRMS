@@ -172,6 +172,7 @@
 using KHRMS.Core;
 using KHRMS.Infrastructure;
 using KHRMS.Services.Interfaces;
+using KHRMS.Services.Request;
 using Microsoft.EntityFrameworkCore;
 
 namespace KHRMS.Services
@@ -210,6 +211,8 @@ namespace KHRMS.Services
                 IsApproved = false,
                 IsDeleted = leaveRequest.IsDeleted,
                 LeaveReason = leaveRequest.LeaveReason,
+                LeaveMode = leaveRequest.LeaveMode,
+                LeaveTypeId = leaveRequest.LeaveTypeId,
             };
 
             await _unitOfWork.LeaveRequest.Add(leaverequest);
@@ -263,11 +266,27 @@ namespace KHRMS.Services
             return $"{day}{suffix} {date:MMMM yyyy}";
         }
 
-        public async Task<IEnumerable<LeaveRequest>> GetAllLeaveRequestType()
+        public async Task<IEnumerable<LeaveReqestModel>> GetAllLeaveRequestType()
         {
 
-             return await _unitOfWork.LeaveRequest.GetAll();
-           
+            var requests = await _unitOfWork.LeaveRequest.GetAll();
+            var leavetypes = (await _unitOfWork.LeaveType.GetAll());
+
+            var result = from request in requests
+                         join leaveType in leavetypes on request.LeaveTypeId equals leaveType.Id
+                         select new LeaveReqestModel 
+                         {
+                             Id = request.Id,
+                             StartDate = request.StartDate,
+                             EndDate = request.EndDate,
+                             LeaveMode = request.LeaveMode,
+                             LeaveReson = request.LeaveReason,
+                             LeaveTypeName = leaveType.Type
+                         };
+
+
+            return result;
+
 
         }
 

@@ -4,6 +4,7 @@ using KHRMS.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace KHRMS.Infrastructure.Migrations
 {
     [DbContext(typeof(KHRMSContextClass))]
-    partial class KHRMSContextClassModelSnapshot : ModelSnapshot
+    [Migration("20250424104046_Add_LeaveType_FK_in_leaveRequest_table")]
+    partial class Add_LeaveType_FK_in_leaveRequest_table
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -311,10 +314,6 @@ namespace KHRMS.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<string>("PrimaryEmailAddress")
-                        .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)");
-
                     b.Property<string>("ShiftIds")
                         .HasColumnType("nvarchar(max)");
 
@@ -349,8 +348,8 @@ namespace KHRMS.Infrastructure.Migrations
                     b.Property<DateTime?>("CreatedDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<DateTime>("EffectiveHours")
-                        .HasColumnType("datetime2");
+                    b.Property<TimeSpan>("EffectiveHours")
+                        .HasColumnType("time");
 
                     b.Property<long>("EmployeeId")
                         .HasColumnType("bigint");
@@ -361,24 +360,8 @@ namespace KHRMS.Infrastructure.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
-                    b.Property<bool>("IsRegularized")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("RegularizationReason")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<DateTime?>("RegularizationRequestedDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<long?>("RegularizedBy")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTime?>("RegularizedDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("TotalHours")
-                        .HasColumnType("datetime2");
+                    b.Property<TimeSpan>("TotalHours")
+                        .HasColumnType("time");
 
                     b.Property<int>("UpdatedBy")
                         .HasColumnType("int");
@@ -609,10 +592,6 @@ namespace KHRMS.Infrastructure.Migrations
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
-
-                    b.Property<string>("LeaveMode")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("LeaveReason")
                         .IsRequired()
@@ -980,7 +959,7 @@ namespace KHRMS.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bigint");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"), 1001L);
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<int>("CreatedBy")
                         .HasColumnType("int");

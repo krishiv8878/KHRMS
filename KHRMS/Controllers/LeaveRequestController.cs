@@ -3,6 +3,7 @@ using KHRMS.Infrastructure;
 using KHRMS.Infrastructure.Migrations;
 using KHRMS.Services;
 using KHRMS.Services.Interfaces;
+using KHRMS.Services.Request;
 using Microsoft.AspNetCore.Mvc;
 using Serilog;
 using System.Net;
@@ -35,7 +36,7 @@ namespace KHRMS
             }
 
             Log.Information("LeaveRequestController - {Count} leave requests found.", result.Count());
-            return Ok(new ApiResponse<List<LeaveRequest>>
+            return Ok(new ApiResponse<List<LeaveReqestModel>>
             {
                 StatusCode = (int)HttpStatusCode.OK,
                 Message = ApiMessageConstant.LeaveRequestTypeFound,
