@@ -12,6 +12,11 @@ namespace KHRMS.Core
         [ForeignKey("Employee")]
         public long EmployeeId { get; set; }
         public virtual Employee? Employee { get; set; }
+
+        [ForeignKey("LeaveType")]
+        public long LeaveTypeId { get; set; }
+        public virtual LeaveType? LeaveType { get; set;}
+        public string LeaveMode { get; set; }
         [Required]
         public DateTime StartDate { get; set; }
         [Required]
