@@ -318,7 +318,35 @@ namespace KHRMS.Services
             employeeDetails.IsActive = employeeRequestModel.IsActive;
             employeeDetails.UpdatedDate = DateTime.Now;
             employeeDetails.ShiftIds = employeeRequestModel.ShiftId;
-            employeeDetails.ManagerId = employeeRequestModel.ManagerId;
+            employeeDetails.ManagerId = employeeRequestModel.ManagerId;      
+            employeeDetails.PrimaryEmailAddress = employeeRequestModel.PrimaryEmailAddress;
+            employeeDetails.PrimaryContactName = employeeRequestModel.PrimaryContactName;
+            employeeDetails.PrimaryContactRelationship = employeeRequestModel.PrimaryContactRelationship;
+            employeeDetails.PrimaryContactPhone = employeeRequestModel.PrimaryContactPhone;
+            employeeDetails.PrimaryContactEmail = employeeRequestModel.PrimaryContactEmail;
+            employeeDetails.PrimaryContactAddress = employeeRequestModel.PrimaryContactAddress;
+            employeeDetails.SecondaryContactName = employeeRequestModel.SecondaryContactName;
+            employeeDetails.SecondaryContactRelationship = employeeRequestModel.SecondaryContactRelationship;
+            employeeDetails.SecondaryContactPhone = employeeRequestModel.SecondaryContactPhone;
+            employeeDetails.SecondaryContactEmail = employeeRequestModel.SecondaryContactEmail;
+            employeeDetails.SecondaryContactAddress = employeeRequestModel.SecondaryContactAddress;
+            employeeDetails.Degree = employeeRequestModel.Degree;
+            employeeDetails.University = employeeRequestModel.University;
+            employeeDetails.YearOfPassing = employeeRequestModel.YearOfPassing;
+            employeeDetails.Percentage = employeeRequestModel.Percentage;
+            employeeDetails.CompanyName = employeeRequestModel.CompanyName;
+            employeeDetails.Designation = employeeRequestModel.Designation;
+            employeeDetails.ExperienceDuration = employeeRequestModel.ExperienceDuration;
+            employeeDetails.ExperienceLocation = employeeRequestModel.ExperienceLocation;
+            employeeDetails.Responsibilities = employeeRequestModel.Responsibilities;
+            employeeDetails.PassportNumber = employeeRequestModel.PassportNumber;
+            employeeDetails.Nationality = employeeRequestModel.Nationality;
+            employeeDetails.PassportIssueDate = employeeRequestModel.PassportIssueDate;
+            employeeDetails.PassportExpiryDate = employeeRequestModel.PassportExpiryDate;
+            employeeDetails.PassportScanCopy = employeeRequestModel.PassportScanCopy;
+            employeeDetails.Branch = employeeRequestModel.Branch;
+            employeeDetails.DateOfBirth = employeeRequestModel.DateOfBirth;
+
             _unitOfWork.Employees.Update(employeeDetails);
             var saveEmployeeResult = _unitOfWork.Save();
 
