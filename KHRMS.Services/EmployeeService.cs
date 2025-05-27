@@ -215,7 +215,7 @@ namespace KHRMS.Services
 
             return result > 0;
         }
-    
+
         public async Task<bool> DeleteEmployee(long employeeId)
         {
             if (employeeId > 0)
@@ -261,6 +261,33 @@ namespace KHRMS.Services
                 ManagerId = emp.ManagerId,
                 CreatedDate = emp.CreatedDate,
                 ShiftId = emp.ShiftIds,
+                PrimaryEmailAddress = emp.PrimaryEmailAddress,
+                PrimaryContactName = emp.PrimaryContactName,
+                PrimaryContactRelationship = emp.PrimaryContactRelationship,
+                PrimaryContactPhone = emp.PrimaryContactPhone,
+                PrimaryContactEmail = emp.PrimaryContactEmail,
+                PrimaryContactAddress = emp.PrimaryContactAddress,
+                SecondaryContactName = emp.SecondaryContactName,
+                SecondaryContactRelationship = emp.SecondaryContactRelationship,
+                SecondaryContactPhone = emp.SecondaryContactPhone,
+                SecondaryContactEmail = emp.SecondaryContactEmail,
+                SecondaryContactAddress = emp.SecondaryContactAddress,
+                Degree = emp.Degree,
+                University = emp.University,
+                YearOfPassing = emp.YearOfPassing,
+                Percentage = emp.Percentage,
+                CompanyName = emp.CompanyName,
+                Designation = emp.Designation,
+                ExperienceDuration = emp.ExperienceDuration,
+                ExperienceLocation = emp.ExperienceLocation,
+                Responsibilities = emp.Responsibilities,
+                PassportNumber = emp.PassportNumber,
+                Nationality = emp.Nationality,
+                PassportIssueDate = emp.PassportIssueDate,
+                PassportExpiryDate = emp.PassportExpiryDate,
+                PassportScanCopy = emp.PassportScanCopy,
+                Branch = emp.Branch,
+                DateOfBirth = emp.DateOfBirth,
                 RoleIds = employeeroleMapping
                     .Where(mapping => mapping.EmployeeId == emp.Id && mapping.IsActive)
                     .Select(mapping => mapping.RoleId)
@@ -318,7 +345,7 @@ namespace KHRMS.Services
             employeeDetails.IsActive = employeeRequestModel.IsActive;
             employeeDetails.UpdatedDate = DateTime.Now;
             employeeDetails.ShiftIds = employeeRequestModel.ShiftId;
-            employeeDetails.ManagerId = employeeRequestModel.ManagerId;      
+            employeeDetails.ManagerId = employeeRequestModel.ManagerId;
             employeeDetails.PrimaryEmailAddress = employeeRequestModel.PrimaryEmailAddress;
             employeeDetails.PrimaryContactName = employeeRequestModel.PrimaryContactName;
             employeeDetails.PrimaryContactRelationship = employeeRequestModel.PrimaryContactRelationship;
