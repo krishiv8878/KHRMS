@@ -54,6 +54,75 @@ namespace KHRMS.Services
         //    return result > 0;
         //}
 
+        //public async Task<bool> CreateEmployee(EmployeeRequestModel employeeRequestModel)
+        //{
+        //    if (employeeRequestModel == null)
+        //        return false;
+
+        //    var seniorEmployee = (await _unitOfWork.Employees.GetAll())
+        //        .OrderBy(emp => emp.DateOfJoining)
+        //        .FirstOrDefault();
+
+        //    var newEmployee = new Employee
+        //    {
+        //        EmployeeCode = employeeRequestModel.EmployeeCode,
+        //        FirstName = employeeRequestModel.FirstName,
+        //        LastName = employeeRequestModel.LastName,
+        //        EmailAddress = employeeRequestModel.EmailAddress,
+        //        MobileNumber = employeeRequestModel.MobileNumber,
+        //        PrimaryEmailAddress = employeeRequestModel.PrimaryEmailAddress, 
+        //        DesignationId = employeeRequestModel.DesignationId,
+        //        DateOfJoining = employeeRequestModel.DateOfJoining,
+        //        Gender = employeeRequestModel.Gender,
+        //        CurrentAddress = employeeRequestModel.CurrentAddress,
+        //        PermanentAddress = employeeRequestModel.PermanentAddress,
+        //        IsActive = employeeRequestModel.IsActive,
+        //        CreatedDate = DateTime.Now,
+        //        ShiftIds = employeeRequestModel.ShiftId,
+        //    };
+
+        //    await _unitOfWork.Employees.Add(newEmployee);
+        //    var result = _unitOfWork.Save();
+
+
+        //    // Add UserRegistration
+        //    var defaultPassword = "System@123";
+        //    var passwordHasher = new PasswordHasher<UserRegistration>();
+
+        //    var userRegistration = new UserRegistration
+        //    {
+        //        FirstName = newEmployee.FirstName,
+        //        LastName = newEmployee.LastName,
+        //        Email = newEmployee.EmailAddress,
+        //        MobileNumber = newEmployee.MobileNumber,
+        //        Address = newEmployee.CurrentAddress,
+        //        Password = passwordHasher.HashPassword(null, defaultPassword),
+        //        CreatedDate = DateTime.Now
+        //    };
+
+        //    await _unitOfWork.UserRegistrations.Add(userRegistration);
+        //    var regResult = _unitOfWork.Save();
+
+        //    // Add UserLogin
+        //    if (regResult > 0)
+        //    {
+        //        var userLogin = new KHRMS.Core.UserLogin
+        //        {
+        //            UserId = userRegistration.Id,
+        //            UserName = userRegistration.Email,
+        //            Email = userRegistration.Email,
+        //            Password = userRegistration.Password,
+        //            CreatedDate = DateTime.Now,
+        //            IsActive = true,
+        //            IsDeleted = false
+        //        };
+
+        //        await _unitOfWork.UserLogins.Add(userLogin);
+        //        _unitOfWork.Save();
+        //    }
+
+        //    return result > 0;
+        //}
         public async Task<bool> CreateEmployee(EmployeeRequestModel employeeRequestModel)
         {
             if (employeeRequestModel == null)
@@ -70,7 +139,7 @@ namespace KHRMS.Services
                 LastName = employeeRequestModel.LastName,
                 EmailAddress = employeeRequestModel.EmailAddress,
                 MobileNumber = employeeRequestModel.MobileNumber,
-                PrimaryEmailAddress = employeeRequestModel.PrimaryEmailAddress, 
+                PrimaryEmailAddress = employeeRequestModel.PrimaryEmailAddress,
                 DesignationId = employeeRequestModel.DesignationId,
                 DateOfJoining = employeeRequestModel.DateOfJoining,
                 Gender = employeeRequestModel.Gender,
@@ -79,16 +148,40 @@ namespace KHRMS.Services
                 IsActive = employeeRequestModel.IsActive,
                 CreatedDate = DateTime.Now,
                 ShiftIds = employeeRequestModel.ShiftId,
+                PrimaryContactName = employeeRequestModel.PrimaryContactName,
+                PrimaryContactRelationship = employeeRequestModel.PrimaryContactRelationship,
+                PrimaryContactPhone = employeeRequestModel.PrimaryContactPhone,
+                PrimaryContactEmail = employeeRequestModel.PrimaryContactEmail,
+                PrimaryContactAddress = employeeRequestModel.PrimaryContactAddress,
+                SecondaryContactName = employeeRequestModel.SecondaryContactName,
+                SecondaryContactRelationship = employeeRequestModel.SecondaryContactRelationship,
+                SecondaryContactPhone = employeeRequestModel.SecondaryContactPhone,
+                SecondaryContactEmail = employeeRequestModel.SecondaryContactEmail,
+                SecondaryContactAddress = employeeRequestModel.SecondaryContactAddress,
+                Degree = employeeRequestModel.Degree,
+                University = employeeRequestModel.University,
+                YearOfPassing = employeeRequestModel.YearOfPassing,
+                Percentage = employeeRequestModel.Percentage,
+                CompanyName = employeeRequestModel.CompanyName,
+                Designation = employeeRequestModel.Designation,
+                ExperienceDuration = employeeRequestModel.ExperienceDuration,
+                ExperienceLocation = employeeRequestModel.ExperienceLocation,
+                Responsibilities = employeeRequestModel.Responsibilities,
+                PassportNumber = employeeRequestModel.PassportNumber,
+                Nationality = employeeRequestModel.Nationality,
+                PassportIssueDate = employeeRequestModel.PassportIssueDate,
+                PassportExpiryDate = employeeRequestModel.PassportExpiryDate,
+                PassportScanCopy = employeeRequestModel.PassportScanCopy,
+                Branch = employeeRequestModel.Branch,
+                DateOfBirth = employeeRequestModel.DateOfBirth
+
             };
 
             await _unitOfWork.Employees.Add(newEmployee);
             var result = _unitOfWork.Save();
 
-
-            // Add UserRegistration
             var defaultPassword = "System@123";
             var passwordHasher = new PasswordHasher<UserRegistration>();
-
             var userRegistration = new UserRegistration
             {
                 FirstName = newEmployee.FirstName,
@@ -103,7 +196,6 @@ namespace KHRMS.Services
             await _unitOfWork.UserRegistrations.Add(userRegistration);
             var regResult = _unitOfWork.Save();
 
-            // Add UserLogin
             if (regResult > 0)
             {
                 var userLogin = new KHRMS.Core.UserLogin
@@ -123,8 +215,7 @@ namespace KHRMS.Services
 
             return result > 0;
         }
-
-
+    
         public async Task<bool> DeleteEmployee(long employeeId)
         {
             if (employeeId > 0)
