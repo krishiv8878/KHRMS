@@ -10,55 +10,50 @@ namespace KHRMS.UnitTest.ControllerTests
 {
     public class LeaveTypeControllerTest
     {
+        private readonly Mock<ILeaveTypeService> _mock;
+        private readonly LeaveTypeController _controller;
         public LeaveTypeControllerTest()
         {
-
+            _mock= new Mock<ILeaveTypeService>();
+            _controller = new LeaveTypeController(_mock.Object );
         }
 
 
         [Fact]
         public void Get_AllLeaveTypes_WhenCalled_ShouldReturnSuccess()
         {
-            var Id = 1;
-            var mock = new Mock<ILeaveTypeService>();
-            var controller = new LeaveTypeController(mock.Object);
-            mock.Setup(x => x.GetAllLeaveType());
-            Core.LeaveType leavetype = new Core.LeaveType()
+            var leavetype = new List<Core.LeaveType>
             {
-                Id = 1,
-                Type = "Full Type",
-                Description = "string"
+                new LeaveType{
+                    Id = 1,
+                    Type = "Full Type",
+                    Description = "string" 
+                }
             };
-            var result = controller.GetLeaveType();
+            _mock.Setup(x => x.GetAllLeaveType()).ReturnsAsync(leavetype);
+            var result = _controller.GetLeaveType();
             Assert.NotNull(result);
-            Assert.Equal(1, 1);
+            _mock.Verify(x=>x.GetAllLeaveType(), Times.Once()); 
         }
 
         [Fact]
         public void Add_LeaveType_WhenValidInputProvided_ShouldReturnSuccess()
         {
-            var Id = 1;
-            var mock = new Mock<ILeaveTypeService>();
-            var controller = new LeaveTypeController(mock.Object);
-            mock.Setup(x => x.AddLeaveType(It.IsAny<LeaveType>()));
             Core.LeaveType leavetype = new Core.LeaveType()
             {
                 Id = 1,
                 Type = "Full Type",
                 Description = "string"
             };
-            var result = controller.AddLeaveType(leavetype);
+            _mock.Setup(x => x.AddLeaveType(It.IsAny<LeaveType>())).ReturnsAsync(true);
+            var result = _controller.AddLeaveType(leavetype);
             Assert.NotNull(result);
-            Assert.Equal(1, 1);
+            _mock.Verify(x => x.AddLeaveType(It.IsAny<LeaveType>()), Times.Once());
         }
 
         [Fact]
         public async Task Update_LeaveType_WhenExistingLeaveTypeUpdated_ShouldReturnSuccess()
         {
-            // Arrange
-            var mock = new Mock<ILeaveTypeService>();
-            var controller = new LeaveTypeController(mock.Object);
-
             var leavetype = new LeaveType
             {
                 Id = 1,
@@ -66,10 +61,10 @@ namespace KHRMS.UnitTest.ControllerTests
                 Description = "string"
             };
 
-            mock.Setup(x => x.UpdateLeaveType(leavetype)).ReturnsAsync(true);
+            _mock.Setup(x => x.UpdateLeaveType(leavetype)).ReturnsAsync(true);
 
             // Act
-            var result = await controller.UpdateLeaveType(leavetype);
+            var result = await _controller.UpdateLeaveType(leavetype);
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
@@ -83,20 +78,18 @@ namespace KHRMS.UnitTest.ControllerTests
         [Fact]
         public void Delete_LeaveType_WhenExistingLeaveTypeDeleted_ShouldReturnSuccess()
         {
-            var Id = 1;
-            var mock = new Mock<ILeaveTypeService>();
-            var controller = new LeaveTypeController(mock.Object);
-            mock.Setup(x => x.DeleteLeaveType(1));
             Core.LeaveType leavetype = new Core.LeaveType()
             {
                 Id = 1,
                 Type = "Full Type",
                 Description = "string"
             };
-            var result = controller.DeleteLeaveType(1);
+            _mock.Setup(x => x.DeleteLeaveType(leavetype.Id)).ReturnsAsync(true);
+
+            var result = _controller.DeleteLeaveType(leavetype.Id);
             Assert.NotNull(result);
-            Assert.Equal(1, 1);
-            mock.Verify(x => x.DeleteLeaveType(1), Times.Once);
+
+            _mock.Verify(x => x.DeleteLeaveType(leavetype.Id), Times.Once);
         }
     }
 }

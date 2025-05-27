@@ -1,61 +1,55 @@
 ﻿using KHRMS.Core;
 using KHRMS.Services;
+using Microsoft.AspNetCore.Mvc;
 using Moq;
+using Xunit;
 
 namespace KHRMS.UnitTest.ControllerTests
 {
     public class DesignationControllerTest
     {
+        private readonly Mock<IDesignationService> _mock;
+        private readonly DesignationController _controller;
         public DesignationControllerTest()
         {
-
+            _mock = new Mock<IDesignationService>();
+            _controller = new DesignationController(_mock.Object);
         }
 
         [Fact]
-        public void Ge_tDesignations_WhenCalled_ReturnsDesignationList()
+        public void Get_Designations_WhenCalled_ReturnsDesignationList()
         {
-            var Id = 1;
-            var mock = new Mock<IDesignationService>();
-            mock.Setup(x => x.GetAllDesignations());
-            var controller = new DesignationController(mock.Object);
-            Designation designation = new Designation()
+            var designation = new List<Designation>
             {
-                Id = 8,
-                DesignationName = "DotnetCore"
-
+                new Designation {
+                    Id = 8,
+                    DesignationName = "DotnetCore"
+                }
             };
-            var result = controller.GetDesignations();
+            _mock.Setup(x => x.GetAllDesignations()).ReturnsAsync(designation);
+            var result = _controller.GetDesignations();
             Assert.NotNull(result);
-            Assert.Equal(1, 1);
-            Assert.Equal("DotnetCore", designation.DesignationName);
+            _mock.Verify(x => x.GetAllDesignations(), Times.Once());
         }
 
         [Fact]
         public void Add_Designation_WhenValidDesignationProvided_ReturnsSuccess()
         {
-            var Id = 1;
-            var mock = new Mock<IDesignationService>();
-            mock.Setup(x => x.CreateDesignation(It.IsAny<Designation>()));
-            var controller = new DesignationController(mock.Object);
             Designation designation = new Designation()
             {
                 Id = 8,
                 DesignationName = "DotnetCore"
 
             };
-            var result = controller.AddDesignation(designation);
+            _mock.Setup(x => x.CreateDesignation(It.IsAny<Designation>())).ReturnsAsync(true);
+            var result = _controller.AddDesignation(designation);
             Assert.NotNull(result);
-            Assert.Equal(1, 1);
-            Assert.Equal("DotnetCore", designation.DesignationName);
+            _mock.Verify(x => x.CreateDesignation(It.IsAny<Designation>()), Times.Once());
         }
 
         [Fact]
         public void Update_Designation_WhenValidDesignationProvided_UpdatesSuccessfully()
         {
-            var Id = 1;
-            var mock = new Mock<IDesignationService>();
-            mock.Setup(x => x.UpdateDesignation(It.IsAny<Designation>()));
-            var controller = new DesignationController(mock.Object);
             Designation designation = new Designation()
             {
                 Id = 1,
@@ -66,29 +60,30 @@ namespace KHRMS.UnitTest.ControllerTests
                 Id = 1,
                 DesignationName = "Asp.net"
             };
-            var result = controller.UpdateDesignation(designation);
+            _mock.Setup(x => x.UpdateDesignation(It.IsAny<Designation>())).ReturnsAsync(true);
+            var result = _controller.UpdateDesignation(updatedesignation);
             Assert.NotNull(result);
-            Assert.Equal(1, 1);
-            Assert.Equal("DotnetCore", designation.DesignationName);
+
+            _mock.Verify(x => x.UpdateDesignation(It.Is<Designation>(r =>
+                r.Id == updatedesignation.Id &&
+                r.DesignationName == updatedesignation.DesignationName)), Times.Once());
         }
 
         [Fact]
         public void Delete_Designation_WhenDesignationExists_DeletesSuccessfully()
         {
-            var Id = 1;
-            var mock = new Mock<IDesignationService>();
-            mock.Setup(x => x.DeleteDesignation(1));
-            var controller = new DesignationController(mock.Object);
             Designation designation = new Designation()
             {
                 Id = 8,
                 DesignationName = "DotnetCore"
 
             };
-            var result = controller.DeleteDesignation(1);
+            _mock.Setup(x => x.DeleteDesignation(designation.Id)).ReturnsAsync(true);
+
+            var result = _controller.DeleteDesignation(designation.Id);
             Assert.NotNull(result);
-            Assert.Equal(1, 1);
-            mock.Verify(x => x.DeleteDesignation(1), Times.Once);
+
+            _mock.Verify(x => x.DeleteDesignation(designation.Id), Times.Once);
         }
 
     }

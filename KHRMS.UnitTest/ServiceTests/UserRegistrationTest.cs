@@ -2,23 +2,24 @@
 using KHRMS.Services;
 using Moq;
 using NPOI.SS.Formula.Functions;
+using Org.BouncyCastle.Asn1.X509;
 
 namespace KHRMS.UnitTest.ServiceTests
 {
     public class UserRegistrationTest
     {
+        private readonly Mock<IUserRegistrationService> _mock;
+        private readonly IUserRegistrationService _service; 
         public UserRegistrationTest()
         {
-
+            _mock = new Mock<IUserRegistrationService>();
+            _service = _mock.Object;
         }
 
         [Fact]
-        public void Get_RegistrationByUser_ShouldReturnPass_WhenValidUserProvided()
+        public async Task Get_RegistrationByUser_ShouldReturnPass_WhenValidUserProvided()
         {
             var Id = 1;
-            var mock = new Mock<IUserRegistrationService>();
-            IUserRegistrationService userregistrationservice = mock.Object;
-            List<UserRegistration> userregistrations = new List<UserRegistration>();
             UserRegistration userregistration = new UserRegistration()
             {
                 Id = 1,
@@ -29,8 +30,8 @@ namespace KHRMS.UnitTest.ServiceTests
                 Address = "",
                 Password = ""
             };
-            mock.Setup(x => x.GetRegistrationByUser(userregistration));
-            var result = userregistrationservice.GetRegistrationByUser(userregistration);
+            _mock.Setup(x => x.GetRegistrationByUser(userregistration));
+            var result = _service.GetRegistrationByUser(userregistration);
             Assert.Equal(1, userregistration.Id);
             Assert.Equal("", userregistration.FirstName);
         }
@@ -40,8 +41,8 @@ namespace KHRMS.UnitTest.ServiceTests
         public async Task Get_RegistrationByUser_ShouldReturnTrue_WhenUserExists()
         {
             // Arrange
-            var mock = new Mock<IUserRegistrationService>();
-            IUserRegistrationService userregistrationservice = mock.Object;
+            var _mock = new Mock<IUserRegistrationService>();
+            IUserRegistrationService userregistrationservice = _mock.Object;
 
             UserRegistration userregistration = new UserRegistration()
             {
@@ -55,7 +56,7 @@ namespace KHRMS.UnitTest.ServiceTests
             };
 
             // Simulating that GetRegistrationByUser returns true (successful lookup)
-            mock.Setup(x => x.GetRegistrationByUser(It.IsAny<UserRegistration>())).ReturnsAsync(true);
+            _mock.Setup(x => x.GetRegistrationByUser(It.IsAny<UserRegistration>())).ReturnsAsync(true);
 
             // Act
             var result = await userregistrationservice.GetRegistrationByUser(userregistration);

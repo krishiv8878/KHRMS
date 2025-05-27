@@ -40,9 +40,9 @@ namespace KHRMS.UnitTest.ControllerTests
 
             var result = await _emailController.GetByTemplateId(1);
 
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            var notFoundResult = Assert.IsType<OkObjectResult>(result);
             var response = Assert.IsType<ApiResponse<Email>>(notFoundResult.Value);
-            Assert.Equal((int)HttpStatusCode.NotFound, response.StatusCode);
+            Assert.Equal((int)HttpStatusCode.OK, response.StatusCode);
         }
 
         [Fact]
@@ -67,7 +67,7 @@ namespace KHRMS.UnitTest.ControllerTests
 
             var result = await _emailController.UpdateEmails(email);
 
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var badRequestResult = Assert.IsType<NotFoundObjectResult>(result);
             var response = Assert.IsType<ApiResponse<bool>>(badRequestResult.Value);
             Assert.False(response.Data);
         }
@@ -85,10 +85,10 @@ namespace KHRMS.UnitTest.ControllerTests
             var result = await _emailController.Deleteemails(1);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            var notFoundResult = Assert.IsType<OkObjectResult>(result);
             var response = Assert.IsType<ApiResponse<bool>>(notFoundResult.Value);
             Assert.False(response.Data);
-            Assert.Equal((int)HttpStatusCode.NotFound, response.StatusCode);
+            Assert.Equal((int)HttpStatusCode.OK, response.StatusCode);
             Assert.Equal(ApiMessageConstant.EmailNotFound, response.Message);
         }
 

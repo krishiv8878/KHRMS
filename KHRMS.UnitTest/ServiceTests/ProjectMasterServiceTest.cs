@@ -12,374 +12,158 @@ namespace KHRMS.UnitTest.ServiceTests
 {
     public class ProjectMasterServiceTest
     {
+        private readonly Mock<IProjectMasterService> _mock;
+        private readonly IProjectMasterService _service;
         public ProjectMasterServiceTest()
         {
-                
+               _mock = new Mock<IProjectMasterService>();
+            _service = _mock.Object;
         }
 
         [Fact]
-        public void Add_ProjectMaster_ValidProject_ReturnsPass()
+        public async Task Add_ProjectMaster_ValidProject_ShouldReturnSuccess()
         {
-            var mock = new Mock<IProjectMasterService>();
-            List<ProjectMaster> projectmasters = new List<ProjectMaster>();
-            mock.Setup(x => x.AddProjectMaster(It.IsAny<ProjectMaster>()))
-                        .Returns(Task.FromResult(true));
-            ProjectMaster projectmaster = new ProjectMaster()
+            var project = new ProjectMaster
             {
                 Id = 1,
                 ProjectName = "HRMS",
-                Description = new DateTime(2024, 09, 27, 13, 16, 32).ToString("yyyy-MM-dd HH:mm:ss"),
-                ClientName = "dev",
-                ClientRegion ="India"
-            };
-            projectmasters.Add(projectmaster);
-            Assert.Equal(1, 1);
-        }
-        [Fact]
-        public void Add_ProjectMaster_DuplicateProject_ReturnsFail()
-        {
-            // Arrange
-            var mock = new Mock<IProjectMasterService>();
-            List<ProjectMaster> projectmasters = new List<ProjectMaster>();
-
-            // Mock the service to return true when adding a project
-            mock.Setup(x => x.AddProjectMaster(It.IsAny<ProjectMaster>()))
-                .Returns(Task.FromResult(true));
-
-            ProjectMaster projectmaster = new ProjectMaster()
-            {
-                Id = 1,
-                ProjectName = "HRMS",
-                Description = "Project for HR Management", // Fixed Description field
+                Description = "2024-09-27 13:16:32",
                 ClientName = "dev",
                 ClientRegion = "India"
             };
 
-            projectmasters.Add(projectmaster);
+            _mock.Setup(x => x.AddProjectMaster(project)).ReturnsAsync(true);
 
-            // Act & Assert: Simulate duplicate entry validation
-            var exception = Assert.Throws<InvalidOperationException>(() =>
-            {
-                if (projectmasters.Any(p => p.Id == projectmaster.Id))
-                {
-                    throw new InvalidOperationException("ProjectMaster already exists");
-                }
-                projectmasters.Add(projectmaster);
-            });
-
-            // Validate the exception message
-            Assert.Equal("ProjectMaster already exists", exception.Message);
-        }     
+            var result = await _service.AddProjectMaster(project);
+            Assert.True(result);
+            _mock.Verify(x => x.AddProjectMaster(project), Times.Once);
+        }
         [Fact]
-        public async Task Add_ProjectMaster_NullProject_ThrowsArgumentNullException()
+        public async Task Add_ProjectMaster_DuplicateProject_ShouldThrowException()
         {
-            // Arrange
-            var mock = new Mock<IProjectMasterService>();
+            var project = new ProjectMaster { Id = 1, ProjectName = "HRMS", Description = "desc", ClientName = "dev", ClientRegion = "India" };
 
-            // Setup mock to throw an exception when adding null
-            mock.Setup(x => x.AddProjectMaster(null))
+            _mock.Setup(x => x.AddProjectMaster(project))
+                .ThrowsAsync(new InvalidOperationException("ProjectMaster already exists"));
+
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => _service.AddProjectMaster(project));
+            Assert.Equal("ProjectMaster already exists", exception.Message);
+            _mock.Verify(x => x.AddProjectMaster(project), Times.Once);
+        }
+
+        [Fact]
+        public async Task Add_ProjectMaster_NullProject_ShouldThrowArgumentNullException()
+        {
+            _mock.Setup(x => x.AddProjectMaster(null))
                 .ThrowsAsync(new ArgumentNullException(nameof(ProjectMaster), "ProjectMaster cannot be null"));
 
-            IProjectMasterService projectMasterService = mock.Object;
-
-            // Act & Assert
-            var exception = await Assert.ThrowsAsync<ArgumentNullException>(
-                async () => await projectMasterService.AddProjectMaster(null)
-            );
-
-            // Verify exception message
+            var exception = await Assert.ThrowsAsync<ArgumentNullException>(() => _service.AddProjectMaster(null));
             Assert.Equal("ProjectMaster cannot be null (Parameter 'ProjectMaster')", exception.Message);
+            _mock.Verify(x => x.AddProjectMaster(null), Times.Once);
         }
-        [Fact]
-        public void Delete_ProjectMaster_ValidId_ReturnsPass()
-        {
-            var Id = 1;
-            var mock = new Mock<IProjectMasterService>();
-            IProjectMasterService projectmasterservice = mock.Object;
-            List<ProjectMaster> projectmasters = new List<ProjectMaster>();
-            ProjectMaster projectmaster = new ProjectMaster()
-            {
-                Id = 1,
-                ProjectName = "HRMS",
-                Description = new DateTime(2024, 09, 27, 13, 16, 32).ToString("yyyy-MM-dd HH:mm:ss"),
-                ClientName = "dev",
-                ClientRegion = "India"
-            };
-            mock.Setup(x => x.DeleteProjectMaster(Id));
-            var result = projectmasterservice.DeleteProjectMaster(Id);
-            Assert.Equal(1, 1);
-            mock.Verify(x => x.DeleteProjectMaster(1), Times.Once);
-        }       
-        [Fact]
-        public async Task Delete_ProjectMaster_InvalidId_ThrowsKeyNotFoundException()
-        {
-            // Arrange
-            var Id = 999;
-            var mock = new Mock<IProjectMasterService>();
 
-            // ✅ Setup the mock to throw a KeyNotFoundException when DeleteProjectMaster is called
-            mock.Setup(x => x.DeleteProjectMaster(Id))
+        [Fact]
+        public async Task Delete_ProjectMaster_ValidId_ShouldReturnSuccess()
+        {
+            var id = 1;
+            _mock.Setup(x => x.DeleteProjectMaster(id)).ReturnsAsync(true);
+
+            var result = await _service.DeleteProjectMaster(id);
+            Assert.True(result);
+            _mock.Verify(x => x.DeleteProjectMaster(id), Times.Once);
+        }
+
+        [Fact]
+        public async Task Delete_ProjectMaster_InvalidId_ShouldThrowKeyNotFoundException()
+        {
+            var id = 999;
+            _mock.Setup(x => x.DeleteProjectMaster(id))
                 .ThrowsAsync(new KeyNotFoundException("ProjectMaster not found"));
 
-            IProjectMasterService projectmasterservice = mock.Object;
-
-            // Act & Assert
-            var exception = await Assert.ThrowsAsync<KeyNotFoundException>(
-                async () => await projectmasterservice.DeleteProjectMaster(Id)
-            );
-
-            // ✅ Ensure exception message is correct
+            var exception = await Assert.ThrowsAsync<KeyNotFoundException>(() => _service.DeleteProjectMaster(id));
             Assert.Equal("ProjectMaster not found", exception.Message);
-
-            // ✅ Verify the method was called exactly once
-            mock.Verify(x => x.DeleteProjectMaster(Id), Times.Once);
+            _mock.Verify(x => x.DeleteProjectMaster(id), Times.Once);
         }
+
         [Fact]
-        public async Task Delete_ProjectMaster_Exception_ThrowsKeyNotFoundException()
+        public async Task Get_AllProjectMasters_ValidData_ShouldReturnList()
         {
-            // Arrange
-            var Id = 1;
-            var mock = new Mock<IProjectMasterService>();
-
-            //  Setup the mock to throw a KeyNotFoundException
-            mock.Setup(x => x.DeleteProjectMaster(Id))
-                .ThrowsAsync(new KeyNotFoundException("ProjectMaster not found"));
-
-            IProjectMasterService projectmasterservice = mock.Object;
-
-            // Act & Assert
-            var exception = await Assert.ThrowsAsync<KeyNotFoundException>(
-                async () => await projectmasterservice.DeleteProjectMaster(Id)
-            );
-
-            // Ensure the exception message is correct
-            Assert.Equal("ProjectMaster not found", exception.Message);
-
-            // Verify the method was called once
-            mock.Verify(x => x.DeleteProjectMaster(Id), Times.Once);
-        }
-        [Fact]
-        public void Get_AllProjectMasters_ValidData_ReturnsList()
+            var projects = new List<ProjectMaster>
         {
-            var Id = 1;
-            var mock = new Mock<IProjectMasterService>();
-            IProjectMasterService projectmasterservice = mock.Object;
-            List<ProjectMaster> projectmasters = new List<ProjectMaster>();
-            ProjectMaster projectmaster = new ProjectMaster()
-            {
-                Id = 1,
-                ProjectName = "HRMS",
-                Description = new DateTime(2024, 09, 27, 13, 16, 32).ToString("yyyy-MM-dd HH:mm:ss"),
-                ClientName = "dev",
-                ClientRegion = "India"
-            };
-            mock.Setup(x => x.GetAllProjectMaster());
-            var result = projectmasterservice.GetAllProjectMaster();
+            new ProjectMaster { Id = 1, ProjectName = "HRMS", Description = "desc", ClientName = "dev", ClientRegion = "India" }
+        };
+
+            _mock.Setup(x => x.GetAllProjectMaster()).ReturnsAsync(projects);
+
+            var result = await _service.GetAllProjectMaster();
             Assert.NotNull(result);
-            Assert.Equal(1, projectmaster.Id);
-            Assert.Equal("HRMS", projectmaster.ProjectName);
-        }      
-        [Fact]
-        public async Task Get_AllProjectMasters_NoData_ThrowsInvalidOperationException()
-        {
-            // Arrange
-            var mock = new Mock<IProjectMasterService>();
+            Assert.Single(result);
+        }
 
-            // ✅ Setup the mock to throw an exception when GetAllProjectMaster() is called
-            mock.Setup(x => x.GetAllProjectMaster())
+        [Fact]
+        public async Task Get_AllProjectMasters_Empty_ShouldThrowInvalidOperationException()
+        {
+            _mock.Setup(x => x.GetAllProjectMaster())
                 .ThrowsAsync(new InvalidOperationException("No ProjectMaster available"));
 
-            IProjectMasterService projectmasterservice = mock.Object;
-
-            // Act & Assert
-            var exception = await Assert.ThrowsAsync<InvalidOperationException>(
-                async () => await projectmasterservice.GetAllProjectMaster()
-            );
-
-            // ✅ Ensure exception message is correct
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => _service.GetAllProjectMaster());
             Assert.Equal("No ProjectMaster available", exception.Message);
         }
 
         [Fact]
-        public async Task Get_AllProjectMasters_Exception_ThrowsException()
+        public async Task Get_ProjectMasterById_ValidId_ShouldReturnProject()
         {
-            // Arrange
-            var mock = new Mock<IProjectMasterService>();
+            var project = new ProjectMaster { Id = 1, ProjectName = "HRMS", Description = "desc", ClientName = "dev", ClientRegion = "India" };
+            _mock.Setup(x => x.GetProjectMasterById(1)).ReturnsAsync(project);
 
-            // ✅ Correctly set up the mock to throw an exception
-            mock.Setup(x => x.GetAllProjectMaster())
-                .ThrowsAsync(new Exception("Unexpected error"));
-
-            IProjectMasterService projectmasterservice = mock.Object;
-
-            // Act & Assert
-            var exception = await Assert.ThrowsAsync<Exception>(
-                async () => await projectmasterservice.GetAllProjectMaster()
-            );
-
-            // ✅ Verify the exception message
-            Assert.Equal("Unexpected error", exception.Message);
-        }
-
-        [Fact]
-        public void Get_ProjectMasterById_ValidId_ReturnsProjectMaster()
-        {
-            var Id = 1;
-            var mock = new Mock<IProjectMasterService>();
-            IProjectMasterService projectmasterservice = mock.Object;
-            List<ProjectMaster> projectmasters = new List<ProjectMaster>();
-            ProjectMaster projectmaster = new ProjectMaster()
-            {
-                Id = 1,
-                ProjectName = "HRMS",
-                Description = new DateTime(2024, 09, 27, 13, 16, 32).ToString("yyyy-MM-dd HH:mm:ss"),
-                ClientName = "dev",
-                ClientRegion = "India"
-            };
-            mock.Setup(x => x.GetProjectMasterById(1));
-            var result = projectmasterservice.GetProjectMasterById(1);
+            var result = await _service.GetProjectMasterById(1);
             Assert.NotNull(result);
-            Assert.Equal(1, projectmaster.Id);
-            Assert.Equal("HRMS", projectmaster.ProjectName);
+            Assert.Equal("HRMS", result.ProjectName);
         }
 
         [Fact]
-        public async Task Get_ProjectMasterById_InvalidId_ThrowsKeyNotFoundException()
+        public async Task Get_ProjectMasterById_InvalidId_ShouldThrowKeyNotFoundException()
         {
-            // Arrange
-            var Id = 999;
-            var mock = new Mock<IProjectMasterService>();
-
-            // ✅ Correctly set up the mock to throw a KeyNotFoundException
-            mock.Setup(x => x.GetProjectMasterById(Id))
+            _mock.Setup(x => x.GetProjectMasterById(999))
                 .ThrowsAsync(new KeyNotFoundException("ProjectMaster not found"));
 
-            IProjectMasterService projectmasterservice = mock.Object;
-
-            // Act & Assert
-            var exception = await Assert.ThrowsAsync<KeyNotFoundException>(
-                async () => await projectmasterservice.GetProjectMasterById(Id)
-            );
-
-            // ✅ Verify the exception message
-            Assert.Equal("ProjectMaster not found", exception.Message);
-        }
-       
-        [Fact]
-        public async Task Get_ProjectMasterById_Exception_ThrowsKeyNotFoundException()
-        {
-            // Arrange
-            var Id = 1;
-            var mock = new Mock<IProjectMasterService>();
-
-            // ✅ Correctly set up the mock to throw a KeyNotFoundException
-            mock.Setup(x => x.GetProjectMasterById(Id))
-                .ThrowsAsync(new KeyNotFoundException("ProjectMaster not found"));
-
-            IProjectMasterService projectmasterservice = mock.Object;
-
-            // Act & Assert
-            var exception = await Assert.ThrowsAsync<KeyNotFoundException>(
-                async () => await projectmasterservice.GetProjectMasterById(Id)
-            );
-
-            // ✅ Verify the exception message
+            var exception = await Assert.ThrowsAsync<KeyNotFoundException>(() => _service.GetProjectMasterById(999));
             Assert.Equal("ProjectMaster not found", exception.Message);
         }
 
         [Fact]
-        public void Update_ProjectMaster_ValidProject_ReturnsPass()
+        public async Task Update_ProjectMaster_Valid_ShouldReturnSuccess()
         {
-            var Id = 1;
-            var mock = new Mock<IProjectMasterService>();
-            IProjectMasterService projectmasterservice = mock.Object;
-            List<ProjectMaster> projectmasters = new List<ProjectMaster>();
-            ProjectMaster projectmaster = new ProjectMaster()
-            {
-                Id = 1,
-                ProjectName = "HRMS",
-                Description = new DateTime(2024, 09, 27, 13, 16, 32).ToString("yyyy-MM-dd HH:mm:ss"),
-                ClientName = "dev",
-                ClientRegion = "India"
-            };
-            ProjectMaster updateprojectmaster = new ProjectMaster()
-            {
-                Id = 1,
-                ProjectName = "HRMSNew",
-                Description = new DateTime(2024, 09, 27, 13, 16, 32).ToString("yyyy-MM-dd HH:mm:ss"),
-                ClientName = "dev",
-                ClientRegion = "India"
-            };
-            mock.Setup(x => x.GetProjectMasterById(1));
-            var result = projectmasterservice.UpdateProjectMaster(projectmaster);
-            Assert.NotNull(result);
-            Assert.Equal(1, 1);
+            var updatedProject = new ProjectMaster { Id = 1, ProjectName = "Updated", Description = "desc", ClientName = "dev", ClientRegion = "India" };
+            _mock.Setup(x => x.UpdateProjectMaster(updatedProject)).ReturnsAsync(true);
+
+            var result = await _service.UpdateProjectMaster(updatedProject);
+            Assert.True(result);
+            _mock.Verify(x => x.UpdateProjectMaster(updatedProject), Times.Once);
         }
 
         [Fact]
-        public async Task Update_ProjectMaster_ProjectNotFound_ThrowsKeyNotFoundException()
+        public async Task Update_ProjectMaster_NotFound_ShouldThrowKeyNotFoundException()
         {
-            // Arrange
-            var Id = 1;
-            var mock = new Mock<IProjectMasterService>();
+            var project = new ProjectMaster { Id = 1, ProjectName = "HRMS" };
 
-            ProjectMaster projectmaster = new ProjectMaster()
-            {
-                Id = 1,
-                ProjectName = "HRMS",
-                Description = new DateTime(2024, 09, 27, 13, 16, 32).ToString("yyyy-MM-dd HH:mm:ss"),
-                ClientName = "dev",
-                ClientRegion = "India"
-            };
-
-            //  Ensure GetProjectMasterById returns null (indicating not found)
-            mock.Setup(x => x.GetProjectMasterById(Id)).ReturnsAsync((ProjectMaster)null);
-
-            //  Ensure UpdateProjectMaster throws the expected exception
-            mock.Setup(x => x.UpdateProjectMaster(It.IsAny<ProjectMaster>()))
+            _mock.Setup(x => x.UpdateProjectMaster(project))
                 .ThrowsAsync(new KeyNotFoundException("Update not found"));
 
-            IProjectMasterService projectmasterservice = mock.Object;
-
-            // Act & Assert
-            var exception = await Assert.ThrowsAsync<KeyNotFoundException>(
-                async () => await projectmasterservice.UpdateProjectMaster(projectmaster)
-            );
-
-            //  Verify the exception message
+            var exception = await Assert.ThrowsAsync<KeyNotFoundException>(() => _service.UpdateProjectMaster(project));
             Assert.Equal("Update not found", exception.Message);
+            _mock.Verify(x => x.UpdateProjectMaster(project), Times.Once);
         }
-    
+
         [Fact]
-        public async Task Update_ProjectMaster_NullProject_ThrowsKeyNotFoundException()
+        public async Task Update_ProjectMaster_Null_ShouldThrowKeyNotFoundException()
         {
-            // Arrange
-            var mock = new Mock<IProjectMasterService>();
-            IProjectMasterService projectmasterservice = mock.Object;
-
-            ProjectMaster projectmaster = new ProjectMaster()
-            {
-                Id = 1,
-                ProjectName = "HRMS",
-                Description = new DateTime(2024, 09, 27, 13, 16, 32).ToString("yyyy-MM-dd HH:mm:ss"),
-                ClientName = "dev",
-                ClientRegion = "India"
-            };
-
-            // Ensure GetProjectMasterById returns null (indicating not found)
-            mock.Setup(x => x.GetProjectMasterById(It.IsAny<int>())).ReturnsAsync((ProjectMaster)null);
-
-            //  Ensure UpdateProjectMaster throws an exception when null is passed
-            mock.Setup(x => x.UpdateProjectMaster(null))
+            _mock.Setup(x => x.UpdateProjectMaster(null))
                 .ThrowsAsync(new KeyNotFoundException("Update not found"));
 
-            // Act & Assert
-            var exception = await Assert.ThrowsAsync<KeyNotFoundException>(
-                async () => await projectmasterservice.UpdateProjectMaster(null)
-            );
-
-            // Verify the exception message
+            var exception = await Assert.ThrowsAsync<KeyNotFoundException>(() => _service.UpdateProjectMaster(null));
             Assert.Equal("Update not found", exception.Message);
+            _mock.Verify(x => x.UpdateProjectMaster(null), Times.Once);
         }
 
     }

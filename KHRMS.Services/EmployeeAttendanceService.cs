@@ -200,8 +200,8 @@ namespace KHRMS.Services
             if (employee == null || manager == null) return false;
 
             attendanceRecord.IsRegularized = true;
-            attendanceRecord.RegularizedBy = managerId;
-            attendanceRecord.RegularizedDate = DateTime.Now;
+            attendanceRecord.UpdatedBy = 1;
+            attendanceRecord.UpdatedDate = DateTime.Now;
             attendanceRecord.UpdatedDate = DateTime.Now;
 
 
