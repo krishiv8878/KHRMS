@@ -13,17 +13,17 @@ namespace KHRMS.UnitTest.ServiceTests
 {
     public class UserLoginServiceTest
     {
+        private readonly Mock<IUserLoginService> _mock;
+        private readonly IUserLoginService _service;
         public UserLoginServiceTest()
         {
-                
+            _mock = new Mock<IUserLoginService>();    
+            _service = _mock.Object;
         }
         [Fact]
-        public void Get_UserLoginById_ShouldReturnPass_WhenValidCredentialsProvided()
+        public async Task Get_UserLoginById_ShouldReturnPass_WhenValidCredentialsProvided()
         {
             var Id = 1;
-            var mock = new Mock<IUserLoginService>();
-            IUserLoginService userLoginService = mock.Object;
-            List<UserLogin> users = new List<UserLogin>();
             UserLogin  user = new UserLogin()
             {
                 Id = 1,
@@ -33,8 +33,8 @@ namespace KHRMS.UnitTest.ServiceTests
                 Email="",
                 //LastLoginDate= new DateTime(0,0,0,0,0,0,0)
             };
-            mock.Setup(x => x.GetUserLoginById(user.Email, user.Password));
-            var result = userLoginService.GetUserLoginById(user.Email,user.Password);
+            _mock.Setup(x => x.GetUserLoginById(user.Email, user.Password));
+            var result = _service.GetUserLoginById(user.Email,user.Password);
             //Assert.NotNull(result);
             Assert.Equal(1, user.Id);
             Assert.Equal("", user.UserName);

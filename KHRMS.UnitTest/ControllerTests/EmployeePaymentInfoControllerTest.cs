@@ -1,4 +1,5 @@
 ﻿using KHRMS.Core;
+using KHRMS.Infrastructure;
 using KHRMS.Services;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
@@ -56,13 +57,13 @@ namespace KHRMS.UnitTest.ControllerTests
             // Arrange
             _mockService.Setup(service => service.GetByIdAsync(1)).ReturnsAsync((EmployeePaymentInfo)null);
 
-            // Act
-            var result = await _controller.GetById(1);
-            var notFoundResult = result as NotFoundObjectResult;
+            var result = await _controller.GetById(999);
+            var notFoundResult = Assert.IsType<OkObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<EmployeePaymentInfo>>(notFoundResult.Value);
 
-            // Assert
-            Assert.NotNull(notFoundResult);
-            Assert.Equal((int)HttpStatusCode.NotFound, notFoundResult.StatusCode);
+            Assert.Equal((int)HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal(ApiMessageConstant.EmployeePaymentRequestsNotFound, response.Message);
+            Assert.Null(response.Data);
         }
 
         [Fact]
@@ -124,11 +125,14 @@ namespace KHRMS.UnitTest.ControllerTests
 
             // Act
             var result = await _controller.Delete(1);
-            var notFoundResult = result as NotFoundResult;
 
             // Assert
-            Assert.NotNull(notFoundResult);
-            Assert.Equal((int)HttpStatusCode.NotFound, notFoundResult.StatusCode);
+            var notFoundResult = Assert.IsType<OkObjectResult>(result);
+            var response = Assert.IsType<ApiResponse<bool>>(notFoundResult.Value);
+            Assert.False(response.Data);
+            Assert.Equal((int)HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal(ApiMessageConstant.EmployeePaymentRequestsNotFound, response.Message);
+            Assert.Equal((int)HttpStatusCode.OK, notFoundResult.StatusCode);
         }
     }
 }

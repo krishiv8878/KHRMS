@@ -12,46 +12,49 @@ namespace KHRMS.UnitTest.ControllerTests
 {
     public class EmployeeControllerTest
     {
+        private readonly Mock<IEmployeeService> _mock;
+        private readonly EmployeeController _controller;
         public EmployeeControllerTest()
         {
-                
+            _mock  = new Mock<IEmployeeService>();
+            _controller = new EmployeeController(_mock.Object);
         }
 
         [Fact]
         public void GetEmployeesReturnPass()
         {
-            var Id = 1;
-            var mock = new Mock<IEmployeeService>();
-            mock.Setup(x => x.GetAllEmployees());
-            var controller = new EmployeeController(mock.Object);
-            Employee employee = new Employee()
+            var employee = new List<EmployeeRequestModel>
             {
-                Id = 1,
-                EmployeeCode = 0,
-                FirstName = "Raj",
-                LastName = "Prajapati",
-                EmailAddress = "raj@gmail.com",
-                MobileNumber = "1234567890",
-                DesignationId = 0,
-                DateOfJoining = new DateTime(2024, 10, 16, 9, 44, 16),
-                Gender = "Male",
-                CurrentAddress = "Patan",
-                PermanentAddress = "patan"
+                new EmployeeRequestModel{
+                    Id = 1,
+                    EmployeeCode = 0,
+                    FirstName = "Raj",
+                    LastName = "Prajapati",
+                    EmailAddress = "raj@gmail.com",
+                    MobileNumber = "1234567890",
+                    DesignationId = 0,
+                    DateOfJoining = new DateTime(2024, 10, 16, 9, 44, 16),
+                    Gender = "Male",
+                    CurrentAddress = "Patan",
+                    PermanentAddress = "patan",
+                    RoleIds =[1,2] ,
+                    rolenames=["Tester"],
+                    ShiftId="1",
+                    ManagerId=1,
+                    ManagerName="Pushpak",
+                    PrimaryEmailAddress="tester@gmail.com",
+                }
             };
-            var result = controller.GetEmployees();
+            _mock.Setup(x => x.GetAllEmployees()).ReturnsAsync(employee);
+            var result = _controller.GetEmployees();
             Assert.NotNull(result);
-            Assert.Equal(1, 1);
-            Assert.Equal("Raj", employee.FirstName);
+            _mock.Verify(x => x.GetAllEmployees(), Times.Once());
         }
 
         [Fact]
         public void AddEmployeeReturnPass()
         {
-            var Id = 1;
-            var mock = new Mock<IEmployeeService>();
-            mock.Setup(x => x.CreateEmployee(It.IsAny<EmployeeRequestModel>()));
-            var controller = new EmployeeController(mock.Object);
-            Employee employee = new Employee()
+            var employee = new EmployeeRequestModel()
             {
                 Id = 1,
                 EmployeeCode = 0,
@@ -63,24 +66,24 @@ namespace KHRMS.UnitTest.ControllerTests
                 DateOfJoining = new DateTime(2024, 10, 16, 9, 44, 16),
                 Gender = "Male",
                 CurrentAddress = "Patan",
-                PermanentAddress = "patan"
+                PermanentAddress = "patan",
+                RoleIds = [1, 2],
+                rolenames = ["Tester"],
+                ShiftId = "1",
+                ManagerId = 1,
+                ManagerName = "Pushpak",
+                PrimaryEmailAddress = "tester@gmail.com",
             };
-            var result = controller.GetEmployees();
+            _mock.Setup(x => x.CreateEmployee(It.IsAny<EmployeeRequestModel>())).ReturnsAsync(true);
+            var result = _controller.AddEmployee(employee);
             Assert.NotNull(result);
-            Assert.Equal(1, 1);
-            Assert.Equal("Raj", employee.FirstName);
+            _mock.Verify(x => x.CreateEmployee(It.IsAny<EmployeeRequestModel>()), Times.Once());
         }
 
         [Fact]
         public void UpdateEmployeeReturnPass()
         {
-            var Id = 1;
-            var mock = new Mock<IEmployeeService>();
-            mock.Setup(x => x.UpdateEmployee(It.IsAny<EmployeeRequestModel>()));
-            var controller = new EmployeeController(mock.Object);
-          //  Employee employee = new Employee();
-             //List<Employee> employees = new List<Employee>();
-            EmployeeRequestModel employeeRequestModel = new EmployeeRequestModel()
+            var employeeRequestModel = new EmployeeRequestModel()
             {
                 Id = 1,
                 EmployeeCode = 0,
@@ -92,9 +95,15 @@ namespace KHRMS.UnitTest.ControllerTests
                 DateOfJoining = new DateTime(2024, 10, 16, 9, 44, 16),
                 Gender = "Male",
                 CurrentAddress = "Patan",
-                PermanentAddress = "patan"
+                PermanentAddress = "patan",
+                RoleIds = [1, 2],
+                rolenames = ["Tester"],
+                ShiftId = "1",
+                ManagerId = 1,
+                ManagerName = "Pushpak",
+                PrimaryEmailAddress = "tester@gmail.com",
             };
-            Employee updateemployee = new Employee()
+            var updateemployee = new EmployeeRequestModel()
             {
                 Id = 1,
                 EmployeeCode = 0,
@@ -106,21 +115,26 @@ namespace KHRMS.UnitTest.ControllerTests
                 DateOfJoining = new DateTime(2024, 10, 16, 9, 44, 16),
                 Gender = "Male",
                 CurrentAddress = "Patan",
-                PermanentAddress = "patan"
+                PermanentAddress = "patan",
+                RoleIds = [1, 2],
+                rolenames = ["Tester"],
+                ShiftId = "1",
+                ManagerId = 1,
+                ManagerName = "Pushpak",
+                PrimaryEmailAddress = "tester@gmail.com",
             };
-            var result = controller.UpdateEmployee(employeeRequestModel);
+            _mock.Setup(x => x.UpdateEmployee(It.IsAny<EmployeeRequestModel>())).ReturnsAsync(true);
+            var result = _controller.UpdateEmployee(updateemployee);
             Assert.NotNull(result);
-            Assert.Equal(1, 1);
-            Assert.Equal("Raj", employeeRequestModel.FirstName);
+
+            _mock.Verify(x => x.UpdateEmployee(It.Is<EmployeeRequestModel>(r =>
+                r.Id == updateemployee.Id &&
+                r.FirstName == updateemployee.FirstName)), Times.Once());
         }
 
         [Fact]
         public void DeleteEmployeeReturnPass()
         {
-            var Id = 1;
-            var mock = new Mock<IEmployeeService>();
-            mock.Setup(x => x.DeleteEmployee(1));
-            var controller = new EmployeeController(mock.Object);
             Employee employee = new Employee()
             {
                 Id = 1,
@@ -135,10 +149,12 @@ namespace KHRMS.UnitTest.ControllerTests
                 CurrentAddress = "Patan",
                 PermanentAddress = "patan"
             };
-            var result = controller.DeleteEmployee(1);
+            _mock.Setup(x => x.DeleteEmployee(employee.Id)).ReturnsAsync(true);
+
+            var result = _controller.DeleteEmployee(employee.Id);
             Assert.NotNull(result);
-            Assert.Equal(1, 1);
-            mock.Verify(x => x.DeleteEmployee(1), Times.Once);
+
+            _mock.Verify(x => x.DeleteEmployee(employee.Id), Times.Once);
         }
 
     }

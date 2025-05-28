@@ -11,356 +11,175 @@ namespace KHRMS.UnitTest.ServiceTests
 {
     public class SkillServiceTest
     {
+        private readonly Mock<ISkillService> _mock;
+        private readonly ISkillService _service;
         public SkillServiceTest()
         {
-
+            _mock = new Mock<ISkillService>();
+            _service = _mock.Object;
         }
 
 
         [Fact]
-        public void Add_Skill_ShouldReturnPass()
+        public async Task Add_Skill_ShouldReturnPass()
         {
-            var mock = new Mock<ISkillService>();
-            List<Skill> skills = new List<Skill>();
-            mock.Setup(x => x.AddSkill(It.IsAny<Skill>()))
-                        .Returns(Task.FromResult(true));
-            Skill skill = new Skill()
-            {
-                Id = 1,
-                SkillName = "Java Developer",
-            };
-            skills.Add(skill);
-            Assert.Equal(1, 1);
+            var skill = new Skill { Id = 1, SkillName = "Java Developer" };
+            _mock.Setup(x => x.AddSkill(skill)).ReturnsAsync(true);
+
+            var result = await _service.AddSkill(skill);
+            Assert.True(result);
+            _mock.Verify(x => x.AddSkill(skill), Times.Once);
         }
 
         [Fact]
         public async Task Add_Skill_ShouldReturnFail_WhenSkillAlreadyExists()
         {
-            // Arrange
-            var mock = new Mock<ISkillService>();
+            var skill = new Skill { Id = 1, SkillName = "Java Developer" };
+            _mock.Setup(x => x.AddSkill(skill)).ThrowsAsync(new InvalidOperationException("Skill already exists"));
 
-            // ✅ Mock AddSkill to throw an exception when adding a duplicate skill
-            mock.Setup(x => x.AddSkill(It.IsAny<Skill>()))
-                .ThrowsAsync(new InvalidOperationException("Skill already exists"));
-
-            var skillService = mock.Object;
-
-            var skill = new Skill()
-            {
-                Id = 1,
-                SkillName = "Java Developer",
-            };
-
-            // Act & Assert: Expect AddSkill to throw an exception
-            var exception = await Assert.ThrowsAsync<InvalidOperationException>(
-                async () => await skillService.AddSkill(skill)
-            );
-
-            // ✅ Ensure the correct exception message is thrown
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => _service.AddSkill(skill));
             Assert.Equal("Skill already exists", exception.Message);
         }
 
         [Fact]
         public async Task Add_Skill_ShouldThrowException_WhenUnexpectedErrorOccurs()
         {
-            // Arrange
-            var mock = new Mock<ISkillService>();
+            var skill = new Skill { Id = 1, SkillName = "Java Developer" };
+            _mock.Setup(x => x.AddSkill(skill)).ThrowsAsync(new InvalidOperationException("Skill already exists"));
 
-            // ✅ Mock AddSkill to throw an exception for duplicate skill
-            mock.Setup(x => x.AddSkill(It.IsAny<Skill>()))
-                .ThrowsAsync(new InvalidOperationException("Skill already exists"));
-
-            var skillService = mock.Object;
-
-            var skill = new Skill()
-            {
-                Id = 1,
-                SkillName = "Java Developer",
-            };
-
-            // Act & Assert: Expect AddSkill to throw an exception
-            var exception = await Assert.ThrowsAsync<InvalidOperationException>(
-                async () => await skillService.AddSkill(skill)
-            );
-
-            // ✅ Ensure the correct exception message is thrown
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => _service.AddSkill(skill));
             Assert.Equal("Skill already exists", exception.Message);
         }
 
         [Fact]
-        public void Delete_Skill_ShouldReturnPass()
+        public async Task Delete_Skill_ShouldReturnPass()
         {
             var Id = 1;
-            var mock = new Mock<ISkillService>();
-            ISkillService skillService = mock.Object;
-            List<Skill> skills = new List<Skill>();
-            Skill skill = new Skill()
-            {
-                Id = 1,
-                SkillName = "Java Developer",
-            };
-            mock.Setup(x => x.DeleteSkill(Id));
-            var result = skillService.DeleteSkill(Id);
-            Assert.NotNull(result);
-            Assert.Equal(1, 1);
-            mock.Verify(x => x.DeleteSkill(1), Times.Once);
+            _mock.Setup(x => x.DeleteSkill(Id)).ReturnsAsync(true);
+
+            var result = await _service.DeleteSkill(Id);
+            Assert.True(result);
+            _mock.Verify(x => x.DeleteSkill(Id), Times.Once);
         }
 
         [Fact]
         public async Task Delete_Skill_ShouldReturnFail_WhenSkillNotFound()
         {
-            // Arrange
             var Id = 999;
-            var mock = new Mock<ISkillService>();
+            _mock.Setup(x => x.DeleteSkill(Id)).ThrowsAsync(new KeyNotFoundException("Skill not found"));
 
-            // ✅ Mock DeleteSkill to throw a KeyNotFoundException
-            mock.Setup(x => x.DeleteSkill(Id))
-                .ThrowsAsync(new KeyNotFoundException("Skill not found"));
-
-            var skillService = mock.Object;
-
-            // Act & Assert: Expect DeleteSkill to throw an exception
-            var exception = await Assert.ThrowsAsync<KeyNotFoundException>(async () =>
-                await skillService.DeleteSkill(Id));
-
-            // ✅ Ensure the correct exception message is thrown
+            var exception = await Assert.ThrowsAsync<KeyNotFoundException>(() => _service.DeleteSkill(Id));
             Assert.Equal("Skill not found", exception.Message);
-
-            // ✅ Verify DeleteSkill was called exactly once with the correct Id
-            mock.Verify(x => x.DeleteSkill(Id), Times.Once);
+            _mock.Verify(x => x.DeleteSkill(Id), Times.Once);
         }
 
         [Fact]
         public async Task Delete_Skill_ShouldThrowException_WhenUnexpectedErrorOccurs()
         {
-            // Arrange
             var Id = 1;
-            var mock = new Mock<ISkillService>();
+            _mock.Setup(x => x.DeleteSkill(Id)).ThrowsAsync(new Exception("Unexpected error"));
 
-            //  Mock DeleteSkill to throw a general exception
-            mock.Setup(x => x.DeleteSkill(Id))
-                .ThrowsAsync(new Exception("Unexpected error"));
-
-            var skillService = mock.Object;
-
-            // Act & Assert: Expect DeleteSkill to throw an exception
-            var exception = await Assert.ThrowsAsync<Exception>(async () =>
-                await skillService.DeleteSkill(Id));
-
-            //  Ensure the correct exception message is thrown
+            var exception = await Assert.ThrowsAsync<Exception>(() => _service.DeleteSkill(Id));
             Assert.Equal("Unexpected error", exception.Message);
-
-            // Verify DeleteSkill was called exactly once with the correct Id
-            mock.Verify(x => x.DeleteSkill(Id), Times.Once);
+            _mock.Verify(x => x.DeleteSkill(Id), Times.Once);
         }
 
         [Fact]
-        public void Get_AllSkills_ShouldReturnPass()
+        public async Task Get_AllSkills_ShouldReturnPass()
         {
-            var Id = 1;
-            var mock = new Mock<ISkillService>();
-            ISkillService skillService = mock.Object;
-            List<Skill> skills = new List<Skill>();
-            Skill skill = new Skill()
-            {
-                Id = 1,
-                SkillName = "Java Developer",
-            };
-            mock.Setup(x => x.GetAllSkills());
-            var result = skillService.GetAllSkills();
-            Assert.NotNull(result);
-            Assert.Equal(1, skill.Id);
-            Assert.Equal("Java Developer", skill.SkillName);
-        }
+            var skills = new List<Skill>
+        {
+            new Skill { Id = 1, SkillName = "Java Developer" }
+        };
+            _mock.Setup(x => x.GetAllSkills()).ReturnsAsync(skills);
 
+            var result = await _service.GetAllSkills();
+            Assert.NotNull(result);
+            Assert.Single(result);
+            Assert.Equal("Java Developer", result.First().SkillName);
+        }
 
         [Fact]
         public async Task Get_AllSkills_ShouldReturnFail_WhenNoSkillsAvailable()
         {
-            // Arrange
-            var mock = new Mock<ISkillService>();
+            _mock.Setup(x => x.GetAllSkills()).ThrowsAsync(new InvalidOperationException("No Skill available"));
 
-            //  Mock GetAllSkills to throw an exception
-            mock.Setup(x => x.GetAllSkills())
-                .ThrowsAsync(new InvalidOperationException("No Skill available"));
-
-            var skillService = mock.Object;
-
-            // Act & Assert: Expect GetAllSkills to throw an exception
-            var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
-                await skillService.GetAllSkills());
-
-            //  Ensure the correct exception message is thrown
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => _service.GetAllSkills());
             Assert.Equal("No Skill available", exception.Message);
-
-            //  Verify GetAllSkills was called exactly once
-            mock.Verify(x => x.GetAllSkills(), Times.Once);
+            _mock.Verify(x => x.GetAllSkills(), Times.Once);
         }
-
 
         [Fact]
         public async Task Get_AllSkills_ShouldThrowException_WhenUnexpectedErrorOccurs()
         {
-            // Arrange
-            var mock = new Mock<ISkillService>();
+            _mock.Setup(x => x.GetAllSkills()).ThrowsAsync(new Exception("Unexpected error"));
 
-            // Mock GetAllSkills to throw an exception
-            mock.Setup(x => x.GetAllSkills())
-                .ThrowsAsync(new Exception("Unexpected error"));
-
-            var skillService = mock.Object;
-
-            // Act & Assert: Expect GetAllSkills to throw an exception
-            var exception = await Assert.ThrowsAsync<Exception>(async () =>
-                await skillService.GetAllSkills());
-
-            //  Ensure the correct exception message is thrown
+            var exception = await Assert.ThrowsAsync<Exception>(() => _service.GetAllSkills());
             Assert.Equal("Unexpected error", exception.Message);
-
-            //  Verify that GetAllSkills was called exactly once
-            mock.Verify(x => x.GetAllSkills(), Times.Once);
+            _mock.Verify(x => x.GetAllSkills(), Times.Once);
         }
 
         [Fact]
-        public void Get_SkillById_ShouldReturnPass()
+        public async Task Get_SkillById_ShouldReturnPass()
         {
-            var Id = 1;
-            var mock = new Mock<ISkillService>();
-            ISkillService skillService = mock.Object;
-            List<Skill> skills = new List<Skill>();
-            Skill skill = new Skill()
-            {
-                Id = 1,
-                SkillName = "Java Developer",
-            };
-            mock.Setup(x => x.GetSkillById(1));
-            var result = skillService.GetSkillById(1);
+            var skill = new Skill { Id = 1, SkillName = "Java Developer" };
+            _mock.Setup(x => x.GetSkillById(1)).ReturnsAsync(skill);
+
+            var result = await _service.GetSkillById(1);
             Assert.NotNull(result);
-            Assert.Equal(1, skill.Id);
-            Assert.Equal("Java Developer", skill.SkillName);
+            Assert.Equal("Java Developer", result.SkillName);
         }
 
         [Fact]
         public async Task Get_SkillById_ShouldReturnFail_WhenSkillNotFound()
         {
-            // Arrange
-            var Id = 999;
-            var mock = new Mock<ISkillService>();
+            _mock.Setup(x => x.GetSkillById(999)).ThrowsAsync(new KeyNotFoundException("Skill not found"));
 
-            //  Mock GetSkillById to throw KeyNotFoundException
-            mock.Setup(x => x.GetSkillById(It.IsAny<int>()))
-                .ThrowsAsync(new KeyNotFoundException("Skill not found"));
-
-            var skillService = mock.Object;
-
-            // Act & Assert: Expect GetSkillById to throw an exception
-            var exception = await Assert.ThrowsAsync<KeyNotFoundException>(async () =>
-                await skillService.GetSkillById(Id));
-
-            //  Ensure the correct exception message is thrown
+            var exception = await Assert.ThrowsAsync<KeyNotFoundException>(() => _service.GetSkillById(999));
             Assert.Equal("Skill not found", exception.Message);
-
-            //  Verify that GetSkillById was called exactly once
-            mock.Verify(x => x.GetSkillById(Id), Times.Once);
+            _mock.Verify(x => x.GetSkillById(999), Times.Once);
         }
-
 
         [Fact]
         public async Task Get_SkillById_ShouldThrowException_WhenUnexpectedErrorOccurs()
         {
-            // Arrange
-            var Id = 1;
-            var mock = new Mock<ISkillService>();
+            _mock.Setup(x => x.GetSkillById(1)).ThrowsAsync(new Exception("Unexpected error"));
 
-            // ✅ Mock GetSkillById to throw a general Exception
-            mock.Setup(x => x.GetSkillById(It.IsAny<int>()))
-                .ThrowsAsync(new Exception("Unexpected error"));
-
-            var skillService = mock.Object;
-
-            // Act & Assert: Expect GetSkillById to throw an exception
-            var exception = await Assert.ThrowsAsync<Exception>(async () =>
-                await skillService.GetSkillById(Id));
-
-            // ✅ Ensure the correct exception message is thrown
+            var exception = await Assert.ThrowsAsync<Exception>(() => _service.GetSkillById(1));
             Assert.Equal("Unexpected error", exception.Message);
-
-            // ✅ Verify that GetSkillById was called exactly once
-            mock.Verify(x => x.GetSkillById(Id), Times.Once);
+            _mock.Verify(x => x.GetSkillById(1), Times.Once);
         }
 
         [Fact]
-        public void Update_Skill_ShouldReturnPass()
+        public async Task Update_Skill_ShouldReturnPass()
         {
-            var Id = 1;
-            var mock = new Mock<ISkillService>();
-            ISkillService skillService = mock.Object;
-            List<Skill> skills = new List<Skill>();
-            Skill skill = new Skill()
-            {
-                Id = 1,
-                SkillName = "Java Developer",
-            };
-            Skill updateskill = new Skill()
-            {
-                Id = 1,
-                SkillName = "Angular Developer",
-            };
-            mock.Setup(x => x.GetSkillById(1));
-            var result = skillService.UpdateSkill(skill);
-            Assert.NotNull(result);
-            Assert.Equal(1, 1);
+            var skill = new Skill { Id = 1, SkillName = "Java Developer" };
+            _mock.Setup(x => x.UpdateSkill(skill)).ReturnsAsync(true);
+
+            var result = await _service.UpdateSkill(skill);
+            Assert.True(result);
+            _mock.Verify(x => x.UpdateSkill(skill), Times.Once);
         }
 
         [Fact]
         public async Task Update_Skill_ShouldReturnFail_WhenSkillNotFound()
         {
-            // Arrange
-            var Id = 1;
-            var mock = new Mock<ISkillService>();
-            ISkillService skillService = mock.Object;
+            var skill = new Skill { Id = 1, SkillName = "Java Developer" };
+            _mock.Setup(x => x.GetSkillById(1)).ReturnsAsync((Skill)null);
+            _mock.Setup(x => x.UpdateSkill(skill)).ThrowsAsync(new KeyNotFoundException("Update not found"));
 
-            Skill skill = new Skill()
-            {
-                Id = 1,
-                SkillName = "Java Developer",
-            };
-
-            mock.Setup(x => x.GetSkillById(Id)).ReturnsAsync((Skill)null); // Simulating not found
-            mock.Setup(x => x.UpdateSkill(It.IsAny<Skill>())).ThrowsAsync(new KeyNotFoundException("Update not found"));
-
-            // Act & Assert
-            var exception = await Assert.ThrowsAsync<KeyNotFoundException>(() => skillService.UpdateSkill(skill));
-
-            // Assert
+            var exception = await Assert.ThrowsAsync<KeyNotFoundException>(() => _service.UpdateSkill(skill));
             Assert.Equal("Update not found", exception.Message);
         }
 
         [Fact]
         public async Task Update_Skill_ShouldThrowException_WhenUnexpectedErrorOccurs()
         {
-            // Arrange
-            var Id = 1;
-            var mock = new Mock<ISkillService>();
-            ISkillService skillService = mock.Object;
+            var skill = new Skill { Id = 1, SkillName = "Java Developer" };
+            _mock.Setup(x => x.GetSkillById(1)).ReturnsAsync((Skill)null);
+            _mock.Setup(x => x.UpdateSkill(skill)).ThrowsAsync(new KeyNotFoundException("Update not found"));
 
-            Skill skill = new Skill()
-            {
-                Id = 1,
-                SkillName = "Java Developer",
-            };
-
-            // Simulating that GetSkillById returns null (skill not found)
-            mock.Setup(x => x.GetSkillById(Id)).ReturnsAsync((Skill)null);
-
-            // Simulating that UpdateSkill throws a KeyNotFoundException when an invalid skill is passed
-            mock.Setup(x => x.UpdateSkill(It.IsAny<Skill>()))
-                .ThrowsAsync(new KeyNotFoundException("Update not found"));
-
-            // Act & Assert
-            var exception = await Assert.ThrowsAsync<KeyNotFoundException>(() => skillService.UpdateSkill(skill));
-
-            // Assert
+            var exception = await Assert.ThrowsAsync<KeyNotFoundException>(() => _service.UpdateSkill(skill));
             Assert.Equal("Update not found", exception.Message);
         }
 

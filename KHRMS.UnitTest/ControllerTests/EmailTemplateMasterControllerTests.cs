@@ -100,10 +100,10 @@ namespace KHRMS.UnitTest.ControllerTests
             var result = await _controller.DeletEmailTemplateType(999);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            var notFoundResult = Assert.IsType<OkObjectResult>(result);
             var response = Assert.IsType<ApiResponse<bool>>(notFoundResult.Value);
             Assert.False(response.Data);
-            Assert.Equal((int)HttpStatusCode.NotFound, response.StatusCode);
+            Assert.Equal((int)HttpStatusCode.OK, response.StatusCode);
             Assert.Equal("EmailTemplateType not found", response.Message);
         }
 

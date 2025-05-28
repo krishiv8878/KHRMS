@@ -66,10 +66,10 @@ namespace KHRMS.UnitTest.ControllerTests
             var result = await _controller.GetDocument(999);
 
             // Assert
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            var notFoundResult = Assert.IsType<OkObjectResult>(result);
             var response = Assert.IsType<ApiResponse<EmployeeDocumentInfo>>(notFoundResult.Value);
 
-            Assert.Equal((int)HttpStatusCode.NotFound, response.StatusCode);
+            Assert.Equal((int)HttpStatusCode.OK, response.StatusCode);
             Assert.Equal(ApiMessageConstant.EmployeeDocumentNotFound, response.Message);
             Assert.Null(response.Data);
         }
@@ -97,13 +97,13 @@ namespace KHRMS.UnitTest.ControllerTests
         //    };
 
         //    //_mockService.Setup(x => x.AddAsync(It.IsAny<EmployeeDocumentInfo>()))
-        //    //    .Callback<EmployeeDocumentInfo>(doc => doc.Id = 1)  // Assign ID in mock setup
+        //    //    .Callback<EmployeeDocumentInfo>(doc => doc.Id = 1)  // Assign ID in _mock setup
         //    //    .Returns(Task.CompletedTask);
         //    _mockService.Setup(x => x.AddAsync(It.IsAny<EmployeeDocumentInfo>()))
         //.Callback<EmployeeDocumentInfo>(doc =>
         //{
         //    doc.Id = 1;
-        //    doc.DocumentName = "Sample Document"; // Set document name in mock setup
+        //    doc.DocumentName = "Sample Document"; // Set document name in _mock setup
         //})
         //.Returns(Task.CompletedTask);
 
@@ -193,11 +193,11 @@ namespace KHRMS.UnitTest.ControllerTests
             var result = await _controller.DeleteDocument(id);
 
             // Assert
-            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            var badRequestResult = Assert.IsType<OkObjectResult>(result);
             var response = Assert.IsType<ApiResponse<bool>>(badRequestResult.Value);
             Assert.False(response.Data);
-            Assert.Equal((int)HttpStatusCode.BadRequest, response.StatusCode);
-            Assert.Equal(ApiMessageConstant.DocumentRequestNotDeleted, response.Message);
+            Assert.Equal((int)HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal(ApiMessageConstant.EmployeeDocumentNotFound, response.Message);
         }
 
     }

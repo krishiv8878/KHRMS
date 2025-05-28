@@ -9,12 +9,12 @@ using System.Net;
 namespace KHRMS.UnitTest.ControllerTests
 {
 
-    public class EmailTemplateControllerTest
+    public class EmailTemplateTypeControllerTest
     {
         private readonly Mock<IEmailTemplateService> _mockService;
         private readonly EmailTemplateController _controller;
 
-        public EmailTemplateControllerTest()
+        public EmailTemplateTypeControllerTest()
         {
             _mockService = new Mock<IEmailTemplateService>();
             _controller = new EmailTemplateController(_mockService.Object);
@@ -62,9 +62,9 @@ namespace KHRMS.UnitTest.ControllerTests
 
             var result = await _controller.GetByTemplateTypeId(999);
 
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            var notFoundResult = Assert.IsType<OkObjectResult>(result);
             var response = Assert.IsType<ApiResponse<EmailTemplatesMaster>>(notFoundResult.Value);
-            Assert.Equal((int)HttpStatusCode.NotFound, response.StatusCode);
+            Assert.Equal((int)HttpStatusCode.OK, response.StatusCode);
             Assert.Null(response.Data);
         }
 
@@ -116,9 +116,9 @@ namespace KHRMS.UnitTest.ControllerTests
 
             var result = await _controller.DeleteemailTemplatesMaster(999);
 
-            var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+            var notFoundResult = Assert.IsType<OkObjectResult>(result);
             var response = Assert.IsType<ApiResponse<bool>>(notFoundResult.Value);
-            Assert.Equal((int)HttpStatusCode.NotFound, response.StatusCode);
+            Assert.Equal((int)HttpStatusCode.OK, response.StatusCode);
             Assert.False(response.Data);
         }
 

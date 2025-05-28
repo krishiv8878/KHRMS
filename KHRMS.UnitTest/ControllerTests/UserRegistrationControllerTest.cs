@@ -8,19 +8,18 @@ namespace KHRMS.UnitTest.ControllerTests
 {
     public class UserRegistrationControllerTest
     {
+        private readonly Mock<IUserRegistrationService> _mock;
+        private readonly UserRegistrationController _controller;
         public UserRegistrationControllerTest()
         {
-
+            _mock = new Mock<IUserRegistrationService>();
+            _controller = new UserRegistrationController(_mock.Object);
         }
 
 
         [Fact]
         public void Registration_ShouldReturnPass_WhenValidDataIsProvided()
         {
-            var Id = 1;
-            var mock = new Mock<IUserRegistrationService>();
-            var controller = new UserRegistrationController(mock.Object);
-            mock.Setup(x => x.GetRegistrationByUser(It.IsAny<UserRegistration>()));
             UserRegistration userregistration = new UserRegistration()
             {
                 Id = 1,
@@ -31,9 +30,10 @@ namespace KHRMS.UnitTest.ControllerTests
                 Address = "",
                 Password = ""
             };
-            var result = controller.Registration(userregistration);
+            _mock.Setup(x => x.GetRegistrationByUser(It.IsAny<UserRegistration>())).ReturnsAsync(true);
+            var result = _controller.Registration(userregistration);
             Assert.NotNull(result);
-            Assert.Equal("", userregistration.FirstName);
+            _mock.Verify(x => x.GetRegistrationByUser(It.IsAny<UserRegistration>()), Times.Once());
         }
     }
 }
