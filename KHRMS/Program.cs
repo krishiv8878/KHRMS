@@ -41,6 +41,7 @@ builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<ISendEmailService, SendEmailService>();
 builder.Services.AddScoped<ILeaveRequestTypeService, LeaveRequestTypeService>();
+builder.Services.AddScoped<IResignationService, ResignationService>();
 
 // Add context-aware services
 builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();

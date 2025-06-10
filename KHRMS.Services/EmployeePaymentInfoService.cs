@@ -1,13 +1,14 @@
 ﻿using KHRMS.Core;
+using KHRMS.Services.Interfaces;
 
 namespace KHRMS.Services
 {
 
-    public class EmployeePaymentInfoService(IUnitOfWork unitOfWork) : IEmployeePaymentInfoService
+    public class EmployeePaymentInfoService(IUnitOfWork unitOfWork,IUserContextService userContextService) : IEmployeePaymentInfoService
     {
         public IUnitOfWork _unitOfWork = unitOfWork;
-
-
+        public IUserContextService _userContext = userContextService;
+        
 
         public async Task<IEnumerable<EmployeePaymentInfo>> GetAllAsync()
             => await _unitOfWork.EmployeePaymentInfo.GetAll();
@@ -17,7 +18,8 @@ namespace KHRMS.Services
 
         public async Task AddAsync(EmployeePaymentInfo entity)
         {
-
+            var empid = _userContext.GetCurrentEmployeeId();
+            entity.EmployeeId = empid;
             await _unitOfWork.EmployeePaymentInfo.Add(entity);
             _unitOfWork.Save();
         }

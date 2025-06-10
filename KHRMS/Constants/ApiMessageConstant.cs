@@ -238,5 +238,17 @@ namespace KHRMS
         public static readonly string LeaveRequestNotUpdated = "LeaveRequest is not Updated...";
         public static readonly string LeaveRequestDeleted = "LeaveRequest is deleted successfully";
         public static readonly string LeaveRequestNotDeleted = "LeaveRequest is not deleted..";
+
+        ///<summery>
+        ///This is Resignation Message constant
+        ///</summery>
+        public static readonly string ResignationRequestFound = "ResignationRequest retrieved successfully";
+        public static readonly string ResignationRequestNotFound = "ResignationRequest not found.";
+        public static readonly string ResignationRequestAdded = "ResignationRequest saved successfully";
+        public static readonly string ResignationRequestNotAdded = "ResignationRequest is not saved syccessfully";
+        public static readonly string ResignationRequestUpdated = "ResignationRequest updated successfully";
+        public static readonly string ResignationRequestNotUpdated = "ResignationRequest is not Updated...";
+        public static readonly string ResignationRequestDeleted = "ResignationRequest is deleted successfully";
+        public static readonly string ResignationRequestNotDeleted = "ResignationRequest is not deleted..";
     }
 }
