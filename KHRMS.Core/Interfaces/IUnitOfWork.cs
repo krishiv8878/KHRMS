@@ -29,6 +29,7 @@
         IEmailTemplateMasterRepository EmailTemplateMaster { get; }
         IEmailRepository Email {  get; }
         ILeaveRequestRepository LeaveRequest { get; }
+        IResignationRepository Resignation { get; }
 
         int Save();
     }

@@ -42,11 +42,11 @@ namespace KHRMS.Services
         public async Task AddAsync(EmployeeAttendance attendance)
         {
             var attendancebyid = (await _unitOfWork.EmployeeAttendance.GetAll()).FirstOrDefault(r => r.EmployeeId == attendance.EmployeeId && r.ClockIn.Date == attendance.ClockIn.Date);
-            attendance.CreatedDate = DateTime.Now;
             if (attendancebyid != null)
             {
                 await UpdateExistingAsync(attendance,attendancebyid);
             }else{
+                attendance.CreatedDate = DateTime.Now;
                 attendance.EffectiveHours = attendance.TotalHours;
                 await _unitOfWork.EmployeeAttendance.Add(attendance);
                 var result = _unitOfWork.Save();
@@ -93,14 +93,15 @@ namespace KHRMS.Services
                 attendancebyid.ClockOut = attendance.ClockOut;
 
                 // 3. Save total hours as a DateTime (based on 0001-01-01 + timespan)
-                attendancebyid.TotalHours = new DateTime(1, 1, 1).Add(totalDuration);
+                attendancebyid.TotalHours = new DateTime(1,1,1).Add(totalDuration);
 
                 // 4. Add new total to previous effective hours
-                TimeSpan previousEffective = attendancebyid.EffectiveHours.TimeOfDay;
-                TimeSpan newDuration = attendancebyid.TotalHours.TimeOfDay;
-                TimeSpan effectiveSum = previousEffective + newDuration;
+                //TimeSpan previousEffective = attendancebyid.EffectiveHours.TimeOfDay;
+                //TimeSpan newDuration = attendancebyid.TotalHours.TimeOfDay;
+                //TimeSpan effectiveSum = previousEffective + newDuration;
+                var effectivesum = attendance.EffectiveHours;
 
-                attendancebyid.EffectiveHours = new DateTime(1, 1, 1).Add(effectiveSum);
+                attendancebyid.EffectiveHours = attendance.EffectiveHours;
 
                 // 5. Update metadata
                 attendancebyid.UpdatedDate = DateTime.Now;

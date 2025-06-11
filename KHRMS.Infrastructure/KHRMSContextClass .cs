@@ -18,6 +18,8 @@ namespace KHRMS.Infrastructure
         public DbSet<AssetsMaster> AssetsMasters { get; set; }
         public DbSet<LeaveType> LeaveType { get; set; }
         public DbSet<UserLogin> UserLogins { get; set; }
+
+        public DbSet<Resignation> Resignations { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -42,6 +44,7 @@ namespace KHRMS.Infrastructure
         public DbSet<EmailTemplatesMaster> EmailTemplatesMasters { get; set;}
         public DbSet<Email> Emails { get; set; }
         public DbSet<LeaveRequest> leaveRequests { get; set; }
+        public DbSet<Resignation> Resignation { get; set; }
 
 
     }
