@@ -60,6 +60,44 @@ public class SendEmailService : ISendEmailService
         }
     }
 
+    public async Task<bool> SendResetPasswordEmailAsync(string toEmail, string subject, string placeholders, string templateType)
+    {
+        try
+        {
+            // Fetch the email template from the database based on the provided templateType
+            var emailType = (await _unitOfWork.EmailTemplateTypeMaster.GetAll()).FirstOrDefault(t => t.TemplateType == templateType);
+            var emailDescription = emailType.Description;
+            var emailTemplate = (await _unitOfWork.EmailTemplateMaster.GetAll()).FirstOrDefault(t => t.EmailTemplateTypeId == emailType.Id);
+
+            if (emailTemplate == null)
+            {
+                Console.WriteLine($"Template '{templateType}' not found.");
+                return false;
+            }
+
+            // Replace placeholders dynamically in the email body
+            string formattedBody = emailTemplate.TemplateHtml;
+
+            formattedBody = Regex.Replace(formattedBody, "#URL#", placeholders, RegexOptions.IgnoreCase);
+
+            // Create the email request
+            var emailRequest = new Email
+            {
+                ToEmail = toEmail,
+                EmailSubject = subject,
+                EmailBody = formattedBody,  // This is the formatted body with replaced placeholders
+                EmailTemplateId = emailTemplate.Id
+            };
+
+            // Call the existing SendEmailAsync method to actually send the email
+            return await SendEmailAsync(emailRequest);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Email sending failed: {ex.Message}");
+            return false;
+        }
+    }
     public async Task<bool> SendEmailAsync(Email request)
     {
         try

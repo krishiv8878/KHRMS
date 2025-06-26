@@ -1,4 +1,7 @@
-﻿namespace KHRMS.Services.Interfaces
+﻿using KHRMS.Core;
+using KHRMS.Services.Request;
+
+namespace KHRMS.Services.Interfaces
 {
     public interface IUserLoginService
     {
@@ -11,6 +14,9 @@
         //Task<bool> DeleteUserLogin(long userLoginId);
 
         Task<long?> GetUserLoginById(string email, string password);
+
+        Task<bool> ResetPassword(UserLoginModel userLogin);
+        Task<bool> ForgotPasswordMail(ForgotPasswordRequestModel forgotPassword);
 
     }
 }

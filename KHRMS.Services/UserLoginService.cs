@@ -1,12 +1,24 @@
 ﻿using KHRMS.Core;
+using KHRMS.Core.Models;
 using KHRMS.Services.Interfaces;
+using KHRMS.Services.Request;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion.Internal;
 
 namespace KHRMS.Services
 {
-    public class UserLoginService(IUnitOfWork unitOfWork) : IUserLoginService
+    public class UserLoginService : IUserLoginService
     {
-        public IUnitOfWork _unitOfWork = unitOfWork;
+        private readonly IUnitOfWork _unitOfWork;
+        private readonly ISendEmailService _sendEmailService;
+        public UserLoginService(IUnitOfWork unitOfWork,ISendEmailService sendEmail)
+        {
+            _unitOfWork = unitOfWork;
+            _sendEmailService = sendEmail;
+        
+        }
+        
         //public async Task<bool> GetUserLoginById(string email, string password)
         //{
         //    var allUsers = await _unitOfWork.UserLogins.GetAll();
@@ -32,7 +44,7 @@ namespace KHRMS.Services
 
             if (matchedUser != null)
             {
-                var passwordHasher = new PasswordHasher<UserLogin>();
+                var passwordHasher = new PasswordHasher<Core.UserLogin>();
                 var verificationResult = passwordHasher.VerifyHashedPassword(matchedUser, matchedUser.Password, password);
 
                 if (verificationResult == PasswordVerificationResult.Success)
@@ -50,9 +62,52 @@ namespace KHRMS.Services
 
             return null;
         }
+        public async Task<bool> ForgotPasswordMail(ForgotPasswordRequestModel forgotPassword)
+        {
+            if (forgotPassword != null)
+            {
+                var userLoginDetails = (await _unitOfWork.UserLogins.GetAll()).FirstOrDefault(x => x.Email == forgotPassword.Email);
+                if (userLoginDetails != null)
+                {
+                    var dict = new Dictionary<string, string>
+                    {
+                        {"Email" ,forgotPassword.Email}
+                    };
+                    var req = QueryHelpers.AddQueryString(forgotPassword.ClientUrl!, dict);
 
+                    var subject = $"Reset Password For {userLoginDetails.UserName}";
 
+                    await _sendEmailService.SendResetPasswordEmailAsync(forgotPassword.Email, subject, req, "ForgotPassword");
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                return false;
+            }
 
+        }
+        public async Task<bool> ResetPassword(UserLoginModel userLogin)
+        {
+            if (userLogin != null)
+            {
+                var matchedUser = (await _unitOfWork.UserLogins.GetAll()).FirstOrDefault(x => x.Email == userLogin.Email && !x.IsDeleted && x.IsActive);
+                if (matchedUser != null)
+                {
+                    var passwordHasher = new PasswordHasher<UserLogin>();
+                    matchedUser.Password = passwordHasher.HashPassword(matchedUser,userLogin.Password);
+
+                    _unitOfWork.UserLogins.Update(matchedUser);
+                    return _unitOfWork.Save() > 0;
+                }
+            }
+            return false;
+
+        }
 
         /* public async Task<bool> CreateUserLogin(UserLogin userLogin)
          {
@@ -114,28 +169,6 @@ namespace KHRMS.Services
              return null;
          }
 
-         public async Task<bool> UpdateUserLogin(UserLogin userLogin)
-         {
-            if(userLogin != null)
-             {
-                 var userLoginDetails = await _unitOfWork.UserLogins.GetById(userLogin.Id);
-                 if(userLoginDetails != null)
-                 {
-                     userLoginDetails.UserName = userLogin.UserName;
-                     userLoginDetails.Password = userLogin.Password;
-                     userLoginDetails.LastLoginDate = userLogin.LastLoginDate;
-
-
-                     _unitOfWork.UserLogins.Update(userLoginDetails);
-                     var result = _unitOfWork.Save();
-                     if (result > 0)
-                         return true;
-                     else
-                         return false;
-                 }
-
-             }
-             return false;
          }*/
     }
 }

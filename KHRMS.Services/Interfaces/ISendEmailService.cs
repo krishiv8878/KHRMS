@@ -7,5 +7,6 @@ namespace KHRMS.Services
     {
         Task<bool> SendEmailAsync(Email email);
         Task<bool> SendTemplateEmailAsync(string toEmail, string subject ,Dictionary<string, string> placeholders, string templateType);
+        Task<bool> SendResetPasswordEmailAsync(string toEmail, string subject ,string placeholders, string templateType);
     }
 }
