@@ -55,6 +55,8 @@ namespace KHRMS
         [HttpPost("forgot-password")]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequestModel model)
         {
+            Log.Information("UserLoginController - Forgot Password attempt for Email: {Email}", model.Email);
+
             if (model == null || string.IsNullOrEmpty(model.Email) || string.IsNullOrEmpty(model.ClientUrl))
                 return BadRequest("Email and client URL are required.");
 
@@ -62,17 +64,19 @@ namespace KHRMS
 
             if (!result)
             {
+                Log.Warning("UserLoginController - Forgot Password for Email Not Found: {Email}", model.Email);
                 return BadRequest(new ApiResponse<string>
                 {
                     StatusCode = (int)HttpStatusCode.BadRequest,
-                    Message = "Email not found.",
+                    Message = ApiMessageConstant.EmailNotfound,
                     Data = null
                 });
             }
+            Log.Information("UserLoginController - Password Forgot Link Sent Succeess for Email: {email}", model.Email);
             return Ok(new ApiResponse<string>
                 {
                     StatusCode = (int)HttpStatusCode.OK,
-                    Message = "Password reset email sent if the email exists.",
+                    Message = ApiMessageConstant.sentPasswordResetMail,
                     Data = null
                 });
             
@@ -80,6 +84,7 @@ namespace KHRMS
         [HttpPost("reset-password")]
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordModel userLogin)
         {
+            Log.Information("UserLoginController - Reset Password attempt Failed");
             if (userLogin == null || string.IsNullOrEmpty(userLogin.Password))
                 return BadRequest("Email and new password are required.");
 
@@ -87,17 +92,20 @@ namespace KHRMS
 
             if (!result)
             {
+                Log.Warning("UserLoginController - Reset Password Is Failed");
+
                 return BadRequest(new ApiResponse<string>
                 {
                     StatusCode = (int)HttpStatusCode.BadRequest,
-                    Message = "Failed to reset password.",
+                    Message = ApiMessageConstant.resetPasswordFail,
                     Data = null
                 });
             }
+            Log.Information("UserLoginController - Password Reset Success");
             return Ok(new ApiResponse<string>
             {
                 StatusCode = (int)HttpStatusCode.OK,
-                Message = "Password reset successfully.",
+                Message = ApiMessageConstant.resetPasswordSuccess,
                 Data = null
             });
         }
