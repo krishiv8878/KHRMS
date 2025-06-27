@@ -1,7 +1,11 @@
-﻿using KHRMS.Core;
+﻿using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using KHRMS.Core;
 using KHRMS.Core.Models;
+using KHRMS.Infrastructure.Migrations;
 using KHRMS.Services.Interfaces;
 using KHRMS.Services.Request;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion.Internal;
@@ -12,10 +16,12 @@ namespace KHRMS.Services
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ISendEmailService _sendEmailService;
-        public UserLoginService(IUnitOfWork unitOfWork,ISendEmailService sendEmail)
+        private readonly ITokenService _tokenService;
+        public UserLoginService(IUnitOfWork unitOfWork,ISendEmailService sendEmail,ITokenService tokenService)
         {
             _unitOfWork = unitOfWork;
             _sendEmailService = sendEmail;
+            _tokenService = tokenService;
         
         }
         
@@ -69,11 +75,13 @@ namespace KHRMS.Services
                 var userLoginDetails = (await _unitOfWork.UserLogins.GetAll()).FirstOrDefault(x => x.Email == forgotPassword.Email);
                 if (userLoginDetails != null)
                 {
+                    var token = _tokenService.GeneratePasswordResetToken(forgotPassword.Email);
                     var dict = new Dictionary<string, string>
                     {
+                        {"Token",token },
                         {"Email" ,forgotPassword.Email}
                     };
-                    var req = QueryHelpers.AddQueryString(forgotPassword.ClientUrl!, dict);
+                    var req = QueryHelpers.AddQueryString(forgotPassword.ClientUrl!,dict);
 
                     var subject = $"Reset Password For {userLoginDetails.UserName}";
 
@@ -91,21 +99,29 @@ namespace KHRMS.Services
             }
 
         }
-        public async Task<bool> ResetPassword(UserLoginModel userLogin)
+        public async Task<bool> ResetPassword(ResetPasswordModel userLogin)
         {
-            if (userLogin != null)
-            {
-                var matchedUser = (await _unitOfWork.UserLogins.GetAll()).FirstOrDefault(x => x.Email == userLogin.Email && !x.IsDeleted && x.IsActive);
-                if (matchedUser != null)
-                {
-                    var passwordHasher = new PasswordHasher<UserLogin>();
-                    matchedUser.Password = passwordHasher.HashPassword(matchedUser,userLogin.Password);
+            if (userLogin == null || string.IsNullOrWhiteSpace(userLogin.Token))
+                return false;
 
-                    _unitOfWork.UserLogins.Update(matchedUser);
-                    return _unitOfWork.Save() > 0;
-                }
-            }
-            return false;
+            var principal = _tokenService.ValidatePasswordResetToken(userLogin.Token);
+            if (principal == null)
+                return false;
+            var email = principal.FindFirst(ClaimTypes.Email)?.Value;
+            if (string.IsNullOrWhiteSpace(email))
+                return false;
+
+            var matchedUser = (await _unitOfWork.UserLogins.GetAll())
+                .FirstOrDefault(x => x.Email == email && !x.IsDeleted && x.IsActive);
+
+            if (matchedUser == null)
+                return false;
+
+            var passwordHasher = new PasswordHasher<UserLogin>();
+            matchedUser.Password = passwordHasher.HashPassword(matchedUser, userLogin.Password);
+
+            _unitOfWork.UserLogins.Update(matchedUser);
+            return _unitOfWork.Save() > 0;
 
         }
 

@@ -78,9 +78,9 @@ namespace KHRMS
             
         }
         [HttpPost("reset-password")]
-        public async Task<IActionResult> ResetPassword([FromBody] UserLoginModel userLogin)
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordModel userLogin)
         {
-            if (userLogin == null || string.IsNullOrEmpty(userLogin.Email) || string.IsNullOrEmpty(userLogin.Password))
+            if (userLogin == null || string.IsNullOrEmpty(userLogin.Password))
                 return BadRequest("Email and new password are required.");
 
             var result = await _userLoginService.ResetPassword(userLogin);

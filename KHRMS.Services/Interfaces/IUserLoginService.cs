@@ -15,7 +15,7 @@ namespace KHRMS.Services.Interfaces
 
         Task<long?> GetUserLoginById(string email, string password);
 
-        Task<bool> ResetPassword(UserLoginModel userLogin);
+        Task<bool> ResetPassword(ResetPasswordModel userLogin);
         Task<bool> ForgotPasswordMail(ForgotPasswordRequestModel forgotPassword);
 
     }
