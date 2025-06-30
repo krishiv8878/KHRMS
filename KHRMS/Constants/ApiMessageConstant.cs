@@ -83,6 +83,11 @@ namespace KHRMS
 
         public static readonly string UserLoginByIdAdded = "UserLogin saved successfully";
         public static readonly string InvalidCredentials = "Invalid credentials";
+        public static readonly string EmailNotfound = "Email not found.";
+        public static readonly string sentPasswordResetMail = "Password reset email sent to the given Email";
+        public static readonly string resetPasswordFail = "Failed to reset password.";
+        public static readonly string resetPasswordSuccess = "Password reset successfully.";
+
 
         ///<summery>
         ///This is LeaveType Message constant
