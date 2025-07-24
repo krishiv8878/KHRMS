@@ -4,6 +4,12 @@ using KHRMS.Infrastructure;
 using KHRMS.Services.Interfaces;
 using Serilog;
 using GlobalExceptionHandlingDemo.Middleware;
+using Microsoft.OpenApi.Models;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using System.IdentityModel.Tokens.Jwt;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -66,11 +72,43 @@ builder.Services.AddCors(p => p.AddPolicy("corspolice", corsBuilder =>
     corsBuilder.WithOrigins("http://localhost:4200")
     .AllowAnyMethod().AllowAnyHeader().AllowCredentials();
 }));
-
-//Add controllers, Swagger, etc.
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(option => option.TokenValidationParameters = new TokenValidationParameters { 
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = builder.Configuration["Jwt:ValidIssuer"],
+        ValidAudience = builder.Configuration["Jwt:ValidAudience"],
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:PasswordResetSecret"]!)),
+    });
+builder.Services.AddAuthorization();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    var jwtSecurityScheme = new OpenApiSecurityScheme
+    {
+        BearerFormat = "JWT",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http, 
+        Scheme = JwtBearerDefaults.AuthenticationScheme,
+        Description = "Enter your JWT Access Token",
+        Reference = new OpenApiReference
+        {
+            Id = JwtBearerDefaults.AuthenticationScheme,
+            Type = ReferenceType.SecurityScheme
+        }
+
+    };
+
+    options.AddSecurityDefinition("Bearer", jwtSecurityScheme);
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        { jwtSecurityScheme, Array.Empty<string>() }
+    });
+});
 
 var app = builder.Build();
 
@@ -95,6 +133,7 @@ app.UseSerilogRequestLogging();
 app.UseRouting();
 app.UseCors("corspolice");
 app.UseSession();
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();

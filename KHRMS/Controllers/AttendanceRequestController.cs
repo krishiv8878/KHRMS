@@ -2,6 +2,7 @@
 using KHRMS.Core;
 using KHRMS.Infrastructure;
 using KHRMS.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
@@ -9,6 +10,7 @@ using System.Net;
 
 namespace KHRMS.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class AttendanceRequestController(IAttendanceRequestService attendanceRequestService) : ControllerBase

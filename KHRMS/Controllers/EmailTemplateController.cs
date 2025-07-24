@@ -5,11 +5,13 @@ using System.Net;
 using Microsoft.AspNetCore.Mvc;
 using KHRMS.Core.Models;
 using Serilog;
+using Microsoft.AspNetCore.Authorization;
 
 
 namespace KHRMS
 {
 
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class EmailTemplateController(IEmailTemplateService emailTemplateService) : ControllerBase

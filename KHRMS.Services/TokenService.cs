@@ -24,19 +24,19 @@ namespace KHRMS.Services
 
         public string GeneratePasswordResetToken(string email)
         {
-            var secretKey = _configuration["Jwt:PasswordResetSecret"];
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
-            var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
             var claims = new[]
             {
                 new Claim(JwtRegisteredClaimNames.Email, email),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
+            var secretKey = _configuration["Jwt:PasswordResetSecret"];
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
+            var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha512);
+
 
             var token = new JwtSecurityToken(
-                issuer: "yourapp.com",
-                audience: "yourapp.com",
+                issuer: _configuration["Jwt:issuer"],
+                audience: _configuration["Jwt:audience"],
                 claims: claims,
                 expires: DateTime.UtcNow.AddMinutes(15),
                 signingCredentials: credentials);
@@ -49,25 +49,24 @@ namespace KHRMS.Services
             var tokenHandler = new JwtSecurityTokenHandler();
             var secretKey = _configuration["Jwt:PasswordResetSecret"];
             var key = Encoding.UTF8.GetBytes(secretKey);
-
             try
             {
                 var parameters = new TokenValidationParameters
                 {
-                    ValidateIssuerSigningKey = true,
+                    ValidateIssuerSigningKey = Convert.ToBoolean(_configuration["Jwt:ValidateIssuerSigningKey"]),
                     IssuerSigningKey = new SymmetricSecurityKey(key),
-                    ValidateIssuer = true,
-                    ValidateAudience = true,
-                    ValidIssuer = "yourapp.com",
-                    ValidAudience = "yourapp.com",
-                    ValidateLifetime = true,
-                    ClockSkew = TimeSpan.Zero 
+                    ValidateIssuer = Convert.ToBoolean(_configuration["Jwt:ValidateIssuer"]),
+                    ValidateAudience = Convert.ToBoolean(_configuration["Jwt:ValidateAudience"]),
+                    ValidIssuer = _configuration["Jwt:ValidIssuer"],
+                    ValidAudience = _configuration["Jwt:ValidAudience"],
+                    ValidateLifetime = Convert.ToBoolean(_configuration["Jwt:ValidateLifetime"]),
+                    ClockSkew = TimeSpan.Zero
                 };
 
                 var principal = tokenHandler.ValidateToken(token, parameters, out SecurityToken validatedToken);
 
                 if (validatedToken is not JwtSecurityToken jwtToken ||
-                    !jwtToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase))
+                    !jwtToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha512, StringComparison.InvariantCultureIgnoreCase))
                 {
                     return null;
                 }
@@ -76,7 +75,7 @@ namespace KHRMS.Services
             }
             catch (SecurityTokenException)
             {
-                return null; // token invalid or expired
+                return null;
             }
         }
 

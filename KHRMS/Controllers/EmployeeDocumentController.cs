@@ -1,6 +1,7 @@
 ﻿using KHRMS.Core;
 using KHRMS.Infrastructure;
 using KHRMS.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Serilog;
 using System.Net;
@@ -13,6 +14,7 @@ namespace KHRMS
     /// API Controller for managing Employee Documents Information.
     /// Provides endpoints to Create, Read, Update, and Delete employee documents records.
     /// </summary>
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class EmployeeDocumentController(IEmployeeDocumentService employeeDocumentService, ILogger<EmployeeDocumentController> logger) : ControllerBase

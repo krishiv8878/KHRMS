@@ -4,9 +4,10 @@ using KHRMS.Services;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
 using Serilog;
+using Microsoft.AspNetCore.Authorization;
 namespace KHRMS
 {
-
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class EmployeeAttendanceController(IEmployeeAttendanceService employeeAttendanceService) : ControllerBase
