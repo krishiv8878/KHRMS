@@ -1,6 +1,7 @@
 ﻿using KHRMS.Core;
 using KHRMS.Infrastructure;
 using KHRMS.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Serilog;
 using System.Net;
@@ -8,6 +9,7 @@ using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace KHRMS.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class RoleMasterController(IRoleMasterService roleMasterService) : ControllerBase

@@ -1,14 +1,14 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Text;
 using KHRMS.Core;
-using KHRMS.Core.Models;
-using KHRMS.Infrastructure.Migrations;
 using KHRMS.Services.Interfaces;
 using KHRMS.Services.Request;
-using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
-using Microsoft.EntityFrameworkCore.Storage.ValueConversion.Internal;
+using Microsoft.Extensions.Configuration;
+using Microsoft.IdentityModel.Tokens;
 
 namespace KHRMS.Services
 {
@@ -17,11 +17,13 @@ namespace KHRMS.Services
         private readonly IUnitOfWork _unitOfWork;
         private readonly ISendEmailService _sendEmailService;
         private readonly ITokenService _tokenService;
-        public UserLoginService(IUnitOfWork unitOfWork,ISendEmailService sendEmail,ITokenService tokenService)
+        private readonly IConfiguration _configuration;
+        public UserLoginService(IUnitOfWork unitOfWork,ISendEmailService sendEmail,ITokenService tokenService,IConfiguration configuration)
         {
             _unitOfWork = unitOfWork;
             _sendEmailService = sendEmail;
             _tokenService = tokenService;
+            _configuration = configuration;
         
         }
         
@@ -43,29 +45,58 @@ namespace KHRMS.Services
         //    }
         //}
 
-        public async Task<long?> GetUserLoginById(string email, string password)
+        public async Task<UserLoginModel?> GetUserLoginById(string Email, string Password)
         {
             var allUsers = await _unitOfWork.UserLogins.GetAll();
-            var matchedUser = allUsers.FirstOrDefault(x => x.Email == email && !x.IsDeleted && x.IsActive);
+            var matchedUser = allUsers.FirstOrDefault(x => x.Email == Email && !x.IsDeleted && x.IsActive);
 
             if (matchedUser != null)
             {
-                var passwordHasher = new PasswordHasher<Core.UserLogin>();
-                var verificationResult = passwordHasher.VerifyHashedPassword(matchedUser, matchedUser.Password, password);
-
+                var passwordHasher = new PasswordHasher<UserLogin>();
+                var verificationResult = passwordHasher.VerifyHashedPassword(matchedUser, matchedUser.Password, Password);
                 if (verificationResult == PasswordVerificationResult.Success)
                 {
                     // Find matching employee
                     var allEmployees = await _unitOfWork.Employees.GetAll();
-                    var matchedEmployee = allEmployees.FirstOrDefault(e => e.EmailAddress == email && !e.IsDeleted && e.IsActive);
+                    var matchedEmployee = allEmployees.FirstOrDefault(e => e.EmailAddress == Email && !e.IsDeleted && e.IsActive);
 
                     if (matchedEmployee != null)
                     {
-                        return matchedEmployee.Id;
+                        var issuer = _configuration["Jwt:issuer"];
+                        var audience = _configuration["Jwt:audience"];
+                        var key = _configuration["Jwt:PasswordResetSecret"];
+                        var tokenExpiryTimeStamp = DateTime.UtcNow.AddMinutes(60);
+
+                        var tokenDescriptor = new SecurityTokenDescriptor
+                        {
+
+                            Subject = new ClaimsIdentity(new[]
+                            {
+                                new Claim(JwtRegisteredClaimNames.Name, Email)
+                            }),
+                            Expires = tokenExpiryTimeStamp,
+                            Issuer = issuer,
+                            Audience = audience,
+                            SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(Encoding.ASCII.GetBytes(key)),
+                                SecurityAlgorithms.HmacSha256),
+                        };
+
+                        var tokenHandler = new JwtSecurityTokenHandler();
+                        var securityToken = tokenHandler.CreateToken(tokenDescriptor);
+                        var accessToken = tokenHandler.WriteToken(securityToken);
+
+                        var ExpiresIn = (int)tokenExpiryTimeStamp.Subtract(DateTime.UtcNow).TotalSeconds;
+                        var model = new UserLoginModel
+                        {
+                            Email = Email,
+                            Password = Password,
+                            Token = accessToken,
+                            UserId = matchedEmployee.Id,
+                        };
+                        return model;
                     }
                 }
             }
-
             return null;
         }
         public async Task<bool> ForgotPasswordMail(ForgotPasswordRequestModel forgotPassword)

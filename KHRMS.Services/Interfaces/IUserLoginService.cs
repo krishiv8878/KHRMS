@@ -13,7 +13,7 @@ namespace KHRMS.Services.Interfaces
 
         //Task<bool> DeleteUserLogin(long userLoginId);
 
-        Task<long?> GetUserLoginById(string email, string password);
+        Task<UserLoginModel?> GetUserLoginById(string Email, string Password);
 
         Task<bool> ResetPassword(ResetPasswordModel userLogin);
         Task<bool> ForgotPasswordMail(ForgotPasswordRequestModel forgotPassword);

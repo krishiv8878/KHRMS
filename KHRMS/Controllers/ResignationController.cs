@@ -3,11 +3,13 @@ using KHRMS.Core;
 using KHRMS.Infrastructure;
 using KHRMS.Services;
 using KHRMS.Services.Request;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Serilog;
 
 namespace KHRMS.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class ResignationController(IResignationService resignationService) : Controller
