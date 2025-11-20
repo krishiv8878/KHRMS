@@ -4,6 +4,7 @@ using KHRMS.Infrastructure.Migrations;
 using KHRMS.Services;
 using KHRMS.Services.Interfaces;
 using KHRMS.Services.Request;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Serilog;
 using System.Net;
@@ -11,6 +12,7 @@ using System.Net;
 
 namespace KHRMS
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class LeaveRequestController(ILeaveRequestTypeService leaveRequestTypeService) : ControllerBase

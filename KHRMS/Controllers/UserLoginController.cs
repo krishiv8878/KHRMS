@@ -26,20 +26,20 @@ namespace KHRMS
             {
                 Log.Information("UserLoginController - Login attempt for Email: {Email}", model.Email);
 
-                var employeeId = await _userLoginService.GetUserLoginById(model.Email, model.Password);
+                var employeeId = await _userLoginService.GetUserLoginById(model.Email,model.Password);
 
-                if (employeeId.HasValue)
+                if (employeeId.UserId.HasValue)
                 {
                     // Store employee ID in session
-                    _httpContextAccessor.HttpContext?.Session.SetString("EmployeeId", employeeId.Value.ToString());
+                    _httpContextAccessor.HttpContext?.Session.SetString("EmployeeId", employeeId.UserId.Value.ToString());
 
-                    Log.Information("UserLoginController - Login successful for EmployeeId: {EmployeeId}", employeeId.Value);
+                    Log.Information("UserLoginController - Login successful for EmployeeId: {EmployeeId}", employeeId.UserId.Value);
 
-                    return Ok(new ApiResponse<long>
+                    return Ok(new ApiResponse<UserLoginModel>
                     {
                         StatusCode = (int)HttpStatusCode.OK,
                         Message = ApiMessageConstant.UserLoginByIdAdded,
-                        Data = employeeId.Value
+                        Data = employeeId,
                     });
                 }
 
