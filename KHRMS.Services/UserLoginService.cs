@@ -77,7 +77,7 @@ namespace KHRMS.Services
                     var roleTypes = "N/A";
                     if (roleNames.Count() > 0)
                     {
-                        roleTypes = string.Join(", ", roleNames);
+                        roleTypes = string.Join(",", roleNames);
                     }
                     if (matchedEmployee != null)
                     {
@@ -85,13 +85,15 @@ namespace KHRMS.Services
                         var audience = _configuration["Jwt:audience"];
                         var key = _configuration["Jwt:PasswordResetSecret"];
                         var tokenExpiryTimeStamp = DateTime.UtcNow.AddMinutes(60);
+                      
 
                         var tokenDescriptor = new SecurityTokenDescriptor
                         {
 
                             Subject = new ClaimsIdentity(new[]
                             {
-                                new Claim(JwtRegisteredClaimNames.Name, Email)
+                                new Claim(JwtRegisteredClaimNames.Name, Email),
+                                new Claim("UserId", matchedEmployee.Id.ToString()),
                             }),
                             Expires = tokenExpiryTimeStamp,
                             Issuer = issuer,

@@ -1,4 +1,5 @@
 ﻿using KHRMS.Core;
+using KHRMS.Core.Models;
 using KHRMS.Infrastructure;
 using KHRMS.Infrastructure.Migrations;
 using KHRMS.Services;
@@ -15,14 +16,15 @@ namespace KHRMS
     [Authorize]
     [Route("api/[controller]")]
     [ApiController]
-    public class LeaveRequestController(ILeaveRequestTypeService leaveRequestTypeService) : ControllerBase
+    public class LeaveRequestController(ILeaveRequestTypeService leaveRequestTypeService, IHttpContextAccessor httpContextAccessor) : ControllerBase
     {
         public readonly ILeaveRequestTypeService _leaveRequestTypeService = leaveRequestTypeService;
-        private readonly IUserContextService _userContext;
+        private readonly IUserContextService _userContext; public readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
 
         [HttpGet("GetAllLeaveRequest")]
         public async Task<IActionResult> GetAll()
         {
+            
             Log.Information("LeaveRequestController - GetAllLeaveRequest called.");
             var result = await _leaveRequestTypeService.GetAllLeaveRequestType();
 
@@ -46,6 +48,31 @@ namespace KHRMS
             });
         }
 
+
+        [HttpGet("GetAllEmployeesLeaveRequest")]
+        public async Task<IActionResult> GetAllEmployeesLeaveRequest()
+        {
+            var result = await _leaveRequestTypeService.GetAllEmployeesLeaveRequest( );
+
+            if (result == null || !result.Any())
+            {
+                Log.Warning("LeaveRequestController - No leave requests found.");
+                return Ok(new ApiResponse<IEnumerable<LeaveRequest>>
+                {
+                    StatusCode = (int)HttpStatusCode.OK,
+                    Message = ApiMessageConstant.LeaveRequestTypeNotFound,
+                    Data = null
+                });
+            }
+
+            Log.Information("LeaveRequestController - {Count} leave requests found.", result.Count());
+            return Ok(new ApiResponse<IEnumerable<LeaveRequest>>
+            {
+                StatusCode = (int)HttpStatusCode.OK,
+                Message = ApiMessageConstant.LeaveRequestTypeFound,
+                Data = result
+            });
+        }
 
 
         [HttpGet("GetLeaveRequestById/{id}")]
@@ -168,8 +195,8 @@ namespace KHRMS
         }
 
 
-        [HttpPut("ApproveLeaveRequest")]
-        public async Task<IActionResult> ApproveLeaveRequest(LeaveRequest leaveRequest)
+        [HttpPost("ApproveLeaveRequest")]
+        public async Task<IActionResult> ApproveLeaveRequest(ApproveLeaveRequest leaveRequest)
         {
             Log.Information("ApproveLeaveRequest called for ID: {LeaveRequestId}", leaveRequest.Id);
 
@@ -187,8 +214,7 @@ namespace KHRMS
                         Data = false
                     });
                 }
-
-                Log.Information("LeaveRequest ID {Id} approved by Manager ID {ManagerId}", leaveRequest.Id, leaveRequest.ApprovedBy);
+                Log.Information("LeaveRequest ID {Id} approved by Manager ID {ManagerId}", leaveRequest.Id);
                 return Ok(new ApiResponse<bool>
                 {
                     StatusCode = (int)HttpStatusCode.OK,

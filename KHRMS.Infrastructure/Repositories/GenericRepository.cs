@@ -54,5 +54,10 @@ namespace KHRMS.Infrastructure
         {
             return await _dbContext.Set<T>().FindAsync(id);
         }
+
+        public  IQueryable<T> Query()
+        {
+            return  _dbContext.Set<T>();
+        }
     }
 }

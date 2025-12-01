@@ -63,8 +63,8 @@ namespace KHRMS.UnitTest.ControllerTests
 
             var leaveRequest = new List<LeaveReqestModel>
             {
-                new LeaveReqestModel(){Id = 1,LeaveMode="",LeaveTypeName="Casual",StartDate = startdate,EndDate = enddate,IsApproved = false,LeaveReson = "Nothing"},
-                new LeaveReqestModel(){Id = 2,LeaveMode="",LeaveTypeName="Sick",StartDate = startdate,EndDate = enddate,IsApproved = false,LeaveReson = "xyz"},
+                new LeaveReqestModel(){Id = 1,LeaveMode="",LeaveTypeName="Casual",StartDate = startdate,EndDate = enddate,IsApproved = false,LeaveReason = "Nothing"},
+                new LeaveReqestModel(){Id = 2,LeaveMode="",LeaveTypeName="Sick",StartDate = startdate,EndDate = enddate,IsApproved = false,LeaveReason = "xyz"},
             };
 
             _mock.Setup(x => x.GetAllLeaveRequestType()).ReturnsAsync(leaveRequest);

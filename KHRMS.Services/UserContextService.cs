@@ -1,5 +1,6 @@
 ﻿using KHRMS.Services.Interfaces;
 using Microsoft.AspNetCore.Http;
+using System.Security.Claims;
 
 public class UserContextService : IUserContextService
 {
@@ -9,15 +10,11 @@ public class UserContextService : IUserContextService
     {
         _httpContextAccessor = httpContextAccessor;
     }
-
+    private ClaimsPrincipal User => _httpContextAccessor.HttpContext?.User;
     public long GetCurrentEmployeeId()
     {
-        var employeeIdString = _httpContextAccessor.HttpContext?.Session.GetString("EmployeeId");
-
-        if (long.TryParse(employeeIdString, out var employeeId))
-            return employeeId;
-
-        throw new Exception("User is not logged in.");
+        var id = User?.FindFirst("UserId")?.Value;
+        return id != null ? Convert.ToInt64(id) : 0;
     }
 
 }

@@ -11,6 +11,7 @@
         Task<T> GetByEmployeeIdAsync(long employeeId);
 
         Task<T> GetByIdAsync(long id);
+        IQueryable<T> Query();
 
     }
 }
