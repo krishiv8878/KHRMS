@@ -59,20 +59,41 @@ namespace KHRMS.Services
                     // Find matching employee
                     var allEmployees = await _unitOfWork.Employees.GetAll();
                     var matchedEmployee = allEmployees.FirstOrDefault(e => e.EmailAddress == Email && !e.IsDeleted && e.IsActive);
+                    var existingRoleMappings = (await _unitOfWork.EmployeeRoleMappings.GetAll())
+              .Where(r => r.EmployeeId == matchedEmployee.Id)
+              .ToList().Select(x=> x.RoleId);
 
+                    var allRole = (await _unitOfWork.RoleMaster.GetAll())
+              .Where(r =>  r.IsActive != false && r.IsDeleted != true)
+              .ToList();
+
+
+                    var roleNames = allRole
+                        .Where(r => existingRoleMappings.Contains(r.Id))
+                        .Select(r => r.RoleName)   // Modify property name if yours is different
+                        .ToList();
+
+
+                    var roleTypes = "N/A";
+                    if (roleNames.Count() > 0)
+                    {
+                        roleTypes = string.Join(",", roleNames);
+                    }
                     if (matchedEmployee != null)
                     {
                         var issuer = _configuration["Jwt:issuer"];
                         var audience = _configuration["Jwt:audience"];
                         var key = _configuration["Jwt:PasswordResetSecret"];
                         var tokenExpiryTimeStamp = DateTime.UtcNow.AddMinutes(60);
+                      
 
                         var tokenDescriptor = new SecurityTokenDescriptor
                         {
 
                             Subject = new ClaimsIdentity(new[]
                             {
-                                new Claim(JwtRegisteredClaimNames.Name, Email)
+                                new Claim(JwtRegisteredClaimNames.Name, Email),
+                                new Claim("UserId", matchedEmployee.Id.ToString()),
                             }),
                             Expires = tokenExpiryTimeStamp,
                             Issuer = issuer,
@@ -88,10 +109,12 @@ namespace KHRMS.Services
                         var ExpiresIn = (int)tokenExpiryTimeStamp.Subtract(DateTime.UtcNow).TotalSeconds;
                         var model = new UserLoginModel
                         {
+                            UserName= $"{matchedEmployee.FirstName} {matchedEmployee.LastName}",
                             Email = Email,
                             Password = Password,
                             Token = accessToken,
                             UserId = matchedEmployee.Id,
+                            RoleType = roleTypes
                         };
                         return model;
                     }

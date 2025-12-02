@@ -170,9 +170,11 @@
 //    }
 //}
 using KHRMS.Core;
+using KHRMS.Core.Models;
 using KHRMS.Infrastructure;
 using KHRMS.Services.Interfaces;
 using KHRMS.Services.Request;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
 namespace KHRMS.Services
@@ -182,15 +184,17 @@ namespace KHRMS.Services
         private readonly IUnitOfWork _unitOfWork;
         private readonly ISendEmailService _sendEmailService;
         private readonly IUserContextService _userContext;
-
+        public readonly IHttpContextAccessor _httpContextAccessor;
         public LeaveRequestTypeService(
       IUnitOfWork unitOfWork,
       ISendEmailService emailRepository,
-      IUserContextService userContextService)
+      IUserContextService userContextService,IHttpContextAccessor httpContextAccessor)
         {
             _unitOfWork = unitOfWork;
             _sendEmailService = emailRepository;
             _userContext = userContextService;
+            _httpContextAccessor = httpContextAccessor;
+
         }
 
         public async Task<bool> AddLeaveRequestType(LeaveRequest leaveRequest)
@@ -269,19 +273,27 @@ namespace KHRMS.Services
         public async Task<IEnumerable<LeaveReqestModel>> GetAllLeaveRequestType()
         {
 
+           var employeeId = _userContext.GetCurrentEmployeeId();
+
+
             var requests = await _unitOfWork.LeaveRequest.GetAll();
             var leavetypes = (await _unitOfWork.LeaveType.GetAll());
 
             var result = from request in requests
                          join leaveType in leavetypes on request.LeaveTypeId equals leaveType.Id
+                         where request.EmployeeId == employeeId && request.IsActive == true
+                                 && request.IsDeleted != true
                          select new LeaveReqestModel 
                          {
                              Id = request.Id,
                              StartDate = request.StartDate,
                              EndDate = request.EndDate,
                              LeaveMode = request.LeaveMode,
-                             LeaveReson = request.LeaveReason,
-                             LeaveTypeName = leaveType.Type
+                             LeaveReason = request.LeaveReason,
+                             LeaveTypeName = leaveType.Type,
+                             LeaveTypeId = leaveType.Id,
+                             ApprovedBy = request.ApprovedBy,
+                             IsApproved = request.IsApproved
                          };
 
 
@@ -289,6 +301,8 @@ namespace KHRMS.Services
 
 
         }
+
+
 
         public async Task<LeaveRequest> GetLeaveRequestTypeById(int LeaveRequestTypeId)
         {
@@ -332,20 +346,20 @@ namespace KHRMS.Services
         }
 
        
-        public async Task<bool> ApproveLeaveRequestAsync(LeaveRequest leaveRequest)
+        public async Task<bool> ApproveLeaveRequestAsync(ApproveLeaveRequest leaveRequest)
         {
 
             var leaveRequest1 = await _unitOfWork.LeaveRequest.GetById(leaveRequest.Id);
-            if (leaveRequest1 == null || leaveRequest1.IsApproved.GetValueOrDefault()) return false;
+            if (leaveRequest1 == null ) return false;
 
             var managerId = _userContext.GetCurrentEmployeeId();
 
-            var employee = await _unitOfWork.Employees.GetById(leaveRequest.EmployeeId);
+            var employee = await _unitOfWork.Employees.GetById(leaveRequest1.EmployeeId);
             var manager = await _unitOfWork.Employees.GetById(managerId);
 
             if (employee == null || manager == null) return false;
 
-            leaveRequest1.IsApproved = true;
+            leaveRequest1.IsApproved = leaveRequest.IsApproved;
             leaveRequest1.ApprovedDate = DateTime.Now;
             leaveRequest1.ApprovedBy = (int)managerId;
 
@@ -357,17 +371,27 @@ namespace KHRMS.Services
             var dict = new Dictionary<string, string>
             {
                 { "ManagerName", $"{manager.FirstName} {manager.LastName}" },
-                { "StartDate", GetFormattedDate(leaveRequest.StartDate) },
-                { "EndDate", GetFormattedDate(leaveRequest.EndDate) },
+                { "StartDate", GetFormattedDate(leaveRequest1.StartDate) },
+                { "EndDate", GetFormattedDate(leaveRequest1.EndDate) },
                 { "LeaveReason", "Approval Request" },
                 { "EmployeeName", $"{employee.FirstName} {employee.LastName}" },
                 { "ManagerEmail", manager.EmailAddress }
             };
 
-            string subject = "Your Leave Request Has Been Approved";
             try
             {
-                await _sendEmailService.SendTemplateEmailAsync(employee.EmailAddress, subject, dict, "Approval Request");
+                if (leaveRequest.IsApproved) {
+                    string subject = "Your Leave Request Has Been Approved";
+
+                    await _sendEmailService.SendTemplateEmailAsync(employee.EmailAddress, subject, dict, "ApprovalRequest");
+                
+                }else
+                {
+                    string subject = "Your Leave Request Has Been Rejected";
+
+                    _sendEmailService.SendTemplateEmailAsync(employee.EmailAddress, subject, dict, "RejectRequest");
+                }
+
             }
             catch
             {
@@ -378,13 +402,54 @@ namespace KHRMS.Services
         }
         public async Task<IEnumerable<LeaveRequest>> GetAllEmployeesLeaveRequest()
         {
-            long employeeId = _userContext.GetCurrentEmployeeId(); // 
+            try
+            {
 
-            var empid = (await _unitOfWork.Employees.GetAll()).Where(r => r.ManagerId == employeeId).Select(r => r.Id).ToList();
-            //UpdateLeaveRequestType(empid);
-            var leaverequest = (await _unitOfWork.LeaveRequest.GetAll()).Where(r => empid.Contains(r.EmployeeId)).ToList();
-            return leaverequest;
+                var managerId = _userContext.GetCurrentEmployeeId();
+                var leaveRequest = await _unitOfWork.LeaveRequest.GetAll();
+                var leaveTypes = await _unitOfWork.LeaveType.GetAll();
+                var empoloyee = await _unitOfWork.Employees.GetAll();
+                var leaveRequests =
+                    (from lr in leaveRequest
+                     join leaveType in leaveTypes on lr.LeaveTypeId equals leaveType.Id
+                     join emp in empoloyee
+                         on lr.EmployeeId equals emp.Id
+                     where emp.ManagerId == managerId  && lr.IsActive == true
+                                 && lr.IsDeleted != true
+
+                     select new LeaveRequest
+                     {
+                         Id = lr.Id,
+                         StartDate = lr.StartDate,
+                         EndDate = lr.EndDate,
+                         LeaveMode = lr.LeaveMode,
+                         LeaveReason = lr.LeaveReason,
+                         LeaveTypeId = lr.LeaveTypeId,
+                         IsApproved = lr.IsApproved,
+                         Employee = new Employee
+                         {
+                             FirstName = emp.FirstName,
+                             LastName = emp.LastName
+                         },
+                         LeaveType = new LeaveType
+                         {
+                             Type = leaveType.Type,
+                             Description = leaveType.Description,
+                             Id = leaveType.Id,
+                         },
+                         ApprovedBy = lr.ApprovedBy,
+                         EmployeeId = emp.Id
+
+                     });
+
+
+                return leaveRequests;
+            } catch(Exception EX)
+            {
+                return null;
+            }
         }
 
+      
     }
 }

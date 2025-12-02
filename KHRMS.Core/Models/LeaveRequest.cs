@@ -21,7 +21,9 @@ namespace KHRMS.Core
         public DateTime StartDate { get; set; }
         [Required]
         public DateTime EndDate { get; set; }
-        public bool? IsApproved { get; set; }  // Nullable
+        public bool IsApproved { get; set; }  // Nullable
+        public bool IsDeleted { get; set; }  // Nullable
+        public bool IsActive { get; set; }  // Nullable
         public int ApprovedBy { get; set; }
 
         public DateTime ApprovedDate { get; set; }
