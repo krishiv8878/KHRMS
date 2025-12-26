@@ -2,6 +2,7 @@
 using KHRMS.Controllers;
 using KHRMS.Core;
 using KHRMS.Services;
+using KHRMS.Services.Request;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 
@@ -33,22 +34,35 @@ namespace KHRMS.UnitTest.ControllerTests
                 ClockOutTime = new DateTime(2025,3,13,7,0,0),
                 ManagerId = 3
             };
+            var attendanceRequestDTO = new AttendanceRequestDTO() 
+            { 
+                EmployeeId = 1,
+                RequestType = "String",
+                RequestedDate = new DateTime(2025, 3, 13, 10, 0, 0),
+                RequestedBy = 1,
+                Reason = "Forgot",
+                Status = "Not Approved",
+                LastActionBy = null,
+                clockIn = new DateTime(2025, 3, 13, 10, 30, 0),
+                clockOut = new DateTime(2025, 3, 13, 7, 0, 0),
+                ManagerId = 3
+            };
             var employee = new Employee { Id = attendanceRequest.Id };
             _mock.Setup(x=>x.GetByIdAsync(attendanceRequest.EmployeeId)).ReturnsAsync(attendanceRequest);
-            _mock.Setup(x => x.AddAsync(It.IsAny<AttendanceRequest>(), It.IsAny<ClaimsPrincipal>())).Returns(Task.CompletedTask);
+            _mock.Setup(x => x.AddAsync(It.IsAny<AttendanceRequestDTO>(), It.IsAny<ClaimsPrincipal>())).Returns(Task.CompletedTask);
 
-            var result = await _controller.AddAttendanceRequest(attendanceRequest);
+            var result = await _controller.AddAttendanceRequest(attendanceRequestDTO);
             Assert.NotNull(result);
-            _mock.Verify(x => x.AddAsync(It.IsAny<AttendanceRequest>(), It.IsAny<ClaimsPrincipal>()), Times.Once);
+            _mock.Verify(x => x.AddAsync(It.IsAny<AttendanceRequestDTO>(), It.IsAny<ClaimsPrincipal>()), Times.Once);
         }
      
         [Fact]
         public async Task Get_AllAttendanceRequests_WhenCalled_ReturnsSuccess()
         {
-            var getattendanceRequest = new List<AttendanceRequest>
+            var getattendanceRequest = new List<AttendanceRequestUpdateDTO>
             {
-                new AttendanceRequest{Id = 1,EmployeeId=1,RequestType="String",RequestedDate = new DateTime(2025, 3, 13, 10, 0, 0),RequestedBy=1,Reason="Forgot",Status="Not Approved",LastActionBy=null,ClockInTime = new DateTime(2025, 3, 13, 10, 30, 0),ClockOutTime = new DateTime(2025, 3, 13, 7, 0, 0),ManagerId = 3},
-                new AttendanceRequest{Id = 2,EmployeeId=1,RequestType="String",RequestedDate = new DateTime(2025, 3, 14, 10, 0, 0),RequestedBy=1,Reason="Forgot",Status="Not Approved",LastActionBy=null,ClockInTime = new DateTime(2025, 3, 14, 10, 30, 0),ClockOutTime = new DateTime(2025, 3, 14, 7, 0, 0),ManagerId = 3},
+                new AttendanceRequestUpdateDTO{RequestType="String",RequestedDate = new DateTime(2025, 3, 13, 10, 0, 0),Reason="Forgot",Status="Not Approved",clockIn = new DateTime(2025, 3, 13, 10, 30, 0),clockOut = new DateTime(2025, 3, 13, 7, 0, 0)},
+                new AttendanceRequestUpdateDTO{RequestType="String",RequestedDate = new DateTime(2025, 3, 14, 10, 0, 0),Reason="Forgot",Status="Not Approved",clockIn = new DateTime(2025, 3, 14, 10, 30, 0),clockOut = new DateTime(2025, 3, 14, 7, 0, 0)},
             };
             _mock.Setup(x => x.GetAllAsync()).ReturnsAsync(getattendanceRequest);
             var result = await _controller.GetAttendanceRequests();
@@ -83,7 +97,7 @@ namespace KHRMS.UnitTest.ControllerTests
             {
                 Id = 1,EmployeeId=1,RequestType="String",RequestedDate = new DateTime(2025, 3, 13, 10, 0, 0),RequestedBy=1,Reason="Forgot",Status="Not Approved",LastActionBy=null,ClockInTime = new DateTime(2025, 3, 13, 10, 30, 0),ClockOutTime = new DateTime(2025, 3, 13, 7, 0, 0),ManagerId = 3
             };
-            var UpdateattendanceRequest = new AttendanceRequest
+            var UpdateattendanceRequest = new AttendanceRequestUpdateDTO
             {
                 Id = 1,
                 EmployeeId = 1,
@@ -92,18 +106,18 @@ namespace KHRMS.UnitTest.ControllerTests
                 RequestedBy = 1,
                 Reason = "Forgot",
                 Status = "Approved", //update status
-                LastActionBy = null,
-                ClockInTime = new DateTime(2025, 3, 13, 10, 30, 0),
-                ClockOutTime = new DateTime(2025, 3, 13, 7, 0, 0),
+                LastActionBy = 1,
+                clockIn = new DateTime(2025, 3, 13, 10, 30, 0),
+                clockOut = new DateTime(2025, 3, 13, 7, 0, 0),
                 ManagerId = 3
             };
 
-            _mock.Setup(x => x.UpdateAsync(It.IsAny<AttendanceRequest>())).Returns(Task.CompletedTask);
+            _mock.Setup(x => x.UpdateAsync(It.IsAny<AttendanceRequestUpdateDTO>())).Returns(Task.CompletedTask);
 
             var result = await _controller.UpdateAttendanceRequest(UpdateattendanceRequest);
             Assert.NotNull(result);
             
-            _mock.Verify(x=>x.UpdateAsync(It.Is<AttendanceRequest>(r => 
+            _mock.Verify(x=>x.UpdateAsync(It.Is<AttendanceRequestUpdateDTO>(r => 
                 r.Id == UpdateattendanceRequest.Id && 
                 r.Status == UpdateattendanceRequest.Status)), Times.Once());
         }

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using KHRMS.Core;
+using KHRMS.Core.Models;
 using KHRMS.Services;
 using KHRMS.Services.Request;
 using Moq;
@@ -93,8 +94,8 @@ namespace KHRMS.UnitTest.ServiceTests
 
             var leaveRequest = new List<LeaveReqestModel>
             {
-                new LeaveReqestModel(){Id = 1,LeaveMode="",LeaveTypeName="Casual",StartDate = startdate,EndDate = enddate,IsApproved = false,LeaveReson = "Nothing"},
-                new LeaveReqestModel(){Id = 2,LeaveMode="",LeaveTypeName="Sick",StartDate = startdate,EndDate = enddate,IsApproved = false,LeaveReson = "xyz"},
+                new LeaveReqestModel(){Id = 1,LeaveMode="",LeaveTypeName="Casual",StartDate = startdate,EndDate = enddate,IsApproved = false,LeaveReason = "Nothing"},
+                new LeaveReqestModel(){Id = 2,LeaveMode="",LeaveTypeName="Sick",StartDate = startdate,EndDate = enddate,IsApproved = false,LeaveReason = "xyz"},
             };
             _mock.Setup(x => x.GetAllLeaveRequestType()).ReturnsAsync(leaveRequest);
             var result = await _mock.Object.GetAllLeaveRequestType();
@@ -240,26 +241,18 @@ namespace KHRMS.UnitTest.ServiceTests
                 ApprovedDate = approveddate,
                 LeaveReason = "Nothing",
             };
-            var UpdateleaveRequest = new LeaveRequest()
+            var UpdateleaveRequest = new ApproveLeaveRequest()
             {
                 Id = 1,
-                EmployeeId = 1,
-                LeaveTypeId = 1, 
-                LeaveMode = "",
-                StartDate = startdate,
-                EndDate = enddate,
                 IsApproved = true,
-                ApprovedBy = 3,
-                ApprovedDate = approveddate,
-                LeaveReason = "Nothing",
             };
-            _mock.Setup(x => x.ApproveLeaveRequestAsync(It.IsAny<LeaveRequest>())).ReturnsAsync(true);
+            _mock.Setup(x => x.ApproveLeaveRequestAsync(It.IsAny<ApproveLeaveRequest>())).ReturnsAsync(true);
 
             var result = await _mock.Object.ApproveLeaveRequestAsync(UpdateleaveRequest);
             Assert.True(result);
-            _mock.Verify(x => x.ApproveLeaveRequestAsync(It.Is<LeaveRequest>(r =>
+            _mock.Verify(x => x.ApproveLeaveRequestAsync(It.Is<ApproveLeaveRequest>(r =>
                         r.Id == UpdateleaveRequest.Id &&
-                        r.EmployeeId == UpdateleaveRequest.EmployeeId)), Times.Once);
+                        r.IsApproved == UpdateleaveRequest.IsApproved)), Times.Once);
         }
 
     }

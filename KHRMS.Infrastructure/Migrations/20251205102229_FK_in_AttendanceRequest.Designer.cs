@@ -4,6 +4,7 @@ using KHRMS.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace KHRMS.Infrastructure.Migrations
 {
     [DbContext(typeof(KHRMSContextClass))]
-    partial class KHRMSContextClassModelSnapshot : ModelSnapshot
+    [Migration("20251205102229_FK_in_AttendanceRequest")]
+    partial class FK_in_AttendanceRequest
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -131,7 +134,7 @@ namespace KHRMS.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("EmployeeId");
+                    b.HasIndex("ManagerId");
 
                     b.ToTable("AttendanceRequests");
                 });
@@ -435,13 +438,10 @@ namespace KHRMS.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
-                    b.Property<DateOnly>("AttendanceDate")
-                        .HasColumnType("date");
-
                     b.Property<DateTime>("ClockIn")
                         .HasColumnType("datetime2");
 
-                    b.Property<DateTime?>("ClockOut")
+                    b.Property<DateTime>("ClockOut")
                         .HasColumnType("datetime2");
 
                     b.Property<int>("CreatedBy")
@@ -450,8 +450,8 @@ namespace KHRMS.Infrastructure.Migrations
                     b.Property<DateTime?>("CreatedDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<decimal>("EffectiveHours")
-                        .HasColumnType("decimal(18,2)");
+                    b.Property<DateTime>("EffectiveHours")
+                        .HasColumnType("datetime2");
 
                     b.Property<long>("EmployeeId")
                         .HasColumnType("bigint");
@@ -462,8 +462,24 @@ namespace KHRMS.Infrastructure.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
-                    b.Property<decimal>("TotalHours")
-                        .HasColumnType("decimal(18,2)");
+                    b.Property<bool>("IsRegularized")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("RegularizationReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("RegularizationRequestedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long?>("RegularizedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("RegularizedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("TotalHours")
+                        .HasColumnType("datetime2");
 
                     b.Property<int>("UpdatedBy")
                         .HasColumnType("int");
@@ -763,36 +779,6 @@ namespace KHRMS.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("LeaveType");
-                });
-
-            modelBuilder.Entity("KHRMS.Core.Models.AttendanceLog", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
-
-                    b.Property<DateOnly>("AttendanceDate")
-                        .HasColumnType("date");
-
-                    b.Property<decimal>("duration")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<long>("employee_id")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTime?>("in_time")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("out_time")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("employee_id");
-
-                    b.ToTable("AttendanceLog");
                 });
 
             modelBuilder.Entity("KHRMS.Core.Models.Email", b =>
@@ -1261,7 +1247,7 @@ namespace KHRMS.Infrastructure.Migrations
                 {
                     b.HasOne("KHRMS.Core.Employee", "Employee")
                         .WithMany()
-                        .HasForeignKey("EmployeeId")
+                        .HasForeignKey("ManagerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -1304,17 +1290,6 @@ namespace KHRMS.Infrastructure.Migrations
                     b.Navigation("Employee");
 
                     b.Navigation("LeaveType");
-                });
-
-            modelBuilder.Entity("KHRMS.Core.Models.AttendanceLog", b =>
-                {
-                    b.HasOne("KHRMS.Core.Employee", "employee")
-                        .WithMany()
-                        .HasForeignKey("employee_id")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("employee");
                 });
 
             modelBuilder.Entity("KHRMS.Core.Models.Email", b =>

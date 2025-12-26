@@ -4,10 +4,12 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using KHRMS.Core;
+using KHRMS.Core.Models;
 using KHRMS.Infrastructure;
 using KHRMS.Infrastructure.Migrations;
 using KHRMS.Services;
 using KHRMS.Services.Request;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using NPOI.SS.Formula.Functions;
@@ -17,11 +19,12 @@ namespace KHRMS.UnitTest.ControllerTests
     public class LeaveRequestControllerTest
     {
         private readonly Mock<ILeaveRequestTypeService> _mock;
+        private readonly IHttpContextAccessor _mockHttpContextAccessor;
         private readonly LeaveRequestController _controller;
         public LeaveRequestControllerTest()
         {
             _mock = new Mock<ILeaveRequestTypeService>();
-            _controller = new LeaveRequestController(_mock.Object);
+            _controller = new LeaveRequestController(_mock.Object, _mockHttpContextAccessor);
         }
 
         [Fact]
@@ -130,25 +133,17 @@ namespace KHRMS.UnitTest.ControllerTests
             var enddate = new DateTime(2025, 05, 15);
             var approveddate = new DateTime(2025, 05, 07);
 
-            var ApproveleaveRequest = new LeaveRequest()
+            var ApproveleaveRequest = new ApproveLeaveRequest()
             {
                 Id = 1,
-                EmployeeId = 1,
-                LeaveTypeId = 1,
-                LeaveMode = "",
-                StartDate = startdate,
-                EndDate = enddate,
                 IsApproved = true,
-                ApprovedBy = 0,
-                ApprovedDate = approveddate,
-                LeaveReason = "Nothing",
             };
-            _mock.Setup(x => x.ApproveLeaveRequestAsync(It.IsAny<LeaveRequest>())).ReturnsAsync(true);
+            _mock.Setup(x => x.ApproveLeaveRequestAsync(It.IsAny<ApproveLeaveRequest>())).ReturnsAsync(true);
 
             var result = await _controller.ApproveLeaveRequest(ApproveleaveRequest);
 
             Assert.NotNull(result);
-            _mock.Verify(x => x.ApproveLeaveRequestAsync(It.Is<LeaveRequest>(r =>
+            _mock.Verify(x => x.ApproveLeaveRequestAsync(It.Is<ApproveLeaveRequest>(r =>
                 r.Id == ApproveleaveRequest.Id &&
                 r.IsApproved == ApproveleaveRequest.IsApproved)), Times.Once);
         }

@@ -60,7 +60,7 @@ namespace KHRMS.Services
                     var allEmployees = await _unitOfWork.Employees.GetAll();
                     var matchedEmployee = allEmployees.FirstOrDefault(e => e.EmailAddress == Email && !e.IsDeleted && e.IsActive);
                     var existingRoleMappings = (await _unitOfWork.EmployeeRoleMappings.GetAll())
-              .Where(r => r.EmployeeId == matchedEmployee.Id)
+              .Where(r => r.EmployeeId == matchedEmployee.Id && r.IsActive != false)
               .ToList().Select(x=> x.RoleId);
 
                     var allRole = (await _unitOfWork.RoleMaster.GetAll())
@@ -74,7 +74,7 @@ namespace KHRMS.Services
                         .ToList();
 
 
-                    var roleTypes = "N/A";
+                    var roleTypes = "";
                     if (roleNames.Count() > 0)
                     {
                         roleTypes = string.Join(",", roleNames);

@@ -2,6 +2,7 @@
 using KHRMS.Core;
 using KHRMS.Infrastructure;
 using KHRMS.Services;
+using KHRMS.Services.Request;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -27,7 +28,7 @@ namespace KHRMS.Controllers
             if (attendanceRequests == null || !attendanceRequests.Any())
             {
                 Log.Information("No AttendanceRequest records found.");
-                return Ok(new ApiResponse<List<AttendanceRequest>>
+                return Ok(new ApiResponse<List<AttendanceRequestUpdateDTO>>
                 {
                     StatusCode = (int)HttpStatusCode.OK,
                     Message = ApiMessageConstant.AttendanceRequestsNotFound,
@@ -36,7 +37,7 @@ namespace KHRMS.Controllers
             }
 
             Log.Information("AttendanceRequest records found successfully.");
-            return Ok(new ApiResponse<List<AttendanceRequest>>
+            return Ok(new ApiResponse<List<AttendanceRequestUpdateDTO>>
             {
                 StatusCode = (int)HttpStatusCode.OK,
                 Message = ApiMessageConstant.AttendanceRequestsFound,
@@ -75,7 +76,7 @@ namespace KHRMS.Controllers
 
 
         [HttpPost("AddAttendanceRequest")]
-        public async Task<IActionResult> AddAttendanceRequest([FromBody] AttendanceRequest attendanceRequest)
+        public async Task<IActionResult> AddAttendanceRequest([FromBody] AttendanceRequestDTO attendanceRequest)
         {
             Log.Information("AddAttendanceRequest API called.");
 
@@ -89,21 +90,14 @@ namespace KHRMS.Controllers
                     Data = false
                 });
             }
-
-            var employee = await _attendanceRequestService.GetByIdAsync(attendanceRequest.EmployeeId);
-            if (employee == null)
+            try
             {
-                Log.Warning("Employee with ID {EmployeeId} not found.", attendanceRequest.EmployeeId);
-                return NotFound(new ApiResponse<bool>
-                {
-                    StatusCode = (int)HttpStatusCode.NotFound,
-                    Message = "Employee not found",
-                    Data = false
-                });
-            }
 
-            attendanceRequest.ManagerId = employee.ManagerId;
-            await _attendanceRequestService.AddAsync(attendanceRequest, User);
+                await _attendanceRequestService.AddAsync(attendanceRequest, User);
+            }
+            catch (Exception ex) { 
+                Console.WriteLine(ex.ToString());
+            }
 
             Log.Information("AttendanceRequest added successfully.");
             return Ok(new ApiResponse<bool>
@@ -116,7 +110,7 @@ namespace KHRMS.Controllers
 
 
         [HttpPut("UpdateAttendanceRequest")]
-        public async Task<IActionResult> UpdateAttendanceRequest([FromBody] AttendanceRequest attendanceRequest)
+        public async Task<IActionResult> UpdateAttendanceRequest([FromBody] AttendanceRequestUpdateDTO attendanceRequest)
         {
             Log.Information("UpdateAttendanceRequest API called.");
 

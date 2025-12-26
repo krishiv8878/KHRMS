@@ -2,6 +2,9 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
+using KHRMS.Core.Interfaces;
+using KHRMS.Core.Models;
+using KHRMS.Infrastructure.Repositories;
 
 namespace KHRMS.Infrastructure
 {
@@ -36,6 +39,7 @@ namespace KHRMS.Infrastructure
             services.AddScoped<IEmailRepository, EmailRepository>();
             services.AddScoped<ILeaveRequestRepository, LeaveRequestRepository>();
             services.AddScoped<IResignationRepository, ResignationRepository>();
+            services.AddScoped<IAttendanceLogRepository, AttendanceLogRepository>();
             return services;
         }
     }

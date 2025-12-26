@@ -1,7 +1,10 @@
 ﻿using KHRMS.Core;
+using KHRMS.Core.Models;
 using KHRMS.Infrastructure.Migrations;
 using KHRMS.Services.Interfaces;
+using MimeKit.Cryptography;
 using System.Reflection.Metadata;
+using System.Runtime.CompilerServices;
 
 namespace KHRMS.Services
 {
@@ -11,15 +14,18 @@ namespace KHRMS.Services
         private readonly IUnitOfWork _unitOfWork;
         private readonly ISendEmailService _sendEmailService;
         private readonly IUserContextService _userContext;
+        private readonly IAttendanceLogService _attendanceLogService;
 
         public EmployeeAttendanceService(
       IUnitOfWork unitOfWork,
       ISendEmailService emailRepository,
-      IUserContextService userContextService)
+      IUserContextService userContextService,
+      IAttendanceLogService attendanceLogService)
         {
             _unitOfWork = unitOfWork;
             _sendEmailService = emailRepository;
             _userContext = userContextService;
+            _attendanceLogService = attendanceLogService;
         }
 
 
@@ -41,24 +47,69 @@ namespace KHRMS.Services
 
         public async Task AddAsync(EmployeeAttendance attendance)
         {
-            var attendancebyid = (await _unitOfWork.EmployeeAttendance.GetAll()).FirstOrDefault(r => r.EmployeeId == attendance.EmployeeId && r.ClockIn.Date == attendance.ClockIn.Date);
+            //var attendancebyid = (await _unitOfWork.EmployeeAttendance.GetAll()).FirstOrDefault(r => r.EmployeeId == attendance.EmployeeId && r.CreatedDate.Value.Date == attendance.CreatedDate.Value.Date);
+            //if (attendancebyid != null)
+            //{
+            //    if(attendancebyid.ClockOut == null)
+            //    {
+            //        attendancebyid.ClockOut = attendance.ClockOut;
+            //        attendancebyid.TotalHours = (decimal)(attendance.ClockOut - attendancebyid.ClockIn).Value.TotalHours;
+            //        attendancebyid.EffectiveHours = (decimal)(attendance.ClockOut - attendancebyid.ClockIn).Value.TotalHours;
+            //        await UpdateAsync(attendancebyid);
+            //    }
+            //    else
+            //    {
+            //        await UpdateExistingAsync(attendance, attendancebyid);
+            //    }
+            //}else{
+            //    attendance.ClockIn = attendance.ClockIn;
+            //    attendance.ClockOut = attendance.ClockOut;
+            //    attendance.CreatedDate = DateTime.Now;
+            //    attendance.EffectiveHours = attendance.TotalHours;
+            //    await _unitOfWork.EmployeeAttendance.Add(attendance);
+            //    var result = _unitOfWork.Save();
+            //}
+            var attendancebyid = (await _unitOfWork.EmployeeAttendance.GetAll()).FirstOrDefault(r => r.EmployeeId == attendance.EmployeeId && r.AttendanceDate == attendance.AttendanceDate);
+            var attendanceLog = new AttendanceLog
+            {
+                employee_id = attendance.EmployeeId,
+                AttendanceDate = attendance.AttendanceDate,
+                in_time = attendance.ClockIn,
+                out_time = attendance.ClockOut,
+                duration = 0,
+            };
             if (attendancebyid != null)
             {
-                await UpdateExistingAsync(attendance,attendancebyid);
-            }else{
+                await _attendanceLogService.UpdateAttendanceLogAsync(attendanceLog);
+                if (attendance.ClockOut != null)
+                {
+                    attendancebyid.ClockOut = attendance.ClockOut;
+                    attendancebyid.TotalHours = (decimal)(attendance.ClockOut - attendancebyid.ClockIn).Value.TotalHours;
+                    var efh = (await _attendanceLogService.GetAllAttendanceLogAsync()).Where(r => r.AttendanceDate == attendance.AttendanceDate).ToList();
+                    attendancebyid.EffectiveHours = efh.Sum(r => r.duration);
+                    await UpdateAsync(attendancebyid);
+                }
+            }
+            else
+            {
+                attendance.AttendanceDate = attendance.AttendanceDate;
+                attendance.ClockIn = attendance.ClockIn;
+                attendance.ClockOut = attendance.ClockOut;
                 attendance.CreatedDate = DateTime.Now;
                 attendance.EffectiveHours = attendance.TotalHours;
                 await _unitOfWork.EmployeeAttendance.Add(attendance);
+                await _attendanceLogService.AddAttendanceLogAsync(attendanceLog);
                 var result = _unitOfWork.Save();
             }
 
         }
 
-        public Task UpdateAsync(EmployeeAttendance attendance)
+        public async Task UpdateAsync(EmployeeAttendance attendance)
         {
-            _unitOfWork.EmployeeAttendance.Update(attendance);
+            var attend = await _unitOfWork.EmployeeAttendance.GetByIdAsync(attendance.Id);
+            _unitOfWork.EmployeeAttendance.Update(attend);
             var result = _unitOfWork.Save();
-            return Task.CompletedTask;
+            return;
         }
 
         //public async Task UpdateExistingAsync(EmployeeAttendance attendance,EmployeeAttendance attendancebyid)
@@ -86,22 +137,19 @@ namespace KHRMS.Services
         {
             if (attendancebyid != null)
             {
-                // 1. Calculate new TotalHours from ClockIn and ClockOut
-                var totalDuration = attendance.ClockOut - attendancebyid.ClockIn;
-
-                // 2. Update ClockIn and ClockOut
+                decimal totalDuration = (decimal)((DateTime)attendance.ClockOut - attendancebyid.ClockIn).TotalHours;
+                
+                var effective = (decimal)((DateTime)attendance.ClockOut - attendance.ClockIn).TotalHours;
                 attendancebyid.ClockOut = attendance.ClockOut;
-
-                // 3. Save total hours as a DateTime (based on 0001-01-01 + timespan)
-                attendancebyid.TotalHours = new DateTime(1,1,1).Add(totalDuration);
+                attendancebyid.TotalHours = totalDuration;
 
                 // 4. Add new total to previous effective hours
                 //TimeSpan previousEffective = attendancebyid.EffectiveHours.TimeOfDay;
                 //TimeSpan newDuration = attendancebyid.TotalHours.TimeOfDay;
                 //TimeSpan effectiveSum = previousEffective + newDuration;
-                var effectivesum = attendance.EffectiveHours;
+                var reffectivesum = effective + attendancebyid.EffectiveHours;
 
-                attendancebyid.EffectiveHours = attendance.EffectiveHours;
+                attendancebyid.EffectiveHours = reffectivesum;
 
                 // 5. Update metadata
                 attendancebyid.UpdatedDate = DateTime.Now;
@@ -129,60 +177,60 @@ namespace KHRMS.Services
 
         public async Task<bool> SendRegularizationRequestEmail(EmployeeAttendance attendance)
         {
-            if (attendance == null)
-                return false;
-            long employeeId = _userContext.GetCurrentEmployeeId();
+    //        if (attendance == null)
+    //            return false;
+    //        long employeeId = _userContext.GetCurrentEmployeeId();
 
 
 
-            var regularizationRequest = new EmployeeAttendance
-            {
-                EmployeeId = employeeId,
-                ClockIn = attendance.ClockIn,
-                ClockOut = attendance.ClockOut,
-                TotalHours = attendance.TotalHours,
-                EffectiveHours = attendance.EffectiveHours,
-                RegularizationReason = attendance.RegularizationReason,
-                IsRegularized = false,
-                RegularizationRequestedDate = DateTime.Now,
-                CreatedDate = DateTime.Now,
-                IsActive = true,
-                IsDeleted = false
-            };
-            await _unitOfWork.EmployeeAttendance.Add(regularizationRequest);
+    //        var regularizationRequest = new EmployeeAttendance
+    //        {
+    //            EmployeeId = employeeId,
+    //            ClockIn = attendance.ClockIn,
+    //            ClockOut = attendance.ClockOut,
+    //            TotalHours = attendance.TotalHours,
+    //            EffectiveHours = attendance.EffectiveHours,
+    //            RegularizationReason = attendance.RegularizationReason,
+    //            IsRegularized = false,
+    //            RegularizationRequestedDate = DateTime.Now,
+    //            CreatedDate = DateTime.Now,
+    //            IsActive = true,
+    //            IsDeleted = false
+    //        };
+    //        await _unitOfWork.EmployeeAttendance.Add(regularizationRequest);
 
-            _unitOfWork.Save();
-            var employee = await _unitOfWork.Employees.GetById(employeeId);
-            if (employee == null)
-                throw new Exception("Employee not found.");
+    //        _unitOfWork.Save();
+    //        var employee = await _unitOfWork.Employees.GetById(employeeId);
+    //        if (employee == null)
+    //            throw new Exception("Employee not found.");
 
-            var manager = (await _unitOfWork.Employees.GetAll()).FirstOrDefault(t => t.Id == employee.ManagerId);
-            if (manager == null)
-                throw new Exception("Manager not found.");
+    //        var manager = (await _unitOfWork.Employees.GetAll()).FirstOrDefault(t => t.Id == employee.ManagerId);
+    //        if (manager == null)
+    //            throw new Exception("Manager not found.");
 
-            string formattedDate = attendance.ClockIn.ToString("dd-MM-yyyy");
-            string inTime = attendance.ClockIn.ToString("hh:mm tt");
-            string outTime = attendance.ClockOut.ToString("hh:mm tt");
+    //        string formattedDate = attendance.ClockIn.ToString("dd-MM-yyyy");
+    //        string inTime = attendance.ClockIn.ToString("hh:mm tt");
+    //        string outTime = attendance.ClockOut.ToString("hh:mm tt");
 
-            var managerEmail = manager.EmailAddress;
-            var managerName = $"{manager.FirstName} {manager.LastName}";
-            var employeeName = $"{employee.FirstName} {employee.LastName}";
-            var regularizationType = "RegularizationRequest";
+    //        var managerEmail = manager.EmailAddress;
+    //        var managerName = $"{manager.FirstName} {manager.LastName}";
+    //        var employeeName = $"{employee.FirstName} {employee.LastName}";
+    //        var regularizationType = "RegularizationRequest";
 
-            var dict = new Dictionary<string, string>
-    {
-        { "ManagerName", managerName },
-        { "Date", formattedDate },
-        { "InTime", inTime },
-        { "OutTime", outTime },
-        { "EmployeeName", employeeName },
-        { "ManagerEmail", managerEmail },
-        { "RegularizationReason", attendance.RegularizationReason ?? "No specific reason provided." }
-    };
+    //        var dict = new Dictionary<string, string>
+    //{
+    //    { "ManagerName", managerName },
+    //    { "Date", formattedDate },
+    //    { "InTime", inTime },
+    //    { "OutTime", outTime },
+    //    { "EmployeeName", employeeName },
+    //    { "ManagerEmail", managerEmail },
+    //    { "RegularizationReason", attendance.RegularizationReason ?? "No specific reason provided." }
+    //};
 
-            var subject = $"Regularization Request from {employeeName} for {formattedDate}";
-
-            await _sendEmailService.SendTemplateEmailAsync(managerEmail, subject, dict, regularizationType);
+    //        var subject = $"Regularization Request from {employeeName} for {formattedDate}";
+        
+    //        await _sendEmailService.SendTemplateEmailAsync(managerEmail, subject, dict, regularizationType);
 
             return true;
         }
@@ -191,7 +239,7 @@ namespace KHRMS.Services
         public async Task<bool> ApproveRegularizationRequestAsync(EmployeeAttendance attendance)
         {
             var attendanceRecord = await _unitOfWork.EmployeeAttendance.GetById(attendance.Id);
-            if (attendanceRecord == null || attendanceRecord.IsRegularized) return false;
+            //if (attendanceRecord == null || attendanceRecord.IsRegularized) return false;
 
             var managerId = _userContext.GetCurrentEmployeeId();
 
@@ -200,7 +248,6 @@ namespace KHRMS.Services
 
             if (employee == null || manager == null) return false;
 
-            attendanceRecord.IsRegularized = true;
             attendanceRecord.UpdatedBy = 1;
             attendanceRecord.UpdatedDate = DateTime.Now;
             attendanceRecord.UpdatedDate = DateTime.Now;
@@ -215,7 +262,7 @@ namespace KHRMS.Services
     {
         { "ManagerName", $"{manager.FirstName} {manager.LastName}" },
         { "Date", attendanceRecord.ClockIn.ToString("dd-MM-yyyy") },
-        { "RegularizationReason", attendanceRecord.RegularizationReason ?? "No specific reason provided." },
+        //{ "RegularizationReason", attendanceRecord.RegularizationReason ?? "No specific reason provided." },
         { "LeaveReason", "RegularizationRequest Approval Request" },
         { "EmployeeName", $"{employee.FirstName} {employee.LastName}" },
         { "ManagerEmail", manager.EmailAddress }

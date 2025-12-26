@@ -23,8 +23,8 @@ namespace KHRMS.UnitTest.ServiceTests
                 ClockIn = DateTime.Now,
                 ClockOut = DateTime.Now.AddHours(7),
                 EmployeeId = 1,
-                TotalHours = baseDate.AddHours(7),
-                EffectiveHours = baseDate.AddHours(6),
+                TotalHours = 7,
+                EffectiveHours = 6
             };
 
             _mock.Setup(x => x.AddAsync(It.IsAny<EmployeeAttendance>())).Returns(Task.CompletedTask);
@@ -34,8 +34,8 @@ namespace KHRMS.UnitTest.ServiceTests
             _mock.Verify(x => x.AddAsync(It.Is<EmployeeAttendance>(e =>
                 e.Id == 1 &&
                 e.EmployeeId == 1 &&
-                e.TotalHours == baseDate.AddHours(7) &&
-                e.EffectiveHours == baseDate.AddHours(6)
+                e.TotalHours == 7 &&
+                e.EffectiveHours == 6
             )), Times.Once);
         }
 
@@ -50,8 +50,8 @@ namespace KHRMS.UnitTest.ServiceTests
                 ClockIn = DateTime.Now,
                 ClockOut = DateTime.Now,
                 EmployeeId = 999, // employee does not exist
-                TotalHours = baseDate.AddHours(7),
-                EffectiveHours = baseDate.AddHours(6)
+                TotalHours = 7,
+                EffectiveHours = 6
             };
 
             _mock.Setup(x => x.AddAsync(It.IsAny<EmployeeAttendance>()))
@@ -87,8 +87,8 @@ namespace KHRMS.UnitTest.ServiceTests
             ClockIn = DateTime.Now,
             ClockOut = DateTime.Now,
             EmployeeId = 1,
-            TotalHours = baseDate.AddHours(7),
-            EffectiveHours = baseDate.AddHours(6)
+            TotalHours = 7,
+            EffectiveHours = 6
         },
         new EmployeeAttendance
         {
@@ -96,8 +96,8 @@ namespace KHRMS.UnitTest.ServiceTests
             ClockIn = DateTime.Now,
             ClockOut = DateTime.Now,
             EmployeeId = 2,
-            TotalHours = baseDate.AddHours(7),
-            EffectiveHours = baseDate.AddHours(5)
+            TotalHours = 7,
+            EffectiveHours = 5
         }
     };
 
@@ -165,8 +165,8 @@ namespace KHRMS.UnitTest.ServiceTests
                 ClockIn = DateTime.Now,
                 ClockOut = DateTime.Now,
                 EmployeeId = 1,
-                TotalHours = baseDate.AddHours(7),
-                EffectiveHours = baseDate.AddHours(6),
+                TotalHours = 7,
+                EffectiveHours = 6,
             };
 
             var updateEmployeeAttendance = new EmployeeAttendance()
@@ -175,8 +175,8 @@ namespace KHRMS.UnitTest.ServiceTests
                 ClockIn = DateTime.Now,
                 ClockOut = new DateTime(2025, 3, 17, 7, 0, 0), // Updated ClockOut
                 EmployeeId = 1,
-                TotalHours = baseDate.AddHours(10),
-                EffectiveHours = baseDate.AddHours(9),
+                TotalHours = 10,
+                EffectiveHours = 9,
             };
 
             _mock.Setup(x => x.UpdateAsync(It.IsAny<EmployeeAttendance>())).Returns(Task.CompletedTask);
@@ -186,8 +186,8 @@ namespace KHRMS.UnitTest.ServiceTests
             _mock.Verify(x => x.UpdateAsync(It.Is<EmployeeAttendance>(r =>
                 r.Id == updateEmployeeAttendance.Id &&
                 r.ClockOut == updateEmployeeAttendance.ClockOut &&
-                r.TotalHours == baseDate.AddHours(10) &&
-                r.EffectiveHours == baseDate.AddHours(9)
+                r.TotalHours == 10 &&
+                r.EffectiveHours == 9
             )), Times.Once);
         }
 
@@ -203,8 +203,8 @@ namespace KHRMS.UnitTest.ServiceTests
                 ClockIn = DateTime.Now,
                 ClockOut = DateTime.Now,
                 EmployeeId = 1,
-                TotalHours = baseDate.AddHours(7),
-                EffectiveHours = baseDate.AddHours(6),
+                TotalHours = 7,
+                EffectiveHours = 6,
             };
 
             _mock.Setup(x => x.UpdateAsync(It.IsAny<EmployeeAttendance>()))

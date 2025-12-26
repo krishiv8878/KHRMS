@@ -45,6 +45,7 @@ namespace KHRMS.Infrastructure
         public DbSet<Email> Emails { get; set; }
         public DbSet<LeaveRequest> leaveRequests { get; set; }
         public DbSet<Resignation> Resignation { get; set; }
+        public DbSet<AttendanceLog> AttendanceLog { get; set; }
 
 
     }
