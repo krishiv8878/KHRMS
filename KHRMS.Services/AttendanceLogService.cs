@@ -29,9 +29,10 @@ namespace KHRMS.Services
             return;
         }
 
-        public Task DeleteAttendanceLogAsync(long id)
+        public async Task DeleteAttendanceLogAsync(long id)
         {
-            throw new NotImplementedException();
+            await _unitOfWork.AttendanceLog.DeleteAsync(id);
+            return Task.CompletedTask;
         }
         public async Task<AttendanceLog> GetAttendanceLogByIdAsync(long id)
         {
@@ -46,17 +47,17 @@ namespace KHRMS.Services
         public async Task UpdateAttendanceLogAsync(AttendanceLog attendanceLog)
         {
             var attendLog = await _unitOfWork.AttendanceLog.GetById(attendanceLog.Id);
-            var logs = (await _unitOfWork.AttendanceLog.GetAll()).FirstOrDefault(r=>r.AttendanceDate == attendanceLog.AttendanceDate && r.out_time ==  null);
+            var logs = (await _unitOfWork.AttendanceLog.GetAll()).FirstOrDefault(r=>r.AttendanceDate == attendanceLog.AttendanceDate && r.OutTime ==  null);
             if (attendLog != null) {
-                attendLog.in_time = attendanceLog.in_time;
-                attendLog.out_time = attendanceLog.out_time;
-                attendLog.duration = attendanceLog.duration;
+                attendLog.InTime = attendanceLog.InTime;
+                attendLog.OutTime = attendanceLog.OutTime;
+                attendLog.Duration = attendanceLog.Duration;
                 _unitOfWork.AttendanceLog.Update(attendLog);
             }
-            if (logs != null && attendanceLog.out_time != null)
+            if (logs != null && attendanceLog.OutTime != null)
             {
-                logs.out_time = attendanceLog.out_time;
-                logs.duration = (decimal)(attendanceLog.out_time - logs.in_time).Value.TotalHours;
+                logs.OutTime = attendanceLog.OutTime;
+                logs.Duration = (decimal)(attendanceLog.OutTime - logs.InTime).Value.TotalHours;
                 _unitOfWork.AttendanceLog.Update(logs);
             }
             else
@@ -64,11 +65,6 @@ namespace KHRMS.Services
                 await AddAttendanceLogAsync(attendanceLog);
             }
             _unitOfWork.Save();
-        }
-
-        public Task UpdateExistingAttendanceLogAsync(AttendanceLog attendanceLog, AttendanceLog attendanceLogbyId)
-        {
-            throw new NotImplementedException();
         }
     }
 }

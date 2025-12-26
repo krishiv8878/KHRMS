@@ -9,11 +9,11 @@ namespace KHRMS.Core.Models
         [Key]
         public long Id { get; set; }
         [ForeignKey("employee")]
-        public long employee_id { get; set; }
+        public long EmployeeId { get; set; }
         public virtual Employee? employee { get; set; }
         public DateOnly AttendanceDate { get; set; }
-        public DateTime? in_time { get; set; }
-        public DateTime? out_time { get; set;}
-        public decimal duration { get; set; }
+        public DateTime? InTime { get; set; }
+        public DateTime? OutTime { get; set;}
+        public decimal Duration { get; set; }
     }
 }

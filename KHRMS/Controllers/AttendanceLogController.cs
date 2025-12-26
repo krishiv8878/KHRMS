@@ -28,7 +28,7 @@ namespace KHRMS.Controllers
                 return Ok(new ApiResponse<IEnumerable<AttendanceLog>>
                 {
                     StatusCode = (int)HttpStatusCode.OK,
-                    Message = ApiMessageConstant.AttendanceRequestsNotFound,
+                    Message = ApiMessageConstant.AttendanceLogNotFound,
                     Data = null
                 });
             }
@@ -37,7 +37,7 @@ namespace KHRMS.Controllers
             return Ok(new ApiResponse<IEnumerable<AttendanceLog>>
             {
                 StatusCode = (int)HttpStatusCode.OK,
-                Message = ApiMessageConstant.AllAttendanceRequestsFound,
+                Message = ApiMessageConstant.AllAttendanceLogFound,
                 Data = attendanceLog
             });
         }
@@ -56,7 +56,7 @@ namespace KHRMS.Controllers
                 return Ok(new ApiResponse<AttendanceLog>
                 {
                     StatusCode = (int)HttpStatusCode.OK,
-                    Message = ApiMessageConstant.AttendanceRequestNotFound,
+                    Message = ApiMessageConstant.AttendanceLogNotFound,
                     Data = null
                 });
             }
@@ -65,7 +65,7 @@ namespace KHRMS.Controllers
             return Ok(new ApiResponse<AttendanceLog>
             {
                 StatusCode = (int)HttpStatusCode.OK,
-                Message = ApiMessageConstant.AttendanceRequestFound,
+                Message = ApiMessageConstant.AttendanceLogFound,
                 Data = attendances
             });
         }
@@ -93,7 +93,7 @@ namespace KHRMS.Controllers
             return Ok(new ApiResponse<bool>
             {
                 StatusCode = (int)HttpStatusCode.OK,
-                Message = ApiMessageConstant.AttendanceRequestAdded,
+                Message = ApiMessageConstant.AttendanceLogAdded,
                 Data = true
             });
         }
@@ -120,7 +120,7 @@ namespace KHRMS.Controllers
             return Ok(new ApiResponse<bool>
             {
                 StatusCode = (int)HttpStatusCode.OK,
-                Message = ApiMessageConstant.AttendanceRequestUpdated,
+                Message = ApiMessageConstant.AttendanceLogUpdated,
                 Data = true
             });
         }
@@ -139,7 +139,7 @@ namespace KHRMS.Controllers
                 return Ok(new ApiResponse<bool>
                 {
                     StatusCode = (int)HttpStatusCode.OK,
-                    Message = ApiMessageConstant.AttendanceRequestNotFound,
+                    Message = ApiMessageConstant.AttendanceLogNotFound,
                     Data = false
                 });
             }
@@ -149,7 +149,7 @@ namespace KHRMS.Controllers
             return Ok(new ApiResponse<bool>
             {
                 StatusCode = (int)HttpStatusCode.OK,
-                Message = ApiMessageConstant.AttendanceRequestDeleted,
+                Message = ApiMessageConstant.AttendanceLogDeleted,
                 Data = true
             });
         }

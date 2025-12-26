@@ -13,7 +13,5 @@ namespace KHRMS.Services.Interfaces
 
         Task<AttendanceLog> GetAttendanceLogByIdAsync (long id);
 
-        Task UpdateExistingAttendanceLogAsync(AttendanceLog attendanceLog, AttendanceLog attendanceLogbyId);
-
     }
 }

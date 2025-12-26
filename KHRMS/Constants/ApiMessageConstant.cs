@@ -255,5 +255,15 @@ namespace KHRMS
         public static readonly string ResignationRequestNotUpdated = "ResignationRequest is not Updated...";
         public static readonly string ResignationRequestDeleted = "ResignationRequest is deleted successfully";
         public static readonly string ResignationRequestNotDeleted = "ResignationRequest is not deleted..";
+
+        ///<summery>
+        ///This is AttendanceLog Message constant
+        ///</summery>
+        public static readonly string AttendanceLogFound = "Attendance Log retrieved successfully.";
+        public static readonly string AllAttendanceLogFound = "Attendance Log retrieved successfully.";
+        public static readonly string AttendanceLogNotFound = "No attendance Log found.";
+        public static readonly string AttendanceLogAdded = "Attendance Log added successfully.";
+        public static readonly string AttendanceLogUpdated = "Attendance Log updated successfully.";
+        public static readonly string AttendanceLogDeleted = "Attendance Log deleted successfully.";
     }
 }
