@@ -4,6 +4,7 @@ using KHRMS.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace KHRMS.Infrastructure.Migrations
 {
     [DbContext(typeof(KHRMSContextClass))]
-    partial class KHRMSContextClassModelSnapshot : ModelSnapshot
+    [Migration("20251226072246_PunchLogTable_namechangeTo_AttendanceLog")]
+    partial class PunchLogTable_namechangeTo_AttendanceLog
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -776,21 +779,21 @@ namespace KHRMS.Infrastructure.Migrations
                     b.Property<DateOnly>("AttendanceDate")
                         .HasColumnType("date");
 
-                    b.Property<decimal>("Duration")
+                    b.Property<decimal>("duration")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<long>("EmployeeId")
+                    b.Property<long>("employee_id")
                         .HasColumnType("bigint");
 
-                    b.Property<DateTime?>("InTime")
+                    b.Property<DateTime?>("in_time")
                         .HasColumnType("datetime2");
 
-                    b.Property<DateTime?>("OutTime")
+                    b.Property<DateTime?>("out_time")
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("EmployeeId");
+                    b.HasIndex("employee_id");
 
                     b.ToTable("AttendanceLog");
                 });
@@ -1310,7 +1313,7 @@ namespace KHRMS.Infrastructure.Migrations
                 {
                     b.HasOne("KHRMS.Core.Employee", "employee")
                         .WithMany()
-                        .HasForeignKey("EmployeeId")
+                        .HasForeignKey("employee_id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 

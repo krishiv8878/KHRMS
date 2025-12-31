@@ -1,4 +1,6 @@
-﻿namespace KHRMS.Core
+﻿using KHRMS.Core.Interfaces;
+
+namespace KHRMS.Core
 {
     public interface IUnitOfWork : IDisposable
     {
@@ -30,7 +32,7 @@
         IEmailRepository Email {  get; }
         ILeaveRequestRepository LeaveRequest { get; }
         IResignationRepository Resignation { get; }
-
+        IAttendanceLogRepository AttendanceLog { get; }
         int Save();
     }
 }

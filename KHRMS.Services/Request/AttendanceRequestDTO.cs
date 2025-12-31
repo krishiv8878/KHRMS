@@ -1,19 +1,18 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using KHRMS.Core;
 
-
-namespace KHRMS.Core
+namespace KHRMS.Services.Request
 {
-    public class AttendanceRequest : KHRMSBase
+    public class AttendanceRequestDTO : KHRMSBase
     {
-        [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public long Id { get; set; }
-
         [Required(ErrorMessage = "Employee is required")]
         public long EmployeeId { get; set; }
-        [ForeignKey("EmployeeId")]
-        public Employee Employee { get; set; }
 
         [StringLength(50)]
         [Required(ErrorMessage = "Request type is required")]
@@ -33,12 +32,11 @@ namespace KHRMS.Core
         public long? LastActionBy { get; set; }
 
         [Required(ErrorMessage = "Clock In Time is required")]
-        public DateTime ClockInTime { get; set; }
+        public DateTime clockIn { get; set; }
 
-        public DateTime? ClockOutTime { get; set; }
+        public DateTime? clockOut { get; set; }
 
         [Required(ErrorMessage = "Manager Id is required")]
         public long ManagerId { get; set; }
-
     }
 }

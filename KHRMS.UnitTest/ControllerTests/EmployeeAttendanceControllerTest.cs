@@ -28,8 +28,8 @@ namespace KHRMS.UnitTest.ControllerTests
                 ClockIn = now,
                 ClockOut = now.AddHours(9),
                 EmployeeId = 1,
-                TotalHours = baseDate.AddHours(9),
-                EffectiveHours = baseDate.AddHours(8),
+                TotalHours = 9,
+                EffectiveHours = 8,
             };
 
             _mock.Setup(x => x.AddAsync(It.IsAny<EmployeeAttendance>())).Returns(Task.CompletedTask);
@@ -47,8 +47,8 @@ namespace KHRMS.UnitTest.ControllerTests
 
             var employeeAttendanceList = new List<EmployeeAttendance>
             {
-                new EmployeeAttendance() { Id = 1, ClockIn = DateTime.Now, ClockOut = DateTime.Now.AddHours(8), EmployeeId = 1, TotalHours = baseDate.AddHours(8), EffectiveHours = baseDate.AddHours(7) },
-                new EmployeeAttendance() { Id = 2, ClockIn = DateTime.Now, ClockOut = DateTime.Now.AddHours(9), EmployeeId = 2, TotalHours = baseDate.AddHours(9), EffectiveHours = baseDate.AddHours(8) }
+                new EmployeeAttendance() { Id = 1, ClockIn = DateTime.Now, ClockOut = DateTime.Now.AddHours(8), EmployeeId = 1, TotalHours = 8, EffectiveHours = 7 },
+                new EmployeeAttendance() { Id = 2, ClockIn = DateTime.Now, ClockOut = DateTime.Now.AddHours(9), EmployeeId = 2, TotalHours = 9, EffectiveHours = 8 }
             };
 
             _mock.Setup(x => x.GetAllAsync()).ReturnsAsync(employeeAttendanceList);
@@ -89,8 +89,8 @@ namespace KHRMS.UnitTest.ControllerTests
                 ClockIn = now,
                 ClockOut = now.AddHours(10), // updated ClockOut
                 EmployeeId = 1,
-                TotalHours = baseDate.AddHours(10),
-                EffectiveHours = baseDate.AddHours(9),
+                TotalHours = 10,
+                EffectiveHours = 9,
             };
 
             _mock.Setup(x => x.UpdateAsync(It.IsAny<EmployeeAttendance>())).Returns(Task.CompletedTask);

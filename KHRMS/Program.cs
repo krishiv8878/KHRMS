@@ -49,7 +49,7 @@ builder.Services.AddScoped<ISendEmailService, SendEmailService>();
 builder.Services.AddScoped<ILeaveRequestTypeService, LeaveRequestTypeService>();
 builder.Services.AddScoped<IResignationService, ResignationService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
-
+builder.Services.AddScoped<IAttendanceLogService, AttendanceLogService>();
 
 // Add context-aware services
 builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();

@@ -1,6 +1,7 @@
 ﻿using System.Security.Claims;
 using KHRMS.Core;
 using KHRMS.Services;
+using KHRMS.Services.Request;
 using Moq;
 
 namespace KHRMS.UnitTest.ServiceTests
@@ -29,10 +30,23 @@ namespace KHRMS.UnitTest.ServiceTests
                 ClockOutTime = new DateTime(2025, 3, 13, 7, 0, 0),
                 ManagerId = 3
             };
-            _mock.Setup(x => x.AddAsync(It.IsAny<AttendanceRequest>(), It.IsAny<ClaimsPrincipal>())).Returns(Task.CompletedTask);
+            var attendanceRequestDTO = new AttendanceRequestDTO()
+            {
+                EmployeeId = 1,
+                RequestType = "String",
+                RequestedDate = new DateTime(2025, 3, 13, 10, 0, 0),
+                RequestedBy = 1,
+                Reason = "Forgot",
+                Status = "Not Approved",
+                LastActionBy = null,
+                clockIn = new DateTime(2025, 3, 13, 10, 30, 0),
+                clockOut = new DateTime(2025, 3, 13, 7, 0, 0),
+                ManagerId = 3
+            };
+            _mock.Setup(x => x.AddAsync(It.IsAny<AttendanceRequestDTO>(), It.IsAny<ClaimsPrincipal>())).Returns(Task.CompletedTask);
 
-            await _mock.Object.AddAsync(attendanceRequest, null);
-            _mock.Verify(x => x.AddAsync(It.IsAny<AttendanceRequest>(), It.IsAny<ClaimsPrincipal>()), Times.Once);
+            await _mock.Object.AddAsync(attendanceRequestDTO, null);
+            _mock.Verify(x => x.AddAsync(It.IsAny<AttendanceRequestDTO>(), It.IsAny<ClaimsPrincipal>()), Times.Once);
         }
         [Fact]
         public async Task Add_AttendanceRequest_ThrowsException_WhenDataIsInvalid()
@@ -51,24 +65,36 @@ namespace KHRMS.UnitTest.ServiceTests
                 ClockOutTime = new DateTime(2025, 3, 13, 7, 0, 0),
                 ManagerId = 3
             };
-            _mock.Setup(x => x.AddAsync(It.IsAny<AttendanceRequest>(), It.IsAny<ClaimsPrincipal>())).ThrowsAsync(new ArgumentException("Invalid request"));
-            var exception = await Assert.ThrowsAsync<ArgumentException>(() => _mock.Object.AddAsync(InvalidRequest, null));
+            var InvalidRequestDTO = new AttendanceRequestDTO()
+            {
+                EmployeeId = 1,
+                RequestType = null, //invalid type
+                RequestedDate = new DateTime(2025, 3, 13, 10, 0, 0),
+                RequestedBy = 1,
+                Reason = "Forgot",
+                Status = "Not Approved",
+                LastActionBy = null,
+                clockIn = new DateTime(2025, 3, 13, 10, 30, 0),
+                clockOut = new DateTime(2025, 3, 13, 7, 0, 0),
+                ManagerId = 3
+            };
+            _mock.Setup(x => x.AddAsync(It.IsAny<AttendanceRequestDTO>(), It.IsAny<ClaimsPrincipal>())).ThrowsAsync(new ArgumentException("Invalid request"));
+            var exception = await Assert.ThrowsAsync<ArgumentException>(() => _mock.Object.AddAsync(InvalidRequestDTO, null));
             Assert.Equal("Invalid request", exception.Message);
         }
         [Fact]
         public async Task Add_AttendanceRequest_ThrowsException_WhenRequestIsNull()
         {
-            AttendanceRequest nullattendanceRequest = null;
-            _mock.Setup(x => x.AddAsync(It.IsAny<AttendanceRequest>(), It.IsAny<ClaimsPrincipal>())).ThrowsAsync(new Exception("AttendanceRequest cannot be null"));
+            AttendanceRequestDTO nullattendanceRequest = null;
+            _mock.Setup(x => x.AddAsync(It.IsAny<AttendanceRequestDTO>(), It.IsAny<ClaimsPrincipal>())).ThrowsAsync(new Exception("AttendanceRequest cannot be null"));
             var exception = await Assert.ThrowsAsync<Exception>(() => _mock.Object.AddAsync(nullattendanceRequest, null));
             Assert.Equal("AttendanceRequest cannot be null", exception.Message);
         }
         [Fact]
         public async Task Add_AttendanceRequest_ThrowsException_WhenRequestAlreadyExists()
         {
-            AttendanceRequest attendanceRequestExist = new AttendanceRequest()
+            AttendanceRequestDTO attendanceRequestExist = new AttendanceRequestDTO()
             {
-                Id = 1,
                 EmployeeId = 1,
                 RequestType = "String",
                 RequestedDate = new DateTime(2025, 3, 13, 10, 0, 0),//Already Exist Requested Date
@@ -76,21 +102,21 @@ namespace KHRMS.UnitTest.ServiceTests
                 Reason = "Forgot",
                 Status = "Not Approved",
                 LastActionBy = null,
-                ClockInTime = new DateTime(2025, 3, 13, 10, 30, 0),
-                ClockOutTime = new DateTime(2025, 3, 13, 7, 0, 0),
+                clockIn = new DateTime(2025, 3, 13, 10, 30, 0),
+                clockOut = new DateTime(2025, 3, 13, 7, 0, 0),
                 ManagerId = 3
             };
-            _mock.Setup(x => x.AddAsync(It.IsAny<AttendanceRequest>(), It.IsAny<ClaimsPrincipal>())).ThrowsAsync(new InvalidOperationException("Attendance request already exists for requested date"));
+            _mock.Setup(x => x.AddAsync(It.IsAny<AttendanceRequestDTO>(), It.IsAny<ClaimsPrincipal>())).ThrowsAsync(new InvalidOperationException("Attendance request already exists for requested date"));
             var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => _mock.Object.AddAsync(attendanceRequestExist, null));
             Assert.Equal("Attendance request already exists for requested date", exception.Message);
         }
         [Fact]
         public async Task Get_AllAttendanceRequests_Successfully()
         {
-            var getattendanceRequest = new List<AttendanceRequest>
+            var getattendanceRequest = new List<AttendanceRequestUpdateDTO>
             {
-                new AttendanceRequest{Id = 1,EmployeeId=1,RequestType="String",RequestedDate = new DateTime(2025, 3, 13, 10, 0, 0),RequestedBy=1,Reason="Forgot",Status="Not Approved",LastActionBy=null,ClockInTime = new DateTime(2025, 3, 13, 10, 30, 0),ClockOutTime = new DateTime(2025, 3, 13, 7, 0, 0),ManagerId = 3},
-                new AttendanceRequest{Id = 2,EmployeeId=1,RequestType="String",RequestedDate = new DateTime(2025, 3, 14, 10, 0, 0),RequestedBy=1,Reason="Forgot",Status="Not Approved",LastActionBy=null,ClockInTime = new DateTime(2025, 3, 14, 10, 30, 0),ClockOutTime = new DateTime(2025, 3, 14, 7, 0, 0),ManagerId = 3},
+                new AttendanceRequestUpdateDTO{Id = 1,EmployeeId=1,RequestType="String",RequestedDate = new DateTime(2025, 3, 13, 10, 0, 0),RequestedBy=1,Reason="Forgot",Status="Not Approved",LastActionBy=1,clockIn = new DateTime(2025, 3, 13, 10, 30, 0),clockOut = new DateTime(2025, 3, 13, 7, 0, 0),ManagerId = 3},
+                new AttendanceRequestUpdateDTO{Id = 2,EmployeeId=1,RequestType="String",RequestedDate = new DateTime(2025, 3, 14, 10, 0, 0),RequestedBy=1,Reason="Forgot",Status="Not Approved",LastActionBy=1,clockIn = new DateTime(2025, 3, 14, 10, 30, 0),clockOut = new DateTime(2025, 3, 14, 7, 0, 0),ManagerId = 3},
             };
             _mock.Setup(x => x.GetAllAsync()).ReturnsAsync(getattendanceRequest);
             var result = await _mock.Object.GetAllAsync();
@@ -166,7 +192,7 @@ namespace KHRMS.UnitTest.ServiceTests
                 ClockOutTime = new DateTime(2025, 3, 13, 7, 0, 0),
                 ManagerId = 3
             };
-            var UpdateattendanceRequest = new AttendanceRequest
+            var UpdateattendanceRequest = new AttendanceRequestUpdateDTO
             {
                 Id = 1,
                 EmployeeId = 1,
@@ -175,24 +201,24 @@ namespace KHRMS.UnitTest.ServiceTests
                 RequestedBy = 1,
                 Reason = "Forgot",
                 Status = "Approved", //update status
-                LastActionBy = null,
-                ClockInTime = new DateTime(2025, 3, 13, 10, 30, 0),
-                ClockOutTime = new DateTime(2025, 3, 13, 7, 0, 0),
+                LastActionBy = 1,
+                clockIn = new DateTime(2025, 3, 13, 10, 30, 0),
+                clockOut = new DateTime(2025, 3, 13, 7, 0, 0),
                 ManagerId = 3
             };
 
-            _mock.Setup(x => x.UpdateAsync(It.IsAny<AttendanceRequest>())).Returns(Task.CompletedTask);
+            _mock.Setup(x => x.UpdateAsync(It.IsAny<AttendanceRequestUpdateDTO>())).Returns(Task.CompletedTask);
 
             await _mock.Object.UpdateAsync(UpdateattendanceRequest);
 
-            _mock.Verify(x => x.UpdateAsync(It.Is<AttendanceRequest>(r =>
+            _mock.Verify(x => x.UpdateAsync(It.Is<AttendanceRequestUpdateDTO>(r =>
                 r.Id == UpdateattendanceRequest.Id &&
                 r.Status == UpdateattendanceRequest.Status)), Times.Once());
         }
         [Fact]
         public async Task AttendanceRequest_UpdateThrowException_WhenRequestNotFound()
         {
-            var attendanceRequest = new AttendanceRequest
+            var attendanceRequest = new AttendanceRequestUpdateDTO
             {
                 Id = 9999,//id doesnt exists
                 EmployeeId = 1,
@@ -201,13 +227,13 @@ namespace KHRMS.UnitTest.ServiceTests
                 RequestedBy = 1,
                 Reason = "Forgot",
                 Status = "Not Approved",
-                LastActionBy = null,
-                ClockInTime = new DateTime(2025, 3, 13, 10, 30, 0),
-                ClockOutTime = new DateTime(2025, 3, 13, 7, 0, 0),
+                LastActionBy = 1,
+                clockIn = new DateTime(2025, 3, 13, 10, 30, 0),
+                clockOut = new DateTime(2025, 3, 13, 7, 0, 0),
                 ManagerId = 3
             };
 
-            _mock.Setup(x => x.UpdateAsync(It.IsAny<AttendanceRequest>())).ThrowsAsync(new KeyNotFoundException("Requested id of Attendance request not found"));
+            _mock.Setup(x => x.UpdateAsync(It.IsAny<AttendanceRequestUpdateDTO>())).ThrowsAsync(new KeyNotFoundException("Requested id of Attendance request not found"));
 
             var exception = await Assert.ThrowsAsync<KeyNotFoundException>(() => _mock.Object.UpdateAsync(attendanceRequest));
             Assert.Equal("Requested id of Attendance request not found", exception.Message);

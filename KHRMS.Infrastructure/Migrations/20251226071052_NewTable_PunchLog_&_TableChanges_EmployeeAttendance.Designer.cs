@@ -4,6 +4,7 @@ using KHRMS.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace KHRMS.Infrastructure.Migrations
 {
     [DbContext(typeof(KHRMSContextClass))]
-    partial class KHRMSContextClassModelSnapshot : ModelSnapshot
+    [Migration("20251226071052_NewTable_PunchLog_&_TableChanges_EmployeeAttendance")]
+    partial class NewTable_PunchLog__TableChanges_EmployeeAttendance
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -765,36 +768,6 @@ namespace KHRMS.Infrastructure.Migrations
                     b.ToTable("LeaveType");
                 });
 
-            modelBuilder.Entity("KHRMS.Core.Models.AttendanceLog", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
-
-                    b.Property<DateOnly>("AttendanceDate")
-                        .HasColumnType("date");
-
-                    b.Property<decimal>("Duration")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<long>("EmployeeId")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTime?>("InTime")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("OutTime")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("EmployeeId");
-
-                    b.ToTable("AttendanceLog");
-                });
-
             modelBuilder.Entity("KHRMS.Core.Models.Email", b =>
                 {
                     b.Property<long>("Id")
@@ -924,6 +897,36 @@ namespace KHRMS.Infrastructure.Migrations
                     b.HasIndex("EmailTemplateTypeId");
 
                     b.ToTable("EmailTemplatesMasters");
+                });
+
+            modelBuilder.Entity("KHRMS.Core.Models.PunchLog", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateOnly>("AttendanceDate")
+                        .HasColumnType("date");
+
+                    b.Property<decimal>("duration")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<long>("employee_id")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("in_time")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("out_time")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("employee_id");
+
+                    b.ToTable("PunchLogs");
                 });
 
             modelBuilder.Entity("KHRMS.Core.ProjectMaster", b =>
@@ -1306,17 +1309,6 @@ namespace KHRMS.Infrastructure.Migrations
                     b.Navigation("LeaveType");
                 });
 
-            modelBuilder.Entity("KHRMS.Core.Models.AttendanceLog", b =>
-                {
-                    b.HasOne("KHRMS.Core.Employee", "employee")
-                        .WithMany()
-                        .HasForeignKey("EmployeeId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("employee");
-                });
-
             modelBuilder.Entity("KHRMS.Core.Models.Email", b =>
                 {
                     b.HasOne("KHRMS.Core.Models.EmailTemplatesMaster", "EmailTemplatesMaster")
@@ -1337,6 +1329,17 @@ namespace KHRMS.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("EmailTemplateTypeMaster");
+                });
+
+            modelBuilder.Entity("KHRMS.Core.Models.PunchLog", b =>
+                {
+                    b.HasOne("KHRMS.Core.Employee", "employee")
+                        .WithMany()
+                        .HasForeignKey("employee_id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("employee");
                 });
 
             modelBuilder.Entity("KHRMS.Core.Resignation", b =>
