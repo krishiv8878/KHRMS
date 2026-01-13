@@ -76,17 +76,18 @@ namespace KHRMS.Services
                 AttendanceDate = attendance.AttendanceDate,
                 InTime = attendance.ClockIn,
                 OutTime = attendance.ClockOut,
-                Duration = 0,
+                Duration = (decimal)(attendance.ClockOut - attendance.ClockIn).Value.TotalHours,
             };
             if (attendancebyid != null)
             {
                 await _attendanceLogService.UpdateAttendanceLogAsync(attendanceLog);
+                var logs = (await _attendanceLogService.GetAllAttendanceLogAsync()).Where(r => r.AttendanceDate == attendance.AttendanceDate).ToList();
                 if (attendance.ClockOut != null)
                 {
-                    attendancebyid.ClockOut = attendance.ClockOut;
-                    attendancebyid.TotalHours = (decimal)(attendance.ClockOut - attendancebyid.ClockIn).Value.TotalHours;
-                    var efh = (await _attendanceLogService.GetAllAttendanceLogAsync()).Where(r => r.AttendanceDate == attendance.AttendanceDate).ToList();
-                    attendancebyid.EffectiveHours = efh.Sum(r => r.Duration);
+                    attendancebyid.ClockIn = (DateTime)logs.Min(r=>r.InTime);
+                    attendancebyid.ClockOut = logs.Max(r => r.OutTime);
+                    attendancebyid.TotalHours = (decimal)(logs.Max(r => r.OutTime) - (DateTime)logs.Min(r => r.InTime)).Value.TotalHours;
+                    attendancebyid.EffectiveHours = logs.Sum(r => r.Duration);
                     await UpdateAsync(attendancebyid);
                 }
             }

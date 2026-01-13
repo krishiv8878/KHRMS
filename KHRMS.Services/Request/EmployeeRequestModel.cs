@@ -11,20 +11,20 @@ namespace KHRMS.Services.Request
         public string? LastName { get; set; }
         public string? EmailAddress { get; set; }
         public string? MobileNumber { get; set; }
-        public int DesignationId { get; set; }
+        public int? DesignationId { get; set; }
         public DateTime? DateOfJoining { get; set; }
         public string? Gender { get; set; }
         public string? CurrentAddress { get; set; }
 
         public string? PermanentAddress { get; set; }
-        public long EmployeeCode { get; set; }
+        public long? EmployeeCode { get; set; }
 
         public List<long>? RoleIds { get; set; }
-        public List<string?> rolenames { get; set; }
+        public List<string?>? rolenames { get; set; }
         public string? ShiftId { get; set; }
 
-        public long ManagerId { get; set; }
-        public string ManagerName { get; set; }
+        public long? ManagerId { get; set; }
+        public string? ManagerName { get; set; }
         public string? PrimaryEmailAddress { get; set; }
 
         // ====================== Additional Fields ======================
@@ -107,6 +107,13 @@ namespace KHRMS.Services.Request
         [StringLength(100)]
         public string? Branch { get; set; }
         public DateTime? DateOfBirth { get; set; }
+
+        public bool? ProfileCompleted { get; set; }
+        public string? ClientUrl {  get; set; }
+
+        public List<long>? SkillIds { get; set; }
+        public List<String?>? Skills { get; set; }
+
 
     }
 }

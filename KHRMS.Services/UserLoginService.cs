@@ -114,8 +114,13 @@ namespace KHRMS.Services
                             Password = Password,
                             Token = accessToken,
                             UserId = matchedEmployee.Id,
-                            RoleType = roleTypes
+                            RoleType = roleTypes,
+                            ProfileCompleted = matchedEmployee.ProfileCompleted,
+                            IsResetPasswordRequired = matchedUser.IsResetPasswordRequired,
                         };
+                        matchedUser.LastLoginDate = DateTime.UtcNow;
+                        _unitOfWork.UserLogins.Update(matchedUser);
+                        _unitOfWork.Save();
                         return model;
                     }
                 }
@@ -173,6 +178,7 @@ namespace KHRMS.Services
 
             var passwordHasher = new PasswordHasher<UserLogin>();
             matchedUser.Password = passwordHasher.HashPassword(matchedUser, userLogin.Password);
+            matchedUser.IsResetPasswordRequired = false;
 
             _unitOfWork.UserLogins.Update(matchedUser);
             return _unitOfWork.Save() > 0;

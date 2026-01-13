@@ -27,5 +27,7 @@ namespace KHRMS.Core
         [Required(ErrorMessage = "LastLoginDate is required")]
         public DateTime LastLoginDate { get; set; }
 
+        [Required(ErrorMessage = "isPasswordRequired is required")]
+        public bool? IsResetPasswordRequired { get; set; }
     }
 }

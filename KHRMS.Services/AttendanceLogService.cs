@@ -32,7 +32,7 @@ namespace KHRMS.Services
         public async Task DeleteAttendanceLogAsync(long id)
         {
             await _unitOfWork.AttendanceLog.DeleteAsync(id);
-            return Task.CompletedTask;
+            return;
         }
         public async Task<AttendanceLog> GetAttendanceLogByIdAsync(long id)
         {

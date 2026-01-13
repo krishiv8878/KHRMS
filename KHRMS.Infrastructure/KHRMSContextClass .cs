@@ -1,4 +1,5 @@
-﻿using KHRMS.Core;
+﻿using System.Text.Json;
+using KHRMS.Core;
 using KHRMS.Core.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -30,6 +31,12 @@ namespace KHRMS.Infrastructure
                 entity.Property(e => e.Id)
                       .UseIdentityColumn(seed: 1001, increment: 1);
             });
+            modelBuilder.Entity<Employee>()
+                .Property(e => e.SkillIds)
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                    v => JsonSerializer.Deserialize<List<long>>(v, (JsonSerializerOptions)null)
+                 ).HasColumnType("nvarchar(max)");
         }
         public DbSet<ProjectMaster> ProjectMasters { get; set; }
         public DbSet<UserRegistration> UserRegistrations { get; set; }
