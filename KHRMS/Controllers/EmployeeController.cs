@@ -168,6 +168,50 @@ namespace KHRMS
             }
         }
 
+        // <summary>
+        /// Update a existing employee
+        /// </summary>
+        /// <param name="employee"></param>
+        /// <returns></returns>
+        [HttpPut("UpdateExistingEmployee")]
+        public async Task<IActionResult> UpdateExistingEmployee(EmployeeRequestModel employeeRequestModel)
+        {
+            Log.Information("EmployeeController - UpdateEmployee called.");
+
+            if (!ModelState.IsValid)
+            {
+                Log.Warning("EmployeeController - Invalid model state during update.");
+                return BadRequest(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = ApiMessageConstant.InvalidData,
+                    Data = false
+                });
+            }
+
+            var isEmployeeEdited = await _employeeService.ExistingEmployeeUpdate(employeeRequestModel);
+            if (isEmployeeEdited)
+            {
+                Log.Information("EmployeeController - Employee updated successfully.");
+                return Ok(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.OK,
+                    Message = ApiMessageConstant.EmployeeUpdated,
+                    Data = true
+                });
+            }
+            else
+            {
+                Log.Error("EmployeeController - Failed to update employee.");
+                return BadRequest(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = ApiMessageConstant.EmployeeNotUpdated,
+                    Data = false
+                });
+            }
+        }
+
         [HttpGet("GetManagers")]
         public async Task<IActionResult> GetManagers()
         {

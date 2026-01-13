@@ -4,6 +4,7 @@ using KHRMS.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace KHRMS.Infrastructure.Migrations
 {
     [DbContext(typeof(KHRMSContextClass))]
-    partial class KHRMSContextClassModelSnapshot : ModelSnapshot
+    [Migration("20260102110851_NotNull_AllowedIn_EmployeeTable")]
+    partial class NotNull_AllowedIn_EmployeeTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -283,14 +286,14 @@ namespace KHRMS.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<int?>("DesignationId")
+                    b.Property<int>("DesignationId")
                         .HasColumnType("int");
 
                     b.Property<string>("EmailAddress")
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)");
 
-                    b.Property<long?>("EmployeeCode")
+                    b.Property<long>("EmployeeCode")
                         .HasColumnType("bigint");
 
                     b.Property<string>("ExperienceDuration")
@@ -402,9 +405,6 @@ namespace KHRMS.Infrastructure.Migrations
                         .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("ShiftIds")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("SkillIds")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("University")
@@ -1169,10 +1169,6 @@ namespace KHRMS.Infrastructure.Migrations
                         .HasColumnType("bit");
 
                     b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<bool?>("IsResetPasswordRequired")
-                        .IsRequired()
                         .HasColumnType("bit");
 
                     b.Property<DateTime>("LastLoginDate")

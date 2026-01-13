@@ -9,5 +9,7 @@ namespace KHRMS.Services.Request
         public string? UserName { get; set; }
         public string? Token { get; set; }
         public long? UserId { get; set; }
+        public bool? ProfileCompleted { get; set; }
+        public bool? IsResetPasswordRequired { get; set; }
     }
 }

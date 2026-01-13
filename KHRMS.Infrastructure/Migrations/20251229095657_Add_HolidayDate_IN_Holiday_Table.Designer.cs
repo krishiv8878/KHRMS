@@ -4,6 +4,7 @@ using KHRMS.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace KHRMS.Infrastructure.Migrations
 {
     [DbContext(typeof(KHRMSContextClass))]
-    partial class KHRMSContextClassModelSnapshot : ModelSnapshot
+    [Migration("20251229095657_Add_HolidayDate_IN_Holiday_Table")]
+    partial class Add_HolidayDate_IN_Holiday_Table
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -266,6 +269,7 @@ namespace KHRMS.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("CurrentAddress")
+                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
@@ -273,6 +277,7 @@ namespace KHRMS.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("DateOfJoining")
+                        .IsRequired()
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Degree")
@@ -283,14 +288,15 @@ namespace KHRMS.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<int?>("DesignationId")
+                    b.Property<int>("DesignationId")
                         .HasColumnType("int");
 
                     b.Property<string>("EmailAddress")
+                        .IsRequired()
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)");
 
-                    b.Property<long?>("EmployeeCode")
+                    b.Property<long>("EmployeeCode")
                         .HasColumnType("bigint");
 
                     b.Property<string>("ExperienceDuration")
@@ -302,10 +308,12 @@ namespace KHRMS.Infrastructure.Migrations
                         .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("FirstName")
+                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("Gender")
+                        .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
@@ -316,6 +324,7 @@ namespace KHRMS.Infrastructure.Migrations
                         .HasColumnType("bit");
 
                     b.Property<string>("LastName")
+                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
@@ -323,6 +332,7 @@ namespace KHRMS.Infrastructure.Migrations
                         .HasColumnType("bigint");
 
                     b.Property<string>("MobileNumber")
+                        .IsRequired()
                         .HasMaxLength(10)
                         .HasColumnType("nvarchar(10)");
 
@@ -348,6 +358,7 @@ namespace KHRMS.Infrastructure.Migrations
                         .HasColumnType("real");
 
                     b.Property<string>("PermanentAddress")
+                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
@@ -375,9 +386,6 @@ namespace KHRMS.Infrastructure.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)");
 
-                    b.Property<bool>("ProfileCompleted")
-                        .HasColumnType("bit");
-
                     b.Property<string>("Responsibilities")
                         .HasColumnType("nvarchar(max)");
 
@@ -402,9 +410,6 @@ namespace KHRMS.Infrastructure.Migrations
                         .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("ShiftIds")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("SkillIds")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("University")
@@ -1169,10 +1174,6 @@ namespace KHRMS.Infrastructure.Migrations
                         .HasColumnType("bit");
 
                     b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<bool?>("IsResetPasswordRequired")
-                        .IsRequired()
                         .HasColumnType("bit");
 
                     b.Property<DateTime>("LastLoginDate")

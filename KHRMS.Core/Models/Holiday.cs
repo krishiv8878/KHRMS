@@ -15,6 +15,9 @@ namespace KHRMS.Core
 
         [Required(ErrorMessage = "Description is required")]
         public String Description { get; set; }
+
+        [Required(ErrorMessage = "Date is required")]
+        public DateOnly HolidayDate { get; set; }
         public bool IsOptional { get; set; }
 
     }

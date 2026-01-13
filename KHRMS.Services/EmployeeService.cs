@@ -1,14 +1,33 @@
-﻿using KHRMS.Core;
+﻿using System;
+using System.Runtime.InteropServices;
+using System.Security.Cryptography;
+using KHRMS.Core;
+using KHRMS.Services.Interfaces;
 using KHRMS.Services.Request;
-using Microsoft.AspNetCore.Identity; // Add this for PasswordHasher
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.EntityFrameworkCore.Metadata; // Add this for PasswordHasher
 
 namespace KHRMS.Services
 {
-    public class EmployeeService(IUnitOfWork unitOfWork, ISendEmailService emailRepository) : IEmployeeService
+    public class EmployeeService(IUnitOfWork unitOfWork, ISendEmailService emailRepository, ITokenService tokenService) : IEmployeeService
     {
-        public IUnitOfWork _unitOfWork = unitOfWork;
-        public ISendEmailService _sendEmailService = emailRepository;
-
+        private readonly IUnitOfWork _unitOfWork = unitOfWork;
+        private readonly ISendEmailService _sendEmailService = emailRepository;
+        private readonly ITokenService _tokenService = tokenService;
+        private const string AllowdChar = "abcdefghijklmnopqrstuvwxyz" +
+                                          "ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
+                                          "0123456789" +
+                                          "@#";
+        private string GenerateRandomPassword(int length)
+        {
+            if (length <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(length));
+            }
+            string password = RandomNumberGenerator.GetString(AllowdChar, length);
+            return password;
+        }
         //public async Task<bool> CreateEmployee(EmployeeRequestModel employeeRequestModel)
         //{
         //    if (employeeRequestModel == null)
@@ -128,92 +147,117 @@ namespace KHRMS.Services
             if (employeeRequestModel == null)
                 return false;
 
+            // Get senior employee (best possible with current repo)
             var seniorEmployee = (await _unitOfWork.Employees.GetAll())
-                .OrderBy(emp => emp.DateOfJoining)
-                .FirstOrDefault();
+                .MinBy(e => e.DateOfJoining);
+
+            var now = DateTime.Now;
 
             var newEmployee = new Employee
             {
-                EmployeeCode = employeeRequestModel.EmployeeCode,
                 FirstName = employeeRequestModel.FirstName,
                 LastName = employeeRequestModel.LastName,
                 EmailAddress = employeeRequestModel.EmailAddress,
-                MobileNumber = employeeRequestModel.MobileNumber,
-                PrimaryEmailAddress = employeeRequestModel.PrimaryEmailAddress,
-                DesignationId = employeeRequestModel.DesignationId,
                 DateOfJoining = employeeRequestModel.DateOfJoining,
-                Gender = employeeRequestModel.Gender,
-                CurrentAddress = employeeRequestModel.CurrentAddress,
-                PermanentAddress = employeeRequestModel.PermanentAddress,
+                SkillIds = employeeRequestModel.SkillIds,
+                //Designation = employeeRequestModel.Designation,
+                DesignationId = 0,
+                ManagerId = (long)employeeRequestModel.ManagerId,
+                //Branch = employeeRequestModel.Branch,
+                //Responsibilities = employeeRequestModel.Responsibilities,
+                CreatedDate = now,
+                CreatedBy = employeeRequestModel.CreatedBy,
                 IsActive = employeeRequestModel.IsActive,
-                CreatedDate = DateTime.Now,
-                ShiftIds = employeeRequestModel.ShiftId,
-                PrimaryContactName = employeeRequestModel.PrimaryContactName,
-                PrimaryContactRelationship = employeeRequestModel.PrimaryContactRelationship,
-                PrimaryContactPhone = employeeRequestModel.PrimaryContactPhone,
-                PrimaryContactEmail = employeeRequestModel.PrimaryContactEmail,
-                PrimaryContactAddress = employeeRequestModel.PrimaryContactAddress,
-                SecondaryContactName = employeeRequestModel.SecondaryContactName,
-                SecondaryContactRelationship = employeeRequestModel.SecondaryContactRelationship,
-                SecondaryContactPhone = employeeRequestModel.SecondaryContactPhone,
-                SecondaryContactEmail = employeeRequestModel.SecondaryContactEmail,
-                SecondaryContactAddress = employeeRequestModel.SecondaryContactAddress,
-                Degree = employeeRequestModel.Degree,
-                University = employeeRequestModel.University,
-                YearOfPassing = employeeRequestModel.YearOfPassing,
-                Percentage = employeeRequestModel.Percentage,
-                CompanyName = employeeRequestModel.CompanyName,
-                Designation = employeeRequestModel.Designation,
-                ExperienceDuration = employeeRequestModel.ExperienceDuration,
-                ExperienceLocation = employeeRequestModel.ExperienceLocation,
-                Responsibilities = employeeRequestModel.Responsibilities,
-                PassportNumber = employeeRequestModel.PassportNumber,
-                Nationality = employeeRequestModel.Nationality,
-                PassportIssueDate = employeeRequestModel.PassportIssueDate,
-                PassportExpiryDate = employeeRequestModel.PassportExpiryDate,
-                PassportScanCopy = employeeRequestModel.PassportScanCopy,
-                Branch = employeeRequestModel.Branch,
-                DateOfBirth = employeeRequestModel.DateOfBirth
-
+                IsDeleted = false,
+                EmployeeCode = 0,
+                ProfileCompleted = false
             };
 
             await _unitOfWork.Employees.Add(newEmployee);
-            var result = _unitOfWork.Save();
+            var res = _unitOfWork.Save();
 
-            var defaultPassword = "System@123";
-            var passwordHasher = new PasswordHasher<UserRegistration>();
-            var userRegistration = new UserRegistration
+            // Role mappings
+            if (res > 0 && employeeRequestModel.RoleIds?.Any() == true)
             {
-                FirstName = newEmployee.FirstName,
-                LastName = newEmployee.LastName,
-                Email = newEmployee.EmailAddress,
-                MobileNumber = newEmployee.MobileNumber,
-                Address = newEmployee.CurrentAddress,
-                Password = passwordHasher.HashPassword(null, defaultPassword),
-                CreatedDate = DateTime.Now
-            };
-
-            await _unitOfWork.UserRegistrations.Add(userRegistration);
-            var regResult = _unitOfWork.Save();
-
-            if (regResult > 0)
-            {
-                var userLogin = new KHRMS.Core.UserLogin
+                foreach (var roleId in employeeRequestModel.RoleIds)
                 {
-                    UserId = userRegistration.Id,
-                    UserName = userRegistration.Email,
-                    Email = userRegistration.Email,
-                    Password = userRegistration.Password,
-                    CreatedDate = DateTime.Now,
-                    IsActive = true,
-                    IsDeleted = false
-                };
-
-                await _unitOfWork.UserLogins.Add(userLogin);
-                _unitOfWork.Save();
+                    await _unitOfWork.EmployeeRoleMappings.Add(new EmployeeRoleMapping
+                    {
+                        EmployeeId = newEmployee.Id,
+                        RoleId = roleId,
+                        IsActive = true,
+                        CreatedDate = now
+                    });
+                }
             }
 
-            return result > 0;
+            // Save employee + roles together
+            var result = _unitOfWork.Save();
+            if (result <= 0)
+                return false;
+
+            // User registration
+            var defaultPassword = GenerateRandomPassword(12);
+            var passwordHasher = new PasswordHasher<UserRegistration>();
+            Console.WriteLine(defaultPassword);
+
+            //var userRegistration = new UserRegistration
+            //{
+            //    FirstName = newEmployee.FirstName,
+            //    LastName = newEmployee.LastName,
+            //    Email = newEmployee.EmailAddress,
+            //    MobileNumber = 0000000000,
+            //    Address = "",
+            //    Password = passwordHasher.HashPassword(null, defaultPassword),
+            //    CreatedDate = now
+            //};
+
+            //await _unitOfWork.UserRegistrations.Add(userRegistration);
+
+            // User login
+            var userLogin = new UserLogin
+            {
+                UserId = newEmployee.Id,
+                UserName = newEmployee.EmailAddress,
+                Email = newEmployee.EmailAddress,
+                Password = passwordHasher.HashPassword(null, defaultPassword),
+                CreatedDate = now,
+                IsActive = true,
+                IsDeleted = false,
+                IsResetPasswordRequired = true
+            };
+
+            await _unitOfWork.UserLogins.Add(userLogin);
+            if(_unitOfWork.Save() > 0)
+            {
+                var CompanyName = "Krishiv Innovations";
+                var TeamName = "HR";
+                var token = _tokenService.GeneratePasswordResetToken(userLogin.Email);
+                var SupportEmail = "hr@krishivinnovations.com";
+                    var url = new Dictionary<string, string>
+                    {
+                        {"Token",token },
+                        {"Email" ,userLogin.Email}
+                    };
+                    var req = QueryHelpers.AddQueryString(employeeRequestModel.ClientUrl!, url);
+                    var dict = new Dictionary<string, string>
+                    {
+                        {"COMPANY_NAME",CompanyName},
+                        {"USERNAME",userLogin.Email },
+                        {"TEMP_PASSWORD" ,defaultPassword},
+                        {"URL" , req},
+                        {"SUPPORT_EMAIL" ,SupportEmail},
+                        {"HR_OR_IT_TEAM_NAME" ,TeamName},
+                    };
+                    var subject = $"Welcome to {CompanyName} – Your Account Access Details";
+
+                    await _sendEmailService.SendTemplateEmailAsync(userLogin.Email, subject, dict, "employee_onboarding_credentials");
+                    return true;
+            }
+
+            // Save user-related entities together
+            return _unitOfWork.Save() > 0;
+
         }
 
         public async Task<bool> DeleteEmployee(long employeeId)
@@ -241,6 +285,12 @@ namespace KHRMS.Services
         {
             var employees = await _unitOfWork.Employees.GetAll();
             var employeeroleMapping = await _unitOfWork.EmployeeRoleMappings.GetAll();
+            var allSkillIds = employees
+                .Where(e => e.SkillIds != null)
+                .SelectMany(e => e.SkillIds)
+                .Distinct()
+                .ToList();
+            var skills = (await _unitOfWork.Skills.GetAll()).Where(s=>allSkillIds.Contains(s.Id)).ToDictionary(s=>s.Id, s=>s.SkillName);
             var rolemaster = (await _unitOfWork.RoleMaster.GetAll()).ToDictionary(role => role.Id);
             var employeeDictionary = employees.ToDictionary(emp => emp.Id);
 
@@ -252,7 +302,7 @@ namespace KHRMS.Services
                 EmailAddress = emp.EmailAddress,
                 EmployeeCode = emp.EmployeeCode,
                 MobileNumber = emp.MobileNumber,
-                DesignationId = emp.DesignationId,
+                DesignationId =emp.DesignationId,
                 DateOfJoining = emp.DateOfJoining,
                 Gender = emp.Gender,
                 CurrentAddress = emp.CurrentAddress,
@@ -288,6 +338,10 @@ namespace KHRMS.Services
                 PassportScanCopy = emp.PassportScanCopy,
                 Branch = emp.Branch,
                 DateOfBirth = emp.DateOfBirth,
+                SkillIds = emp.SkillIds ?? new List<long>(),
+                Skills = (emp.SkillIds ?? Enumerable.Empty<long>())
+                    .Where(id=>skills.ContainsKey(id))
+                    .Select(id => skills[id]).ToList(),
                 RoleIds = employeeroleMapping
                     .Where(mapping => mapping.EmployeeId == emp.Id && mapping.IsActive)
                     .Select(mapping => mapping.RoleId)
@@ -332,84 +386,102 @@ namespace KHRMS.Services
                 return false;
 
             // Update Employee details
-            employeeDetails.EmployeeCode = employeeRequestModel.EmployeeCode;
-            employeeDetails.FirstName = employeeRequestModel.FirstName;
-            employeeDetails.LastName = employeeRequestModel.LastName;
-            employeeDetails.EmailAddress = employeeRequestModel.EmailAddress;
-            employeeDetails.MobileNumber = employeeRequestModel.MobileNumber;
-            employeeDetails.DesignationId = employeeRequestModel.DesignationId;
-            employeeDetails.DateOfJoining = employeeRequestModel.DateOfJoining;
-            employeeDetails.Gender = employeeRequestModel.Gender;
-            employeeDetails.CurrentAddress = employeeRequestModel.CurrentAddress;
-            employeeDetails.PermanentAddress = employeeRequestModel.PermanentAddress;
-            employeeDetails.IsActive = employeeRequestModel.IsActive;
-            employeeDetails.UpdatedDate = DateTime.Now;
-            employeeDetails.ShiftIds = employeeRequestModel.ShiftId;
-            employeeDetails.ManagerId = employeeRequestModel.ManagerId;
-            employeeDetails.PrimaryEmailAddress = employeeRequestModel.PrimaryEmailAddress;
-            employeeDetails.PrimaryContactName = employeeRequestModel.PrimaryContactName;
-            employeeDetails.PrimaryContactRelationship = employeeRequestModel.PrimaryContactRelationship;
-            employeeDetails.PrimaryContactPhone = employeeRequestModel.PrimaryContactPhone;
-            employeeDetails.PrimaryContactEmail = employeeRequestModel.PrimaryContactEmail;
-            employeeDetails.PrimaryContactAddress = employeeRequestModel.PrimaryContactAddress;
-            employeeDetails.SecondaryContactName = employeeRequestModel.SecondaryContactName;
-            employeeDetails.SecondaryContactRelationship = employeeRequestModel.SecondaryContactRelationship;
-            employeeDetails.SecondaryContactPhone = employeeRequestModel.SecondaryContactPhone;
-            employeeDetails.SecondaryContactEmail = employeeRequestModel.SecondaryContactEmail;
-            employeeDetails.SecondaryContactAddress = employeeRequestModel.SecondaryContactAddress;
-            employeeDetails.Degree = employeeRequestModel.Degree;
-            employeeDetails.University = employeeRequestModel.University;
-            employeeDetails.YearOfPassing = employeeRequestModel.YearOfPassing;
-            employeeDetails.Percentage = employeeRequestModel.Percentage;
-            employeeDetails.CompanyName = employeeRequestModel.CompanyName;
-            employeeDetails.Designation = employeeRequestModel.Designation;
-            employeeDetails.ExperienceDuration = employeeRequestModel.ExperienceDuration;
-            employeeDetails.ExperienceLocation = employeeRequestModel.ExperienceLocation;
-            employeeDetails.Responsibilities = employeeRequestModel.Responsibilities;
-            employeeDetails.PassportNumber = employeeRequestModel.PassportNumber;
-            employeeDetails.Nationality = employeeRequestModel.Nationality;
-            employeeDetails.PassportIssueDate = employeeRequestModel.PassportIssueDate;
-            employeeDetails.PassportExpiryDate = employeeRequestModel.PassportExpiryDate;
-            employeeDetails.PassportScanCopy = employeeRequestModel.PassportScanCopy;
-            employeeDetails.Branch = employeeRequestModel.Branch;
-            employeeDetails.DateOfBirth = employeeRequestModel.DateOfBirth;
-
-            _unitOfWork.Employees.Update(employeeDetails);
-            var saveEmployeeResult = _unitOfWork.Save();
-
-            var existingRoleMappings = (await _unitOfWork.EmployeeRoleMappings.GetAll())
-                .Where(r => r.EmployeeId == employeeDetails.Id)
-                .ToList();
-            foreach (var roleMapping in existingRoleMappings.Where(r => r.IsActive))
+            if (employeeDetails.ProfileCompleted == false)
             {
-                roleMapping.IsActive = false;
-                roleMapping.UpdatedDate = DateTime.Now;
-                _unitOfWork.EmployeeRoleMappings.Update(roleMapping);
+                employeeDetails.FirstName = employeeRequestModel.FirstName;
+                employeeDetails.LastName = employeeRequestModel.LastName;
+                employeeDetails.DateOfBirth = employeeRequestModel.DateOfBirth;
+                employeeDetails.CurrentAddress = employeeRequestModel.CurrentAddress;
+                employeeDetails.MobileNumber = employeeRequestModel.MobileNumber;
+                employeeDetails.PermanentAddress = employeeRequestModel.PermanentAddress;
+                employeeDetails.Gender = employeeRequestModel.Gender;
+                employeeDetails.ProfileCompleted = (bool)employeeRequestModel.ProfileCompleted;
+                _unitOfWork.Employees.Update(employeeDetails);
+                var result = _unitOfWork.Save();
+                return result > 0;
             }
-
-            foreach (var roleId in employeeRequestModel.RoleIds)
+            else
             {
-                var existingMapping = existingRoleMappings.FirstOrDefault(r => r.RoleId == roleId);
+                employeeDetails.EmployeeCode = employeeRequestModel.EmployeeCode;
+                employeeDetails.FirstName = employeeRequestModel.FirstName;
+                employeeDetails.LastName = employeeRequestModel.LastName;
+                employeeDetails.EmailAddress = employeeRequestModel.EmailAddress;
+                employeeDetails.MobileNumber = employeeRequestModel.MobileNumber;
+                employeeDetails.DesignationId = employeeRequestModel.DesignationId;
+                employeeDetails.DateOfJoining = employeeRequestModel.DateOfJoining;
+                employeeDetails.Gender = employeeRequestModel.Gender;
+                employeeDetails.CurrentAddress = employeeRequestModel.CurrentAddress;
+                employeeDetails.PermanentAddress = employeeRequestModel.PermanentAddress;
+                employeeDetails.IsActive = employeeRequestModel.IsActive;
+                employeeDetails.UpdatedDate = DateTime.Now;
+                employeeDetails.ShiftIds = employeeRequestModel.ShiftId;
+                employeeDetails.ManagerId = (long)employeeRequestModel.ManagerId;
+                employeeDetails.PrimaryEmailAddress = employeeRequestModel.PrimaryEmailAddress;
+                employeeDetails.PrimaryContactName = employeeRequestModel.PrimaryContactName;
+                employeeDetails.PrimaryContactRelationship = employeeRequestModel.PrimaryContactRelationship;
+                employeeDetails.PrimaryContactPhone = employeeRequestModel.PrimaryContactPhone;
+                employeeDetails.PrimaryContactEmail = employeeRequestModel.PrimaryContactEmail;
+                employeeDetails.PrimaryContactAddress = employeeRequestModel.PrimaryContactAddress;
+                employeeDetails.SecondaryContactName = employeeRequestModel.SecondaryContactName;
+                employeeDetails.SecondaryContactRelationship = employeeRequestModel.SecondaryContactRelationship;
+                employeeDetails.SecondaryContactPhone = employeeRequestModel.SecondaryContactPhone;
+                employeeDetails.SecondaryContactEmail = employeeRequestModel.SecondaryContactEmail;
+                employeeDetails.SecondaryContactAddress = employeeRequestModel.SecondaryContactAddress;
+                employeeDetails.Degree = employeeRequestModel.Degree;
+                employeeDetails.University = employeeRequestModel.University;
+                employeeDetails.YearOfPassing = employeeRequestModel.YearOfPassing;
+                employeeDetails.Percentage = employeeRequestModel.Percentage;
+                employeeDetails.CompanyName = employeeRequestModel.CompanyName;
+                employeeDetails.Designation = employeeRequestModel.Designation;
+                employeeDetails.ExperienceDuration = employeeRequestModel.ExperienceDuration;
+                employeeDetails.ExperienceLocation = employeeRequestModel.ExperienceLocation;
+                employeeDetails.Responsibilities = employeeRequestModel.Responsibilities;
+                employeeDetails.PassportNumber = employeeRequestModel.PassportNumber;
+                employeeDetails.Nationality = employeeRequestModel.Nationality;
+                employeeDetails.PassportIssueDate = employeeRequestModel.PassportIssueDate;
+                employeeDetails.PassportExpiryDate = employeeRequestModel.PassportExpiryDate;
+                employeeDetails.PassportScanCopy = employeeRequestModel.PassportScanCopy;
+                employeeDetails.Branch = employeeRequestModel.Branch;
+                employeeDetails.DateOfBirth = employeeRequestModel.DateOfBirth;
+                employeeDetails.SkillIds = employeeRequestModel.SkillIds;
+                _unitOfWork.Employees.Update(employeeDetails);
+                var saveEmployeeResult = _unitOfWork.Save();
 
-                if (existingMapping != null)
+                var existingRoleMappings = (await _unitOfWork.EmployeeRoleMappings.GetAll())
+                    .Where(r => r.EmployeeId == employeeDetails.Id)
+                    .ToList();
+                foreach (var roleMapping in existingRoleMappings.Where(r => r.IsActive))
                 {
-                    existingMapping.IsActive = true;
-                    existingMapping.UpdatedDate = DateTime.Now;
-                    _unitOfWork.EmployeeRoleMappings.Update(existingMapping);
+                    roleMapping.IsActive = false;
+                    roleMapping.UpdatedDate = DateTime.Now;
+                    _unitOfWork.EmployeeRoleMappings.Update(roleMapping);
                 }
-                else
+
+                foreach (var roleId in employeeRequestModel.RoleIds)
                 {
-                    await _unitOfWork.EmployeeRoleMappings.Add(new EmployeeRoleMapping
+                    var existingMapping = existingRoleMappings.FirstOrDefault(r => r.RoleId == roleId);
+
+                    if (existingMapping != null)
                     {
-                        RoleId = roleId,
-                        EmployeeId = employeeDetails.Id,
-                        IsActive = true,
-                        CreatedDate = DateTime.Now
-                    });
+                        existingMapping.IsActive = true;
+                        existingMapping.UpdatedDate = DateTime.Now;
+                        _unitOfWork.EmployeeRoleMappings.Update(existingMapping);
+                    }
+                    else
+                    {
+                        await _unitOfWork.EmployeeRoleMappings.Add(new EmployeeRoleMapping
+                        {
+                            RoleId = roleId,
+                            EmployeeId = employeeDetails.Id,
+                            IsActive = true,
+                            CreatedDate = DateTime.Now
+                        });
+                    }
                 }
+                var saveRoleMappingsResult = _unitOfWork.Save();
+                return saveEmployeeResult > 0 && saveRoleMappingsResult > 0;
+
             }
-            var saveRoleMappingsResult = _unitOfWork.Save();
-            return saveEmployeeResult > 0 && saveRoleMappingsResult > 0;
         }
 
 
@@ -433,5 +505,14 @@ namespace KHRMS.Services
             return employees;
         }
 
+        public async Task<bool> ExistingEmployeeUpdate(EmployeeRequestModel employeeRequestModel)
+        {
+            var employee = await _unitOfWork.Employees.GetById(employeeRequestModel.Id);
+            if (employee == null) return false;
+            employee.SkillIds = employeeRequestModel.SkillIds;
+            _unitOfWork.Employees.Update(employee);
+            var result =_unitOfWork.Save();
+            return result > 0;
+        }
     }
 }

@@ -4,6 +4,7 @@ using KHRMS.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace KHRMS.Infrastructure.Migrations
 {
     [DbContext(typeof(KHRMSContextClass))]
-    partial class KHRMSContextClassModelSnapshot : ModelSnapshot
+    [Migration("20260106072821_Added_PasswordRequired_Column_IN_UserLogin_Table")]
+    partial class Added_PasswordRequired_Column_IN_UserLogin_Table
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -402,9 +405,6 @@ namespace KHRMS.Infrastructure.Migrations
                         .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("ShiftIds")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("SkillIds")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("University")
@@ -1171,10 +1171,6 @@ namespace KHRMS.Infrastructure.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
-                    b.Property<bool?>("IsResetPasswordRequired")
-                        .IsRequired()
-                        .HasColumnType("bit");
-
                     b.Property<DateTime>("LastLoginDate")
                         .HasColumnType("datetime2");
 
@@ -1196,6 +1192,10 @@ namespace KHRMS.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool?>("isPasswordRequired")
+                        .IsRequired()
+                        .HasColumnType("bit");
 
                     b.HasKey("Id");
 
