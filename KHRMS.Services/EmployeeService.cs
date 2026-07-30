@@ -528,13 +528,13 @@ namespace KHRMS.Services
             if (employee == null)
                 return null;
 
-            // Delete old image if exists
             if (!string.IsNullOrEmpty(employee.ProfileImage))
             {
                 var oldFilePath = Path.Combine(
                     Directory.GetCurrentDirectory(),
                     "wwwroot",
-                    employee.ProfileImage.TrimStart('/')
+                    "ProfileImages",
+                    employee.ProfileImage
                 );
 
                 if (File.Exists(oldFilePath))
