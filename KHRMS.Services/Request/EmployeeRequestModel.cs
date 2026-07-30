@@ -9,6 +9,7 @@ namespace KHRMS.Services.Request
         public long Id { get; set; }
         public string? FirstName { get; set; }
         public string? LastName { get; set; }
+        public string? ProfileImage { get; set; }
         public string? EmailAddress { get; set; }
         public string? MobileNumber { get; set; }
         public int? DesignationId { get; set; }
@@ -108,7 +109,7 @@ namespace KHRMS.Services.Request
         public string? Branch { get; set; }
         public DateTime? DateOfBirth { get; set; }
 
-        public bool? ProfileCompleted { get; set; }
+        public bool? ProfileCompleted { get; set; } = true;
         public string? ClientUrl {  get; set; }
 
         public List<long>? SkillIds { get; set; }

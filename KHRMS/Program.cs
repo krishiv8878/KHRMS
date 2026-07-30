@@ -135,6 +135,7 @@ app.UseCors("corspolice");
 app.UseSession();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseStaticFiles();
 
 app.MapControllers();
 

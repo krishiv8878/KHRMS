@@ -21,6 +21,6 @@ namespace KHRMS.Services.Request
         public DateTime? Resignation_Date { get; set; }
 
         public List<long>? RoleId { get; set; }
-        public List<string?> RoleName { get; set; }
+        public List<string?>? RoleName { get; set; }
     }
 }
