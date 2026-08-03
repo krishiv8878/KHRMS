@@ -13,6 +13,7 @@ namespace KHRMS.Services
         Task<bool> ExistingEmployeeUpdate(EmployeeRequestModel employeeRequestModel);
         Task<bool> DeleteEmployee(long employeeId);
         Task<IEnumerable<EmployeeRequestModel>> GetAllManagers();
+        Task<string?> UploadProfileImage(ProfileImageRequest request);
 
     }
 }

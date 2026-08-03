@@ -299,6 +299,7 @@ namespace KHRMS.Services
                 Id = emp.Id,
                 FirstName = emp.FirstName,
                 LastName = emp.LastName,
+                ProfileImage = emp.ProfileImage,
                 EmailAddress = emp.EmailAddress,
                 EmployeeCode = emp.EmployeeCode,
                 MobileNumber = emp.MobileNumber,
@@ -390,6 +391,7 @@ namespace KHRMS.Services
             {
                 employeeDetails.FirstName = employeeRequestModel.FirstName;
                 employeeDetails.LastName = employeeRequestModel.LastName;
+                employeeDetails.ProfileImage = employeeRequestModel.ProfileImage;
                 employeeDetails.DateOfBirth = employeeRequestModel.DateOfBirth;
                 employeeDetails.CurrentAddress = employeeRequestModel.CurrentAddress;
                 employeeDetails.MobileNumber = employeeRequestModel.MobileNumber;
@@ -405,6 +407,7 @@ namespace KHRMS.Services
                 employeeDetails.EmployeeCode = employeeRequestModel.EmployeeCode;
                 employeeDetails.FirstName = employeeRequestModel.FirstName;
                 employeeDetails.LastName = employeeRequestModel.LastName;
+                employeeDetails.ProfileImage = employeeRequestModel.ProfileImage;
                 employeeDetails.EmailAddress = employeeRequestModel.EmailAddress;
                 employeeDetails.MobileNumber = employeeRequestModel.MobileNumber;
                 employeeDetails.DesignationId = employeeRequestModel.DesignationId;
@@ -513,6 +516,60 @@ namespace KHRMS.Services
             _unitOfWork.Employees.Update(employee);
             var result =_unitOfWork.Save();
             return result > 0;
+        }
+
+        public async Task<string?> UploadProfileImage(ProfileImageRequest request)
+        {
+            if (request.File == null || request.File.Length == 0)
+                return null;
+
+            var employee = await _unitOfWork.Employees.GetById(request.EmployeeId);
+
+            if (employee == null)
+                return null;
+
+            if (!string.IsNullOrEmpty(employee.ProfileImage))
+            {
+                var oldFilePath = Path.Combine(
+                    Directory.GetCurrentDirectory(),
+                    "wwwroot",
+                    "ProfileImages",
+                    employee.ProfileImage
+                );
+
+                if (File.Exists(oldFilePath))
+                {
+                    File.Delete(oldFilePath);
+                }
+            }
+
+            var fileName =
+                Guid.NewGuid().ToString() +
+                Path.GetExtension(request.File.FileName);
+
+            var folderPath = Path.Combine(
+                Directory.GetCurrentDirectory(),
+                "wwwroot",
+                "ProfileImages");
+
+            if (!Directory.Exists(folderPath))
+            {
+                Directory.CreateDirectory(folderPath);
+            }
+
+            var filePath = Path.Combine(folderPath, fileName);
+
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await request.File.CopyToAsync(stream);
+            }
+
+            employee.ProfileImage = fileName;
+
+            _unitOfWork.Employees.Update(employee);
+            _unitOfWork.Save();
+
+            return employee.ProfileImage;
         }
     }
 }

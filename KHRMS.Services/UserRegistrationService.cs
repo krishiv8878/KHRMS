@@ -35,7 +35,7 @@ namespace KHRMS.Services
 
                 var passwordHasher = new PasswordHasher<UserRegistration>();
                 userRegistration.Password = passwordHasher.HashPassword(userRegistration, userRegistration.Password);
-
+                
                 await _unitOfWork.UserRegistrations.Add(userRegistration);
                 var result = _unitOfWork.Save();
 
@@ -65,7 +65,8 @@ namespace KHRMS.Services
                 Password = userRegistration.Password,
                 CreatedDate = DateTime.Now,
                 IsActive = true,
-                IsDeleted = false
+                IsDeleted = false,
+                IsResetPasswordRequired = false
             };
 
             await _unitOfWork.UserLogins.Add(userLogin);

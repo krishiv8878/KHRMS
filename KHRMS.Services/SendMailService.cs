@@ -24,7 +24,7 @@ public class SendEmailService : ISendEmailService
         {
             // Fetch the email template from the database based on the provided templateType
              var emailType = (await _unitOfWork.EmailTemplateTypeMaster.GetAll()).FirstOrDefault(t => t.TemplateType == templateType);
-            var emailDescription = emailType.Description;
+            var emailDescription = emailType?.Description;
             var emailTemplate = (await _unitOfWork.EmailTemplateMaster.GetAll()).FirstOrDefault(t => t.EmailTemplateTypeId == emailType.Id);
 
             if (emailTemplate == null)
@@ -66,7 +66,7 @@ public class SendEmailService : ISendEmailService
         {
             // Fetch the email template from the database based on the provided templateType
             var emailType = (await _unitOfWork.EmailTemplateTypeMaster.GetAll()).FirstOrDefault(t => t.TemplateType == templateType);
-            var emailDescription = emailType.Description;
+            var emailDescription = emailType?.Description;
             var emailTemplate = (await _unitOfWork.EmailTemplateMaster.GetAll()).FirstOrDefault(t => t.EmailTemplateTypeId == emailType.Id);
 
             if (emailTemplate == null)

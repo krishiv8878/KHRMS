@@ -20,6 +20,8 @@ namespace KHRMS.Core
         [StringLength(100)]
         public string? LastName { get; set; }
 
+        public string? ProfileImage { get; set; }
+
         [StringLength(300)]
         [EmailAddress]
         public string? EmailAddress { get; set; }
@@ -131,7 +133,6 @@ namespace KHRMS.Core
         public bool ProfileCompleted { get; set; } = false;
 
         public List<long>? SkillIds { get; set; }
-
     }
 
 }

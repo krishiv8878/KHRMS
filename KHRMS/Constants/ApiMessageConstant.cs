@@ -63,9 +63,11 @@ namespace KHRMS
         public static readonly string EmployeeNotUpdated = "Employee is not updated successfully";
         public static readonly string EmployeeDeleted = "Employee is deleted successfully";
         public static readonly string EmployeeNotDeleted = "Employee is not deleted successfully";
+        public static readonly string EmployeeProfileUploadSuccess = "Image Upload Failed";
+        public static readonly string EmployeeProfileUploadFailed = "Image Uploaded Successfully";
 
-        ///<summery>
-        ///This is AssetsMaster Message constant
+        ///<summery>    
+        ///This is AssetsMaster Message constant    
         ///</summery>
         public static readonly string AssetsMasterFound = "AssetsMaster retrieved successfully";
         public static readonly string AssetsMasterNotFound = "No AssetsMaster found!";

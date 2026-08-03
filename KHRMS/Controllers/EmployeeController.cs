@@ -229,5 +229,28 @@ namespace KHRMS
 
             return Ok(managers);
         }
+
+        [HttpPost("UploadProfileImage")]
+        public async Task<IActionResult> UploadProfileImage([FromForm] ProfileImageRequest request)
+        {
+            var result = await _employeeService.UploadProfileImage(request);
+
+            if (result == null)
+            {
+                return BadRequest(new ApiResponse<string>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = ApiMessageConstant.EmployeeProfileUploadFailed,
+                    Data = null
+                });
+            }
+
+            return Ok(new ApiResponse<string>
+            {
+                StatusCode = (int)HttpStatusCode.OK,
+                Message = ApiMessageConstant.EmployeeProfileUploadSuccess,
+                Data = result
+            });
+        }
     }
 }

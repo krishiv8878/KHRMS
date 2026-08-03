@@ -25,6 +25,9 @@ namespace KHRMS.Infrastructure
         {
             base.OnModelCreating(modelBuilder);
 
+            modelBuilder.Entity<Skill>().HasIndex(x => x.SkillName).IsUnique();
+
+
             // Set UserLogin ID to start from 1001
             modelBuilder.Entity<UserLogin>(entity =>
             {
