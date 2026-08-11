@@ -320,6 +320,10 @@ namespace KHRMS.Services
                 existingRequest.EndDate = leaveRequest.EndDate;
                 existingRequest.UpdatedDate = DateTime.Now;
                 existingRequest.IsActive = leaveRequest.IsActive;
+                existingRequest.LeaveReason = leaveRequest.LeaveReason;
+                existingRequest.LeaveType = leaveRequest.LeaveType;
+                existingRequest.LeaveTypeId = leaveRequest.LeaveTypeId;
+                existingRequest.LeaveMode = leaveRequest.LeaveMode;
 
                 _unitOfWork.LeaveRequest.Update(existingRequest);
                 return _unitOfWork.Save() > 0;
