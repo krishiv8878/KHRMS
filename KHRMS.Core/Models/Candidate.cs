@@ -39,5 +39,14 @@ namespace KHRMS.Core
 
         [Required(ErrorMessage = "Candidate NoticePeriod is required")]
         public int? NoticePeriod { get; set; }
+
+        [Required(ErrorMessage = "Candidate AppliedRole is required")]
+        public string? AppliedRole { get; set; }
+
+        [Required(ErrorMessage = "Candidate Stage is required")]
+        public string? Stage { get; set; }
+
+        [Required(ErrorMessage = "Candidate MatchScore is required")]
+        public int? MatchScore { get; set; }         
     }
 }
