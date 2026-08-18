@@ -14,6 +14,12 @@ namespace KHRMS.Core
         [Required(ErrorMessage = "DesignationName is required")]
         public string? DesignationName { get; set; }
 
-        
+        [Required(ErrorMessage = "DepartmentCategory is required")]
+        public string? DepartmentCategory { get; set; }
+
+        [Required(ErrorMessage = "CareerLevel is required")]
+        public string? CareerLevel { get; set; }
+
+
     }
 }

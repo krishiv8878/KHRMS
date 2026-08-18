@@ -9,8 +9,11 @@ namespace KHRMS.Core
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public long Id { get; set; }
         public string ShiftName { get; set; } = string.Empty;
-        public String? StartTime { get; set; } //change type to TimeSpan from String
-        public String? EndTime { get; set; }// change type to TimeSpan from String
+
+        [Required(ErrorMessage = "Start Time is required")]
+        public string? StartTime { get; set; } //changed type from TimeSpan to String
+        [Required(ErrorMessage = "End Time is required")]
+        public string? EndTime { get; set; }// changed type from TimeSpan to String
 
         //remove columns IsActive,IsDeleted,UpdatedBy,UpdatedDate
     }

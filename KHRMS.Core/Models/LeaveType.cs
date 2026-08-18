@@ -15,7 +15,7 @@ namespace KHRMS.Core
         [Required(ErrorMessage = "LeaveType is required")]
         public string? Type { get; set; }
 
-        [StringLength(100)]
+        [StringLength(250)]
         [Required(ErrorMessage = "Leave Description is required")]
         public string? Description { get; set; }
         
