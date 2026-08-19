@@ -16,7 +16,7 @@ namespace KHRMS.Core
         [ForeignKey("LeaveType")]
         public long LeaveTypeId { get; set; }
         public virtual LeaveType? LeaveType { get; set;}
-        public string LeaveMode { get; set; }
+        public string? LeaveMode { get; set; }
         [Required]
         public DateTime StartDate { get; set; }
         [Required]
@@ -25,12 +25,8 @@ namespace KHRMS.Core
         public bool IsDeleted { get; set; }  // Nullable
         public bool IsActive { get; set; }  // Nullable
         public int ApprovedBy { get; set; }
+        public DateTime? ApprovedDate { get; set; }
 
-        public DateTime ApprovedDate { get; set; }
-
-        public string LeaveReason { get; set; }
-
-
-
+        public string? LeaveReason { get; set; }
     }
 }
