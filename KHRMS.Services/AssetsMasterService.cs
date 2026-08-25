@@ -47,7 +47,7 @@ namespace KHRMS.Services
         public async Task<IEnumerable<AssetsMaster>> GetAllAssetsMaster()
         {
             var assetsMaster = await _unitOfWork.AssetsMasters.GetAll();
-            return assetsMaster ;
+            return assetsMaster.Where(a => !a.IsDeleted);
         }
 
         public async Task<AssetsMaster> GetAssetsMasterById(int assetsMasterId)
@@ -74,6 +74,14 @@ namespace KHRMS.Services
                     assetsMasterDetail.Description = assetsMaster.Description;
                     assetsMasterDetail.UpdatedDate = DateTime.Now;
                     assetsMasterDetail.SerialNumber = assetsMaster.SerialNumber;
+
+                    assetsMasterDetail.DateOfPurchase = assetsMaster.DateOfPurchase;
+                    assetsMasterDetail.AssetType = assetsMaster.AssetType;           
+                    assetsMasterDetail.AssignedTo = assetsMaster.AssignedTo;         
+                    assetsMasterDetail.EmployeeId = assetsMaster.EmployeeId;         
+                    assetsMasterDetail.Location = assetsMaster.Location;             
+                    assetsMasterDetail.Status = assetsMaster.Status;
+
                     // ✅ Ensure IsActive status is updated
                     assetsMasterDetail.IsActive = assetsMaster.IsActive;
                     _unitOfWork.AssetsMasters.Update(assetsMasterDetail);

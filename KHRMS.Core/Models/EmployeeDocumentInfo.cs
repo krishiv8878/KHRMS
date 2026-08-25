@@ -18,7 +18,10 @@ namespace KHRMS.Core
 
         [Required(ErrorMessage = "Document Name is required")]
         [StringLength(255, ErrorMessage = "Document Name cannot exceed 255 characters")]
-        public string? DocumentName { get; set; } 
+        public string? DocumentName { get; set; }
+
+        [StringLength(100)]
+        public string? Category { get; set; } = "Employee Docs";
 
     }
 }

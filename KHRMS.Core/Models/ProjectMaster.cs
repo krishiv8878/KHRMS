@@ -24,5 +24,14 @@ namespace KHRMS.Core
         [StringLength(100)]
         [Required(ErrorMessage = "ClientRegion is required")]
         public string? ClientRegion {  get; set; }
+
+        public int TeamSize { get; set; } = 0;
+        public DateTime? StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
+
+        [StringLength(50)]
+        public string? Status { get; set; }
+        public long? ProjectManagerId { get; set; }
+
     }
 }
