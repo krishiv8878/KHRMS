@@ -148,7 +148,7 @@ namespace KHRMS.UnitTest.ControllerTests
             _mockService.Setup(x => x.GetByIdAsync(It.IsAny<long>())).ReturnsAsync(document);
 
             // Act
-            var result = await _controller.UploadDocument(1001, "Employee Contract", mockFile.Object);
+            var result = await _controller.UploadDocument(1001, "Employee Docs", "Employee Contract", mockFile.Object);
 
             // Assert
             var createdAtResult = Assert.IsType<CreatedAtActionResult>(result);

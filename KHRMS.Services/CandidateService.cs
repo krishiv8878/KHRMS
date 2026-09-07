@@ -75,6 +75,9 @@ namespace KHRMS.Services
                     candidateDetails.RelevantExperience = candidate.RelevantExperience;
                     candidateDetails.NoticePeriod = candidate.NoticePeriod;
                     candidateDetails.UpdatedDate = DateTime.Now;
+                    candidateDetails.AppliedRole = candidate.AppliedRole;
+                    candidateDetails.Stage = candidate.Stage;
+                    candidateDetails.MatchScore = candidate.MatchScore;
                     // ✅ Ensure IsActive status is updated
                     candidateDetails.IsActive = candidate.IsActive;
                     _unitOfWork.Candidates.Update(candidateDetails);

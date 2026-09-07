@@ -76,7 +76,12 @@ namespace KHRMS.Services
                     projectDetail.Description = projectMaster.Description;
                     projectDetail.ClientName = projectMaster.ClientName;    
                     projectDetail.ClientRegion = projectMaster.ClientRegion;
-                    projectDetail.UpdatedDate = DateTime.Now;
+                    projectDetail.ProjectManagerId = projectMaster.ProjectManagerId;
+                    projectDetail.TeamSize = projectMaster.TeamSize;
+                    projectDetail.StartDate = projectMaster.StartDate;
+                    projectDetail.EndDate = projectMaster.EndDate;
+                    projectDetail.Status = projectMaster.Status;
+                    projectDetail.UpdatedDate = DateTime.UtcNow;
                     // ✅ Ensure IsActive status is updated
                     projectDetail.IsActive = projectMaster.IsActive;
                     _unitOfWork.ProjectMasters.Update(projectDetail);

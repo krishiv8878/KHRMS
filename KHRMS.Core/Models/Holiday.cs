@@ -18,6 +18,9 @@ namespace KHRMS.Core
 
         [Required(ErrorMessage = "Date is required")]
         public DateOnly HolidayDate { get; set; }
+
+        [Required(ErrorMessage = "Type is required")]
+        public string? Type { get; set; }
         public bool IsOptional { get; set; }
 
     }

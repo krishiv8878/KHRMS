@@ -83,7 +83,7 @@ namespace KHRMS
 
 
         [HttpPost("UploadDocument")]
-        public async Task<IActionResult> UploadDocument([FromForm] long employeeId, string documentName, IFormFile file)
+        public async Task<IActionResult> UploadDocument([FromForm] long employeeId, [FromForm] string category, string documentName, IFormFile file)
         {
             Log.Information("EmployeeDocumentController - UploadDocument called for EmployeeID: {EmployeeId}", employeeId);
 
@@ -121,6 +121,8 @@ namespace KHRMS
                     EmployeeId = employeeId,
                     FilePath = filePath,
                     DocumentName = documentName,
+                    Category = category,
+
                 };
 
                 await _employeeDocumentService.AddAsync(document);

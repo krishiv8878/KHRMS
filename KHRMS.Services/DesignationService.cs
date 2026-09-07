@@ -71,6 +71,8 @@ namespace KHRMS.Services
                 if (designationDetails != null)
                 {
                     designationDetails.DesignationName = designation.DesignationName;
+                    designationDetails.DepartmentCategory = designation.DepartmentCategory;
+                    designationDetails.CareerLevel = designation.CareerLevel;
                     designationDetails.UpdatedDate = DateTime.Now;
 
                     // ✅ Ensure IsActive status is updated

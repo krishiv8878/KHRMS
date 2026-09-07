@@ -78,6 +78,8 @@ namespace KHRMS.Services
                 {
                     skillDetails.SkillName = skill.SkillName;
                     skillDetails.UpdatedDate = DateTime.Now;
+                    skillDetails.ProficiencyLevel = skill.ProficiencyLevel;
+                    skillDetails.Category = skill.Category;
 
                     // Toggle IsActive state if it exists
                     skillDetails.IsActive = skill.IsActive;
