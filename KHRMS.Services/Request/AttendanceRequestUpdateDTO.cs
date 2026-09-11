@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
@@ -13,23 +13,29 @@ namespace KHRMS.Services.Request
         public long Id { get; set; }
         
         public long EmployeeId { get; set; }
-        public string EmployeeName { get; set; }
+        public string? EmployeeName { get; set; }
 
-        public string RequestType { get; set; }
+        public string? RequestType { get; set; }
 
         public DateTime RequestedDate { get; set; }
 
         public long RequestedBy { get; set; }
 
-        public string Reason { get; set; }
+        public string? Reason { get; set; }
 
-        public string Status { get; set; }
+        public string Status { get; set; } = "Pending";
 
-        public long LastActionBy { get; set; }
+        public long? LastActionBy { get; set; }
+
+        public long? ActionBy { get; set; }
+
+        public DateTime? ActionDate { get; set; }
+
+        public string? RejectionReason { get; set; }
 
         public DateTime clockIn { get; set; }
 
-        public DateTime clockOut { get; set; }
-        public long ManagerId { get; set; }
+        public DateTime? clockOut { get; set; }
+        public long? ManagerId { get; set; }
     }
 }

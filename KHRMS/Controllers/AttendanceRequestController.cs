@@ -1,4 +1,4 @@
-﻿using Azure.Core;
+using Azure.Core;
 using KHRMS.Core;
 using KHRMS.Infrastructure;
 using KHRMS.Services;
@@ -92,24 +92,40 @@ namespace KHRMS.Controllers
             }
             try
             {
-
                 await _attendanceRequestService.AddAsync(attendanceRequest, User);
+                Log.Information("AttendanceRequest added successfully.");
+                return Ok(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.OK,
+                    Message = ApiMessageConstant.AttendanceRequestAdded,
+                    Data = true
+                });
             }
-            catch (Exception ex) { 
-                Console.WriteLine(ex.ToString());
-            }
-
-            Log.Information("AttendanceRequest added successfully.");
-            return Ok(new ApiResponse<bool>
+            catch (InvalidOperationException ex)
             {
-                StatusCode = (int)HttpStatusCode.OK,
-                Message = ApiMessageConstant.AttendanceRequestAdded,
-                Data = true
-            });
+                Log.Warning("Validation failed for AddAttendanceRequest: {Message}", ex.Message);
+                return BadRequest(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = ex.Message,
+                    Data = false
+                });
+            }
+            catch (Exception ex)
+            { 
+                Log.Error(ex, "Error while adding AttendanceRequest.");
+                return StatusCode((int)HttpStatusCode.InternalServerError, new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.InternalServerError,
+                    Message = ex.Message,
+                    Data = false
+                });
+            }
         }
 
 
         [HttpPut("UpdateAttendanceRequest")]
+        [Authorize(Roles = "Admin,System Admin,HR,HR Operations,Manager,Management")]
         public async Task<IActionResult> UpdateAttendanceRequest([FromBody] AttendanceRequestUpdateDTO attendanceRequest)
         {
             Log.Information("UpdateAttendanceRequest API called.");
@@ -138,6 +154,7 @@ namespace KHRMS.Controllers
 
 
         [HttpDelete("DeleteAttendanceRequest")]
+        [Authorize(Roles = "Admin,System Admin,HR,HR Operations,Manager,Management")]
         public async Task<IActionResult> DeleteAttendanceRequest(long id)
         {
             Log.Information("DeleteAttendanceRequest API called for ID {Id}.", id);

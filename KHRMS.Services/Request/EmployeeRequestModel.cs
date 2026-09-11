@@ -1,4 +1,4 @@
-﻿using KHRMS.Core;
+using KHRMS.Core;
 using System.ComponentModel.DataAnnotations;
 
 namespace KHRMS.Services.Request
@@ -114,7 +114,7 @@ namespace KHRMS.Services.Request
 
         public List<long>? SkillIds { get; set; }
         public List<String?>? Skills { get; set; }
-
-
+        public List<long>? ProjectIds { get; set; }
+        public List<String?>? Projects { get; set; }
     }
 }

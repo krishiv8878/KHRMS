@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace KHRMS.Core
@@ -33,5 +33,20 @@ namespace KHRMS.Core
         public string? Status { get; set; }
         public long? ProjectManagerId { get; set; }
 
+        [NotMapped]
+        public string? ManagerName { get; set; }
+
+        [NotMapped]
+        public long? ManagerId
+        {
+            get => ProjectManagerId;
+            set
+            {
+                if (value.HasValue && (!ProjectManagerId.HasValue || ProjectManagerId.Value == 0))
+                {
+                    ProjectManagerId = value;
+                }
+            }
+        }
     }
 }

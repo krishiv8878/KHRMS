@@ -1,4 +1,4 @@
-﻿using KHRMS.Core;
+using KHRMS.Core;
 using KHRMS.Infrastructure;
 using KHRMS.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -44,6 +44,7 @@ namespace KHRMS.Controllers
 
         [HttpPost]
         [Route("AddAssetsMaster")]
+        [Authorize(Roles = "Admin,System Admin,HR,HR Operations")]
         public async Task<IActionResult> AddAssetsMaster(AssetsMaster assetsMaster)
         {
             Log.Information("AddAssetsMaster API called.");
@@ -71,6 +72,7 @@ namespace KHRMS.Controllers
 
         [HttpPut]
         [Route("UpdateAssetsMaster")]
+        [Authorize(Roles = "Admin,System Admin,HR,HR Operations")]
         public async Task<IActionResult> UpdateAssetsMaster(AssetsMaster assetsMaster)
         {
             Log.Information("UpdateAssetsMaster API called.");
@@ -99,6 +101,7 @@ namespace KHRMS.Controllers
 
         [HttpDelete]
         [Route("DeleteAssetsMaster")]
+        [Authorize(Roles = "Admin,System Admin,HR,HR Operations")]
         public async Task<IActionResult> DeleteAssetsMaster(long AssetsMasterId)
         {
             Log.Information("DeleteAssetsMaster API called for ID {AssetsMasterId}.", AssetsMasterId);

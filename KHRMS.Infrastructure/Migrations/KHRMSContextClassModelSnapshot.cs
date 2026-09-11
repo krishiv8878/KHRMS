@@ -99,6 +99,12 @@ namespace KHRMS.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
+                    b.Property<long?>("ActionBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("ActionDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime>("ClockInTime")
                         .HasColumnType("datetime2");
 
@@ -130,6 +136,9 @@ namespace KHRMS.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("RejectionReason")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("RequestType")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -142,7 +151,9 @@ namespace KHRMS.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Status")
-                        .HasColumnType("nvarchar(max)");
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
 
                     b.Property<int>("UpdatedBy")
                         .HasColumnType("int");
@@ -360,7 +371,7 @@ namespace KHRMS.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<long>("ManagerId")
+                    b.Property<long?>("ManagerId")
                         .HasColumnType("bigint");
 
                     b.Property<string>("MobileNumber")
@@ -420,6 +431,9 @@ namespace KHRMS.Infrastructure.Migrations
                         .HasColumnType("bit");
 
                     b.Property<string>("ProfileImage")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ProjectIds")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Responsibilities")
@@ -526,9 +540,11 @@ namespace KHRMS.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
-                    b.Property<string>("AccessLevel")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                    b.Property<long?>("ActionBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("ActionDate")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("Category")
                         .HasMaxLength(100)
@@ -557,6 +573,14 @@ namespace KHRMS.Infrastructure.Migrations
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
+
+                    b.Property<string>("RejectionReason")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
 
                     b.Property<int>("UpdatedBy")
                         .HasColumnType("int");
@@ -725,10 +749,10 @@ namespace KHRMS.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
-                    b.Property<int>("ApprovedBy")
-                        .HasColumnType("int");
+                    b.Property<long?>("ActionBy")
+                        .HasColumnType("bigint");
 
-                    b.Property<DateTime?>("ApprovedDate")
+                    b.Property<DateTime?>("ActionDate")
                         .HasColumnType("datetime2");
 
                     b.Property<int>("CreatedBy")
@@ -746,9 +770,6 @@ namespace KHRMS.Infrastructure.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
-                    b.Property<bool>("IsApproved")
-                        .HasColumnType("bit");
-
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
@@ -761,8 +782,16 @@ namespace KHRMS.Infrastructure.Migrations
                     b.Property<long>("LeaveTypeId")
                         .HasColumnType("bigint");
 
+                    b.Property<string>("RejectionReason")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime>("StartDate")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
 
                     b.Property<int>("UpdatedBy")
                         .HasColumnType("int");
@@ -979,6 +1008,134 @@ namespace KHRMS.Infrastructure.Migrations
                     b.HasIndex("EmailTemplateTypeId");
 
                     b.ToTable("EmailTemplatesMasters");
+                });
+
+            modelBuilder.Entity("KHRMS.Core.Models.Timesheet", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<long?>("ActionBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("ActionDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("CreatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long>("EmployeeId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<long?>("ManagerId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("PeriodType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("RejectionReason")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<DateTime?>("SubmittedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("TotalHours")
+                        .HasColumnType("decimal(6,2)");
+
+                    b.Property<int>("UpdatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Timesheets");
+                });
+
+            modelBuilder.Entity("KHRMS.Core.Models.TimesheetEntry", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime?>("ClockInRef")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ClockOutRef")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("CreatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long>("EmployeeId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("EntryDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("Hours")
+                        .HasColumnType("decimal(4,2)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsRegularized")
+                        .HasColumnType("bit");
+
+                    b.Property<long>("ProjectId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("TaskDescription")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<long?>("TimesheetId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("UpdatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("TimesheetEntries");
                 });
 
             modelBuilder.Entity("KHRMS.Core.ProjectMaster", b =>

@@ -1,4 +1,4 @@
-﻿using KHRMS.Core;
+using KHRMS.Core;
 
 namespace KHRMS.Services
 {
@@ -10,6 +10,10 @@ namespace KHRMS.Services
         {
             if (projectMaster != null)
             {
+                if (projectMaster.ProjectManagerId == null && projectMaster.ManagerId != null)
+                {
+                    projectMaster.ProjectManagerId = projectMaster.ManagerId;
+                }
                 projectMaster.CreatedDate = DateTime.Now;
                 await _unitOfWork.ProjectMasters.Add(projectMaster);
 
@@ -48,7 +52,32 @@ namespace KHRMS.Services
 
         public async Task<IEnumerable<ProjectMaster>> GetAllProjectMaster()
         {
-            var projectDetails = await _unitOfWork.ProjectMasters.GetAll();
+            var projectDetails = (await _unitOfWork.ProjectMasters.GetAll()).ToList();
+            var managerIds = projectDetails
+                .Where(p => p.ProjectManagerId.HasValue && p.ProjectManagerId > 0)
+                .Select(p => (int)p.ProjectManagerId.Value)
+                .Distinct()
+                .ToList();
+
+            if (managerIds.Any())
+            {
+                var allEmployees = await _unitOfWork.Employees.GetAll();
+                var managersMap = allEmployees
+                    .Where(e => managerIds.Contains((int)e.Id))
+                    .ToDictionary(
+                        e => (long)e.Id,
+                        e => $"{e.FirstName ?? ""} {e.LastName ?? ""}".Trim()
+                    );
+
+                foreach (var p in projectDetails)
+                {
+                    if (p.ProjectManagerId.HasValue && managersMap.TryGetValue(p.ProjectManagerId.Value, out var name))
+                    {
+                        p.ManagerName = name;
+                    }
+                }
+            }
+
             return projectDetails;
         }
 
@@ -59,6 +88,14 @@ namespace KHRMS.Services
                 var projectDetail = await _unitOfWork.ProjectMasters.GetById(ProjectMasterId);
                 if (projectDetail != null)
                 {
+                    if (projectDetail.ProjectManagerId.HasValue && projectDetail.ProjectManagerId > 0)
+                    {
+                        var emp = await _unitOfWork.Employees.GetById((int)projectDetail.ProjectManagerId.Value);
+                        if (emp != null)
+                        {
+                            projectDetail.ManagerName = $"{emp.FirstName ?? ""} {emp.LastName ?? ""}".Trim();
+                        }
+                    }
                     return projectDetail;
                 }
             }
@@ -76,7 +113,7 @@ namespace KHRMS.Services
                     projectDetail.Description = projectMaster.Description;
                     projectDetail.ClientName = projectMaster.ClientName;    
                     projectDetail.ClientRegion = projectMaster.ClientRegion;
-                    projectDetail.ProjectManagerId = projectMaster.ProjectManagerId;
+                    projectDetail.ProjectManagerId = projectMaster.ProjectManagerId ?? projectMaster.ManagerId;
                     projectDetail.TeamSize = projectMaster.TeamSize;
                     projectDetail.StartDate = projectMaster.StartDate;
                     projectDetail.EndDate = projectMaster.EndDate;
@@ -86,7 +123,7 @@ namespace KHRMS.Services
                     projectDetail.IsActive = projectMaster.IsActive;
                     _unitOfWork.ProjectMasters.Update(projectDetail);
                     var result = _unitOfWork.Save();
-                    if (result > 0)
+                    if (result >= 0)
                         return true;
                     else
                         return false;
