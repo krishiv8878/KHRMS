@@ -1,4 +1,4 @@
-﻿using KHRMS.Core;
+using KHRMS.Core;
 using KHRMS.Infrastructure;
 using KHRMS.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -79,6 +79,7 @@ namespace KHRMS
 
 
         [HttpPost("CreateShiftType")]
+        [Authorize(Roles = "Admin,System Admin,HR,HR Operations")]
         public async Task<IActionResult> AddShift([FromBody] ShiftMaster shift)
         {
             Log.Information("ShiftController - AddShift called.");
@@ -112,17 +113,33 @@ namespace KHRMS
         /// <param name="shiftMaster">Updated Employee Shift Info object</param>
 
         [HttpPut("UpdateShift/{id}")]
-        public async Task<IActionResult> Update([FromBody] ShiftMaster shiftMaster)
+        [Authorize(Roles = "Admin,System Admin,HR,HR Operations")]
+        public async Task<IActionResult> Update(long id, [FromBody] ShiftMaster shiftMaster)
         {
+            if (shiftMaster == null)
+            {
+                return BadRequest(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = ApiMessageConstant.InvalidData,
+                    Data = false
+                });
+            }
+
+            if (id > 0 && (shiftMaster.Id == null || shiftMaster.Id == 0))
+            {
+                shiftMaster.Id = id;
+            }
+
             Log.Information("ShiftController - Update called for ID: {Id}", shiftMaster.Id);
 
-            if (shiftMaster.Id == null)
+            if (shiftMaster.Id == null || shiftMaster.Id <= 0)
             {
-                Log.Warning("ShiftController - ID Not Found. Route ID: {RouteId}, Body ID: {BodyId}", shiftMaster.Id);
-                return Ok(new ApiResponse<bool>
+                Log.Warning("ShiftController - ID Not Found. Route ID: {RouteId}, Body ID: {BodyId}", id, shiftMaster.Id);
+                return BadRequest(new ApiResponse<bool>
                 {
-                    StatusCode = (int)HttpStatusCode.OK,
-                    Message = "ID Does Not Found!",
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = "ID Not Found!",
                     Data = false
                 });
             }
@@ -157,6 +174,7 @@ namespace KHRMS
 
 
         [HttpDelete("DeleteShift")]
+        [Authorize(Roles = "Admin,System Admin,HR,HR Operations")]
         public async Task<IActionResult> DeleteShift(long id)
         {
             Log.Information("ShiftController - DeleteShift called for ID: {Id}", id);

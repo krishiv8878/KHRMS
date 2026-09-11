@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
@@ -11,8 +11,7 @@ namespace KHRMS.Services.Request
 {
     public class AttendanceRequestDTO : KHRMSBase
     {
-        [Required(ErrorMessage = "Employee is required")]
-        public long EmployeeId { get; set; }
+        public long? EmployeeId { get; set; }
 
         [StringLength(50)]
         [Required(ErrorMessage = "Request type is required")]
@@ -21,8 +20,7 @@ namespace KHRMS.Services.Request
         [Required(ErrorMessage = "Request Date type is required")]
         public DateTime RequestedDate { get; set; }
 
-        [Required(ErrorMessage = "Request id type is required")]
-        public long RequestedBy { get; set; }
+        public long? RequestedBy { get; set; }
 
         [Required(ErrorMessage = "Reason is required")]
         public string? Reason { get; set; }
@@ -31,12 +29,17 @@ namespace KHRMS.Services.Request
 
         public long? LastActionBy { get; set; }
 
+        public long? ActionBy { get; set; }
+
+        public DateTime? ActionDate { get; set; }
+
+        public string? RejectionReason { get; set; }
+
         [Required(ErrorMessage = "Clock In Time is required")]
         public DateTime clockIn { get; set; }
 
         public DateTime? clockOut { get; set; }
 
-        [Required(ErrorMessage = "Manager Id is required")]
-        public long ManagerId { get; set; }
+        public long? ManagerId { get; set; }
     }
 }

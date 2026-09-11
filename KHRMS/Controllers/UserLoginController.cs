@@ -1,4 +1,4 @@
-﻿using KHRMS.Core;
+using KHRMS.Core;
 using KHRMS.Infrastructure;
 using KHRMS.Services.Interfaces;
 using KHRMS.Services.Request;
@@ -28,7 +28,7 @@ namespace KHRMS
 
                 var employeeId = await _userLoginService.GetUserLoginById(model.Email,model.Password);
 
-                if (employeeId.UserId.HasValue)
+                if (employeeId != null && employeeId.UserId.HasValue)
                 {
                     // Store employee ID in session
                     _httpContextAccessor.HttpContext?.Session.SetString("EmployeeId", employeeId.UserId.Value.ToString());

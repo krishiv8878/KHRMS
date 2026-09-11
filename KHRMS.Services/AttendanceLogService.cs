@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -46,25 +46,48 @@ namespace KHRMS.Services
 
         public async Task UpdateAttendanceLogAsync(AttendanceLog attendanceLog)
         {
-            var attendLog = await _unitOfWork.AttendanceLog.GetById(attendanceLog.Id);
-            var logs = (await _unitOfWork.AttendanceLog.GetAll()).FirstOrDefault(r=>r.AttendanceDate == attendanceLog.AttendanceDate && r.OutTime ==  null);
-            if (attendLog != null) {
-                attendLog.InTime = attendanceLog.InTime;
-                attendLog.OutTime = attendanceLog.OutTime;
-                attendLog.Duration = attendanceLog.Duration;
-                _unitOfWork.AttendanceLog.Update(attendLog);
-            }
-            if (logs != null && attendanceLog.OutTime != null)
+            if (attendanceLog.Id > 0)
             {
-                logs.OutTime = attendanceLog.OutTime;
-                logs.Duration = (decimal)(attendanceLog.OutTime - logs.InTime).Value.TotalHours;
-                _unitOfWork.AttendanceLog.Update(logs);
+                var attendLog = await _unitOfWork.AttendanceLog.GetById(attendanceLog.Id);
+                if (attendLog != null)
+                {
+                    attendLog.InTime = attendanceLog.InTime;
+                    attendLog.OutTime = attendanceLog.OutTime;
+                    if (attendLog.InTime.HasValue && attendLog.OutTime.HasValue)
+                    {
+                        attendLog.Duration = (decimal)(attendLog.OutTime.Value - attendLog.InTime.Value).TotalHours;
+                    }
+                    else
+                    {
+                        attendLog.Duration = 0;
+                    }
+                    _unitOfWork.AttendanceLog.Update(attendLog);
+                    _unitOfWork.Save();
+                    return;
+                }
             }
-            else
+
+            if (attendanceLog.OutTime != null)
             {
-                await AddAttendanceLogAsync(attendanceLog);
+                var activeLog = (await _unitOfWork.AttendanceLog.GetAll())
+                    .FirstOrDefault(r => r.EmployeeId == attendanceLog.EmployeeId &&
+                                         r.AttendanceDate == attendanceLog.AttendanceDate &&
+                                         r.OutTime == null);
+
+                if (activeLog != null)
+                {
+                    activeLog.OutTime = attendanceLog.OutTime;
+                    if (activeLog.InTime.HasValue)
+                    {
+                        activeLog.Duration = (decimal)(activeLog.OutTime.Value - activeLog.InTime.Value).TotalHours;
+                    }
+                    _unitOfWork.AttendanceLog.Update(activeLog);
+                    _unitOfWork.Save();
+                    return;
+                }
             }
-            _unitOfWork.Save();
+
+            await AddAttendanceLogAsync(attendanceLog);
         }
     }
 }

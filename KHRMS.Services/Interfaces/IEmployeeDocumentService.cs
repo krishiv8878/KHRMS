@@ -1,4 +1,4 @@
-﻿using KHRMS.Core;
+using KHRMS.Core;
 using Microsoft.AspNetCore.Http;
 
 namespace KHRMS.Services
@@ -9,7 +9,6 @@ namespace KHRMS.Services
         Task<EmployeeDocumentInfo> GetByIdAsync(long id);
         Task AddAsync(EmployeeDocumentInfo document);
         Task<bool> DeleteAsync(long id);
-
-
+        Task<bool> ApproveOrRejectAsync(long id, string status, string? rejectionReason, long actionBy);
     }
 }

@@ -1,4 +1,4 @@
-﻿using KHRMS.Core;
+using KHRMS.Core;
 using KHRMS.Core.Models;
 using KHRMS.Services.Request;
 
@@ -13,8 +13,7 @@ namespace KHRMS.Services
         Task<bool> DeleteLeaveRequestType(long LeaveRequestTypeId);
         Task<bool> ApproveLeaveRequestAsync(ApproveLeaveRequest leaveRequest);
         public Task<IEnumerable<LeaveRequest>> GetAllEmployeesLeaveRequest();
-
-
+        Task<IEnumerable<EmployeeLeaveBalanceDto>> GetEmployeeLeaveBalances(long? employeeId = null);
     }
 }
 

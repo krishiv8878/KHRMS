@@ -1,4 +1,4 @@
-﻿using KHRMS.Core.Interfaces;
+using KHRMS.Core.Interfaces;
 
 namespace KHRMS.Core
 {
@@ -33,6 +33,8 @@ namespace KHRMS.Core
         ILeaveRequestRepository LeaveRequest { get; }
         IResignationRepository Resignation { get; }
         IAttendanceLogRepository AttendanceLog { get; }
+        ITimesheetRepository Timesheets { get; }
+        ITimesheetEntryRepository TimesheetEntries { get; }
         int Save();
     }
 }

@@ -1,4 +1,4 @@
-﻿using KHRMS.Core;
+using KHRMS.Core;
 using Microsoft.VisualBasic;
 
 namespace KHRMS
@@ -173,6 +173,8 @@ namespace KHRMS
         public static readonly string DocumentRequestDeleted = "Document deleted successfully.";
         public static readonly string DocumentRequestNotDeleted = "Document Is Not deleted successfully.";
         public const string DocumentRequestAdded = "Document uploaded successfully.";
+        public static readonly string DocumentApproved = "Document approved successfully.";
+        public static readonly string DocumentRejected = "Document rejected successfully.";
 
 
         /// <summary>
