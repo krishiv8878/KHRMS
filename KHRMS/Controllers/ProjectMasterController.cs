@@ -1,4 +1,4 @@
-﻿using KHRMS.Core;
+using KHRMS.Core;
 using KHRMS.Infrastructure;
 using KHRMS.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -91,14 +91,24 @@ namespace KHRMS.Controllers
         /// </summary>
 
         [HttpPut("UpdateProjectMaster/{id}")]
-        public async Task<IActionResult> UpdateProjectMaster( [FromBody] ProjectMaster projectMaster)
+        public async Task<IActionResult> UpdateProjectMaster(long id, [FromBody] ProjectMaster projectMaster)
         {
+            if (projectMaster == null)
+            {
+                return BadRequest("Invalid project master data.");
+            }
+
+            if (id > 0 && (projectMaster.Id == null || projectMaster.Id == 0))
+            {
+                projectMaster.Id = id;
+            }
+
             Log.Information("ProjectMasterController - UpdateProjectMaster called for ID: {Id}", projectMaster.Id);
 
-            if (projectMaster.Id == null)
+            if (projectMaster.Id == null || projectMaster.Id <= 0)
             {
-                Log.Warning("ProjectMasterController - ID Not Found: URL ID {Id}, Body ID {BodyId}", projectMaster.Id);
-                return Ok("ID Does not Exist!");
+                Log.Warning("ProjectMasterController - ID Not Found: URL ID {Id}, Body ID {BodyId}", id, projectMaster.Id);
+                return BadRequest("ID Does not Exist!");
             }
 
             var result = await _projectMasterService.UpdateProjectMaster(projectMaster);

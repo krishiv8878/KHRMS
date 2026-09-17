@@ -1,4 +1,4 @@
-﻿
+
 using KHRMS.Services;
 using KHRMS.Infrastructure;
 using KHRMS.Services.Interfaces;
@@ -50,6 +50,7 @@ builder.Services.AddScoped<ILeaveRequestTypeService, LeaveRequestTypeService>();
 builder.Services.AddScoped<IResignationService, ResignationService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAttendanceLogService, AttendanceLogService>();
+builder.Services.AddScoped<ITimesheetService, TimesheetService>();
 
 // Add context-aware services
 builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();

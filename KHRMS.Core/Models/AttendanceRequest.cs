@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
 
 
@@ -13,7 +13,7 @@ namespace KHRMS.Core
         [Required(ErrorMessage = "Employee is required")]
         public long EmployeeId { get; set; }
         [ForeignKey("EmployeeId")]
-        public Employee Employee { get; set; }
+        public Employee? Employee { get; set; }
 
         [StringLength(50)]
         [Required(ErrorMessage = "Request type is required")]
@@ -28,9 +28,16 @@ namespace KHRMS.Core
         [Required(ErrorMessage = "Reason is required")]
         public string? Reason { get; set; }
 
-        public string? Status { get; set; }
+        [StringLength(30)]
+        public string Status { get; set; } = "Pending";
 
         public long? LastActionBy { get; set; }
+
+        public long? ActionBy { get; set; }
+
+        public DateTime? ActionDate { get; set; }
+
+        public string? RejectionReason { get; set; }
 
         [Required(ErrorMessage = "Clock In Time is required")]
         public DateTime ClockInTime { get; set; }

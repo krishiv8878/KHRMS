@@ -1,4 +1,4 @@
-﻿using KHRMS.Core;
+using KHRMS.Core;
 using KHRMS.Infrastructure;
 using KHRMS.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -9,7 +9,7 @@ using System.Net;
 
 namespace KHRMS
 {
-    [Authorize]
+    [Authorize(Roles = "Admin,System Admin,HR,HR Operations")]
     [Route("api/[controller]")]
     [ApiController]
     public class CandidateController(ICandidateService candidateService) : ControllerBase

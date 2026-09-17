@@ -1,4 +1,4 @@
-﻿using KHRMS.Core;
+using KHRMS.Core;
 using KHRMS.Infrastructure;
 using KHRMS.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -44,6 +44,7 @@ namespace KHRMS
 
 
         [HttpPost("AddLeaveType")]
+        [Authorize(Roles = "Admin,System Admin,HR,HR Operations")]
         public async Task<IActionResult> AddLeaveType([FromBody] LeaveType leaveType)
         {
             Log.Information("LeaveTypeController - AddLeaveType called.");
@@ -78,6 +79,7 @@ namespace KHRMS
 
 
         [HttpPut("UpdateLeaveType")]
+        [Authorize(Roles = "Admin,System Admin,HR,HR Operations")]
         public async Task<IActionResult> UpdateLeaveType([FromBody] LeaveType leaveType)
         {
             Log.Information("LeaveTypeController - UpdateLeaveType called for ID: {Id}", leaveType.Id);
@@ -112,6 +114,7 @@ namespace KHRMS
 
 
         [HttpDelete("DeleteLeaveType")]
+        [Authorize(Roles = "Admin,System Admin,HR,HR Operations")]
         public async Task<IActionResult> DeleteLeaveType(long id)
         {
             Log.Information("LeaveTypeController - DeleteLeaveType called for ID: {Id}", id);

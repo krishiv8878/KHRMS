@@ -1,5 +1,6 @@
-﻿using KHRMS.Core;
+using KHRMS.Core;
 using KHRMS.Core.Interfaces;
+using KHRMS.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore.SqlServer.Storage.Internal;
 
 namespace KHRMS.Infrastructure
@@ -46,6 +47,8 @@ namespace KHRMS.Infrastructure
         public ILeaveRequestRepository LeaveRequest { get; }
         public IResignationRepository Resignation { get; }
         public IAttendanceLogRepository AttendanceLog { get; }
+        public ITimesheetRepository Timesheets { get; }
+        public ITimesheetEntryRepository TimesheetEntries { get; }
 
         public UnitOfWork(KHRMSContextClass dbContext,
                             ICandidateRepository candidateRepository,
@@ -70,7 +73,9 @@ namespace KHRMS.Infrastructure
                             IEmailRepository emails,
                             ILeaveRequestRepository leaveRequest,
                             IResignationRepository resignation,
-                            IAttendanceLogRepository attendanceLog)
+                            IAttendanceLogRepository attendanceLog,
+                            ITimesheetRepository? timesheets = null,
+                            ITimesheetEntryRepository? timesheetEntries = null)
         {
             _dbContext = dbContext;
             Candidates = candidateRepository;
@@ -96,6 +101,8 @@ namespace KHRMS.Infrastructure
             LeaveRequest = leaveRequest;
             Resignation = resignation;
             AttendanceLog = attendanceLog;
+            Timesheets = timesheets ?? new TimesheetRepository(_dbContext);
+            TimesheetEntries = timesheetEntries ?? new TimesheetEntryRepository(_dbContext);
         }
 
         public int Save()

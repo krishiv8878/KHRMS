@@ -1,15 +1,15 @@
-﻿using KHRMS.Core;
+using KHRMS.Core;
 using KHRMS.Infrastructure;
 using KHRMS.Services;
+using KHRMS.Services.Interfaces;
+using KHRMS.Services.Request;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Serilog;
 using System.Net;
 
-
 namespace KHRMS
 {
-
     /// <summary>
     /// API Controller for managing Employee Documents Information.
     /// Provides endpoints to Create, Read, Update, and Delete employee documents records.
@@ -17,14 +17,22 @@ namespace KHRMS
     [Authorize]
     [Route("api/[controller]")]
     [ApiController]
-    public class EmployeeDocumentController(IEmployeeDocumentService employeeDocumentService, ILogger<EmployeeDocumentController> logger) : ControllerBase
-
+    public class EmployeeDocumentController : ControllerBase
     {
-        private readonly IEmployeeDocumentService _employeeDocumentService = employeeDocumentService;
+        private readonly IEmployeeDocumentService _employeeDocumentService;
+        private readonly IUserContextService? _userContextService;
+        private readonly ILogger<EmployeeDocumentController>? _logger;
         private readonly List<string> _allowedExtensions = new List<string> { ".doc", ".docx", ".xaml" };
-        // Define document as a global variable
-        private EmployeeDocumentInfo _document;
 
+        public EmployeeDocumentController(
+            IEmployeeDocumentService employeeDocumentService,
+            ILogger<EmployeeDocumentController> logger,
+            IUserContextService? userContextService = null)
+        {
+            _employeeDocumentService = employeeDocumentService;
+            _logger = logger;
+            _userContextService = userContextService;
+        }
 
         [HttpGet("GetAllDocumentsInfo")]
         public async Task<ActionResult<ApiResponse<IEnumerable<EmployeeDocumentInfo>>>> GetAll()
@@ -32,6 +40,22 @@ namespace KHRMS
             Log.Information("EmployeeDocumentController - GetAllDocumentsInfo called.");
 
             var documents = await _employeeDocumentService.GetAllAsync();
+
+            if (_userContextService != null)
+            {
+                var currentUserId = _userContextService.GetCurrentEmployeeId();
+                var isHrOrAdmin = _userContextService.IsHR() || _userContextService.IsAdmin();
+
+                // HR / Admins see all documents (Pending, Approved, Rejected).
+                // Regular employees see all Approved documents, or documents they uploaded themselves (regardless of status).
+                if (!isHrOrAdmin && currentUserId > 0)
+                {
+                    documents = documents.Where(d =>
+                        (!string.IsNullOrWhiteSpace(d.Status) && d.Status.Equals("Approved", StringComparison.OrdinalIgnoreCase)) ||
+                        d.EmployeeId == currentUserId ||
+                        d.UploadedBy == currentUserId);
+                }
+            }
 
             Log.Information("EmployeeDocumentController - {Count} documents found.", documents.Count());
 
@@ -116,13 +140,16 @@ namespace KHRMS
                 using var stream = new FileStream(filePath, FileMode.Create);
                 await file.CopyToAsync(stream);
 
+                var currentUserId = _userContextService?.GetCurrentEmployeeId() ?? 0;
                 var document = new EmployeeDocumentInfo
                 {
-                    EmployeeId = employeeId,
+                    EmployeeId = employeeId > 0 ? employeeId : currentUserId,
                     FilePath = filePath,
                     DocumentName = documentName,
                     Category = category,
-
+                    UploadedBy = currentUserId > 0 ? currentUserId : employeeId,
+                    UploadedDate = DateTime.UtcNow,
+                    Status = "Pending"
                 };
 
                 await _employeeDocumentService.AddAsync(document);
@@ -209,6 +236,49 @@ namespace KHRMS
                 StatusCode = (int)HttpStatusCode.OK,
                 Message = ApiMessageConstant.EmployeeDocumentNotFound,
                 Data = false
+            });
+        }
+
+        /// <summary>
+        /// Approves or rejects an employee document submission.
+        /// </summary>
+        [Authorize(Roles = "Admin,System Admin,HR,HR Operations")]
+        [HttpPost("ApproveOrRejectDocument")]
+        public async Task<IActionResult> ApproveOrRejectDocument([FromBody] DocumentApprovalDTO dto)
+        {
+            Log.Information("EmployeeDocumentController - ApproveOrRejectDocument called for ID: {Id}, Status: {Status}", dto?.Id, dto?.Status);
+
+            if (dto == null || dto.Id <= 0 || string.IsNullOrWhiteSpace(dto.Status))
+            {
+                return BadRequest(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = "Invalid document approval payload.",
+                    Data = false
+                });
+            }
+
+            var currentUserId = _userContextService?.GetCurrentEmployeeId() ?? 0;
+            var success = await _employeeDocumentService.ApproveOrRejectAsync(dto.Id, dto.Status, dto.RejectionReason, currentUserId);
+
+            if (!success)
+            {
+                return NotFound(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.NotFound,
+                    Message = "Document not found or could not be updated.",
+                    Data = false
+                });
+            }
+
+            var updatedDoc = await _employeeDocumentService.GetByIdAsync(dto.Id);
+            var isApproved = dto.Status.Equals("Approved", StringComparison.OrdinalIgnoreCase);
+
+            return Ok(new ApiResponse<EmployeeDocumentInfo>
+            {
+                StatusCode = (int)HttpStatusCode.OK,
+                Message = isApproved ? ApiMessageConstant.DocumentApproved : ApiMessageConstant.DocumentRejected,
+                Data = updatedDoc
             });
         }
     }

@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using KHRMS.Core;
 using KHRMS.Core.Models;
 using Microsoft.EntityFrameworkCore;
@@ -40,6 +40,13 @@ namespace KHRMS.Infrastructure
                     v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
                     v => JsonSerializer.Deserialize<List<long>>(v, (JsonSerializerOptions)null)
                  ).HasColumnType("nvarchar(max)");
+
+            modelBuilder.Entity<Employee>()
+                .Property(e => e.ProjectIds)
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                    v => JsonSerializer.Deserialize<List<long>>(v, (JsonSerializerOptions)null)
+                 ).HasColumnType("nvarchar(max)");
         }
         public DbSet<ProjectMaster> ProjectMasters { get; set; }
         public DbSet<UserRegistration> UserRegistrations { get; set; }
@@ -56,7 +63,7 @@ namespace KHRMS.Infrastructure
         public DbSet<LeaveRequest> leaveRequests { get; set; }
         public DbSet<Resignation> Resignation { get; set; }
         public DbSet<AttendanceLog> AttendanceLog { get; set; }
-
-
+        public DbSet<Timesheet> Timesheets { get; set; }
+        public DbSet<TimesheetEntry> TimesheetEntries { get; set; }
     }
 }

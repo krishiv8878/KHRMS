@@ -1,4 +1,4 @@
-﻿using KHRMS.Core;
+using KHRMS.Core;
 using KHRMS.Infrastructure;
 using KHRMS.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -22,6 +22,7 @@ namespace KHRMS.Controllers
         /// <returns></returns>
 
         [HttpGet("GetRoles")]
+        [Authorize(Roles = "Admin,System Admin,HR,HR Operations")]
         public async Task<IActionResult> GetRoles()
         {
             Log.Information("RoleMasterController - GetRoles called.");
@@ -56,6 +57,7 @@ namespace KHRMS.Controllers
         /// <returns></returns>
 
         [HttpPost("AddRole")]
+        [Authorize(Roles = "Admin,System Admin")]
         public async Task<IActionResult> AddRole(RoleMaster roleMaster)
         {
             Log.Information("RoleMasterController - AddRole called.");
@@ -95,6 +97,7 @@ namespace KHRMS.Controllers
         /// <returns></returns>
 
         [HttpPut("UpdateRole/{id}")]
+        [Authorize(Roles = "Admin,System Admin")]
         public async Task<IActionResult> UpdateRole(RoleMaster roleMaster)
         {
             Log.Information("RoleMasterController - UpdateRole called for ID: {Id}", roleMaster.Id);
@@ -134,6 +137,7 @@ namespace KHRMS.Controllers
         /// <returns></returns>
 
         [HttpDelete("DeleteRole/{id}")]
+        [Authorize(Roles = "Admin,System Admin")]
         public async Task<IActionResult> DeleteRole(long id)
         {
             Log.Information("RoleMasterController - DeleteRole called for ID: {Id}", id);

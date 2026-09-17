@@ -1,4 +1,4 @@
-﻿using KHRMS.Core;
+using KHRMS.Core;
 using KHRMS.Infrastructure;
 using KHRMS.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -42,6 +42,7 @@ namespace KHRMS
         }
 
         [HttpPost("AddDesignation")]
+        [Authorize(Roles = "Admin,System Admin,HR,HR Operations")]
         public async Task<IActionResult> AddDesignation(Designation designation)
         {
             Log.Information("AddDesignation API called.");
@@ -68,6 +69,7 @@ namespace KHRMS
 
 
         [HttpPut("UpdateDesignation")]
+        [Authorize(Roles = "Admin,System Admin,HR,HR Operations")]
         public async Task<IActionResult> UpdateDesignation(Designation designation)
         {
             Log.Information("UpdateDesignation API called.");
@@ -94,6 +96,7 @@ namespace KHRMS
 
 
         [HttpDelete("DeleteDesignation")]
+        [Authorize(Roles = "Admin,System Admin,HR,HR Operations")]
         public async Task<IActionResult> DeleteDesignation(long designationId)
         {
             Log.Information("DeleteDesignation API called for ID {DesignationId}.", designationId);

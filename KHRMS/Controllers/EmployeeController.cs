@@ -1,4 +1,5 @@
-﻿using KHRMS.Infrastructure;
+using KHRMS.Core;
+using KHRMS.Infrastructure;
 using KHRMS.Services;
 using KHRMS.Services.Request;
 using Microsoft.AspNetCore.Authorization;
@@ -22,6 +23,7 @@ namespace KHRMS
         /// </summary>
         /// <returns></returns>
         [HttpGet("GetEmployees")]
+        [Authorize(Roles = "Admin,System Admin,HR,HR Operations,Manager,Management")]
         public async Task<IActionResult> GetEmployees()
         {
             Log.Information("EmployeeController - GetEmployees called.");
@@ -48,11 +50,59 @@ namespace KHRMS
         }
 
         /// <summary>
+        /// Get employee by ID (accessible by self, or Admin/HR/Manager)
+        /// </summary>
+        [HttpGet("GetEmployeeById/{id?}")]
+        public async Task<IActionResult> GetEmployeeById(int? id)
+        {
+            Log.Information("EmployeeController - GetEmployeeById called for ID: {Id}", id);
+
+            int targetId = id ?? 0;
+            if (targetId <= 0)
+            {
+                var claimVal = User.FindFirst("UserId")?.Value;
+                if (!string.IsNullOrEmpty(claimVal) && int.TryParse(claimVal, out int parsedClaimId))
+                {
+                    targetId = parsedClaimId;
+                }
+            }
+
+            if (targetId <= 0)
+            {
+                return BadRequest(new ApiResponse<Employee>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = "Valid Employee ID is required",
+                    Data = null
+                });
+            }
+
+            var employee = await _employeeService.GetEmployeeById(targetId);
+            if (employee == null)
+            {
+                return Ok(new ApiResponse<Employee>
+                {
+                    StatusCode = (int)HttpStatusCode.OK,
+                    Message = ApiMessageConstant.NoEmployeeFound,
+                    Data = null
+                });
+            }
+
+            return Ok(new ApiResponse<Employee>
+            {
+                StatusCode = (int)HttpStatusCode.OK,
+                Message = ApiMessageConstant.EmployeeFound,
+                Data = employee
+            });
+        }
+
+        /// <summary>
         /// Add a new employee
         /// </summary>
         /// <param name="employee"></param>
         /// <returns></returns>
         [HttpPost("AddEmployee")]
+        [Authorize(Roles = "Admin,System Admin,HR,HR Operations")]
         public async Task<IActionResult> AddEmployee(EmployeeRequestModel employeerequestModel)
         {
             Log.Information("EmployeeController - AddEmployee called.");
@@ -112,6 +162,31 @@ namespace KHRMS
                 });
             }
 
+            var claimVal = User.FindFirst("UserId")?.Value
+                ?? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst("sub")?.Value
+                ?? User.FindFirst("id")?.Value;
+            bool isSelf = !string.IsNullOrEmpty(claimVal) && long.TryParse(claimVal, out long currentEmpId) && currentEmpId == employeeRequestModel.Id;
+
+            var userRoles = User.FindAll(System.Security.Claims.ClaimTypes.Role).Select(c => c.Value)
+                .Union(User.FindAll("role").Select(c => c.Value))
+                .ToList();
+
+            bool isAuthorizedStaff = User.IsInRole("Admin") || User.IsInRole("System Admin")
+                || User.IsInRole("HR") || User.IsInRole("HR Operations")
+                || User.IsInRole("Manager") || User.IsInRole("Management")
+                || userRoles.Any(r => string.Equals(r, "Admin", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(r, "System Admin", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(r, "HR", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(r, "HR Operations", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(r, "Manager", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(r, "Management", StringComparison.OrdinalIgnoreCase));
+
+            if (!isSelf && !isAuthorizedStaff)
+            {
+                return Forbid();
+            }
+
             var isEmployeeEdited = await _employeeService.UpdateEmployee(employeeRequestModel);
             if (isEmployeeEdited)
             {
@@ -141,6 +216,7 @@ namespace KHRMS
         /// <param name="employee"></param>
         /// <returns></returns>
         [HttpDelete("DeleteEmployee")]
+        [Authorize(Roles = "Admin,System Admin,HR,HR Operations")]
         public async Task<IActionResult> DeleteEmployee(long employeeId)
         {
             Log.Information("EmployeeController - DeleteEmployee called for ID: {EmployeeId}", employeeId);
@@ -174,6 +250,7 @@ namespace KHRMS
         /// <param name="employee"></param>
         /// <returns></returns>
         [HttpPut("UpdateExistingEmployee")]
+        [Authorize(Roles = "Admin,System Admin,HR,HR Operations,Manager,Management")]
         public async Task<IActionResult> UpdateExistingEmployee(EmployeeRequestModel employeeRequestModel)
         {
             Log.Information("EmployeeController - UpdateEmployee called.");

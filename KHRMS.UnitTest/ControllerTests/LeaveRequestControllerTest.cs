@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -42,9 +42,7 @@ namespace KHRMS.UnitTest.ControllerTests
                 LeaveMode = "",
                 StartDate = startdate,
                 EndDate = enddate,
-                IsApproved = false,
-                ApprovedBy = 0,
-                ApprovedDate = approveddate,
+                Status = "Pending",
                 LeaveReason = "Nothing",
             };
 
@@ -66,8 +64,8 @@ namespace KHRMS.UnitTest.ControllerTests
 
             var leaveRequest = new List<LeaveReqestModel>
             {
-                new LeaveReqestModel(){Id = 1,LeaveMode="",LeaveTypeName="Casual",StartDate = startdate,EndDate = enddate,IsApproved = false,LeaveReason = "Nothing"},
-                new LeaveReqestModel(){Id = 2,LeaveMode="",LeaveTypeName="Sick",StartDate = startdate,EndDate = enddate,IsApproved = false,LeaveReason = "xyz"},
+                new LeaveReqestModel(){Id = 1,LeaveMode="",LeaveTypeName="Casual",StartDate = startdate,EndDate = enddate,Status = "Pending",LeaveReason = "Nothing"},
+                new LeaveReqestModel(){Id = 2,LeaveMode="",LeaveTypeName="Sick",StartDate = startdate,EndDate = enddate,Status = "Pending",LeaveReason = "xyz"},
             };
 
             _mock.Setup(x => x.GetAllLeaveRequestType()).ReturnsAsync(leaveRequest);
@@ -111,9 +109,9 @@ namespace KHRMS.UnitTest.ControllerTests
                 LeaveMode = "",
                 StartDate = startdate,
                 EndDate = enddate,
-                IsApproved = true,
-                ApprovedBy = 0,
-                ApprovedDate = approveddate,
+                Status = "Approved",
+                ActionBy = 1,
+                ActionDate = approveddate,
                 LeaveReason = "Nothing",
             };
             _mock.Setup(x => x.UpdateLeaveRequestType(It.IsAny<LeaveRequest>())).ReturnsAsync(true);
@@ -123,7 +121,7 @@ namespace KHRMS.UnitTest.ControllerTests
             Assert.NotNull(result);
             _mock.Verify(x => x.UpdateLeaveRequestType(It.Is<LeaveRequest>(r =>
                 r.Id == updateleaveRequest.Id &&
-                r.IsApproved == updateleaveRequest.IsApproved)), Times.Once);
+                r.Status == updateleaveRequest.Status)), Times.Once);
         }
 
         [Fact]
@@ -136,7 +134,8 @@ namespace KHRMS.UnitTest.ControllerTests
             var ApproveleaveRequest = new ApproveLeaveRequest()
             {
                 Id = 1,
-                IsApproved = true,
+                Status = "Approved",
+                ActionBy = 1,
             };
             _mock.Setup(x => x.ApproveLeaveRequestAsync(It.IsAny<ApproveLeaveRequest>())).ReturnsAsync(true);
 
@@ -145,7 +144,7 @@ namespace KHRMS.UnitTest.ControllerTests
             Assert.NotNull(result);
             _mock.Verify(x => x.ApproveLeaveRequestAsync(It.Is<ApproveLeaveRequest>(r =>
                 r.Id == ApproveleaveRequest.Id &&
-                r.IsApproved == ApproveleaveRequest.IsApproved)), Times.Once);
+                r.Status == ApproveleaveRequest.Status)), Times.Once);
         }
 
     }

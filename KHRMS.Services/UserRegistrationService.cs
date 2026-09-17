@@ -1,4 +1,4 @@
-﻿using KHRMS.Core;
+using KHRMS.Core;
 using Microsoft.AspNetCore.Identity;
 
 
@@ -98,6 +98,62 @@ namespace KHRMS.Services
 
             await _unitOfWork.Employees.Add(employee);
             var result = _unitOfWork.Save();
+
+            if (result > 0)
+            {
+                // Ensure base roles exist
+                var allRoles = (await _unitOfWork.RoleMaster.GetAll())
+                    .Where(r => r.IsActive != false && r.IsDeleted != true)
+                    .ToList();
+
+                var baseRoles = new[] { "Admin", "HR", "Manager", "Employee" };
+                bool rolesAdded = false;
+                foreach (var baseRole in baseRoles)
+                {
+                    if (!allRoles.Any(r => string.Equals(r.RoleName, baseRole, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        await _unitOfWork.RoleMaster.Add(new RoleMaster
+                        {
+                            RoleName = baseRole,
+                            IsActive = true,
+                            IsDeleted = false,
+                            CreatedDate = DateTime.UtcNow
+                        });
+                        rolesAdded = true;
+                    }
+                }
+                if (rolesAdded)
+                {
+                    _unitOfWork.Save();
+                    allRoles = (await _unitOfWork.RoleMaster.GetAll())
+                        .Where(r => r.IsActive != false && r.IsDeleted != true)
+                        .ToList();
+                }
+
+                // Check if any admin exists in the system
+                var allRoleMappings = (await _unitOfWork.EmployeeRoleMappings.GetAll())
+                    .Where(r => r.IsActive != false)
+                    .ToList();
+
+                var adminRole = allRoles.FirstOrDefault(r => string.Equals(r.RoleName, "Admin", StringComparison.OrdinalIgnoreCase));
+                var employeeRole = allRoles.FirstOrDefault(r => string.Equals(r.RoleName, "Employee", StringComparison.OrdinalIgnoreCase));
+
+                bool systemHasAdmin = adminRole != null && allRoleMappings.Any(m => m.RoleId == adminRole.Id);
+                var targetRole = (!systemHasAdmin && adminRole != null) ? adminRole : employeeRole;
+
+                if (targetRole != null)
+                {
+                    await _unitOfWork.EmployeeRoleMappings.Add(new EmployeeRoleMapping
+                    {
+                        EmployeeId = employee.Id,
+                        RoleId = targetRole.Id,
+                        IsActive = true,
+                        CreatedDate = DateTime.UtcNow
+                    });
+                    _unitOfWork.Save();
+                }
+            }
+
             return result > 0;
         }
     }

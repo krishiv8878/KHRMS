@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using KHRMS.Core;
@@ -160,9 +160,10 @@ namespace KHRMS.Services
                 EmailAddress = employeeRequestModel.EmailAddress,
                 DateOfJoining = employeeRequestModel.DateOfJoining,
                 SkillIds = employeeRequestModel.SkillIds,
+                ProjectIds = employeeRequestModel.ProjectIds,
                 //Designation = employeeRequestModel.Designation,
                 DesignationId = 0,
-                ManagerId = (long)employeeRequestModel.ManagerId,
+                ManagerId = employeeRequestModel.ManagerId,
                 //Branch = employeeRequestModel.Branch,
                 //Responsibilities = employeeRequestModel.Responsibilities,
                 CreatedDate = now,
@@ -292,6 +293,7 @@ namespace KHRMS.Services
                 .ToList();
             var skills = (await _unitOfWork.Skills.GetAll()).Where(s=>allSkillIds.Contains(s.Id)).ToDictionary(s=>s.Id, s=>s.SkillName);
             var rolemaster = (await _unitOfWork.RoleMaster.GetAll()).ToDictionary(role => role.Id);
+            var projects = (await _unitOfWork.ProjectMasters.GetAll()).ToDictionary(p => p.Id, p => p.ProjectName);
             var employeeDictionary = employees.ToDictionary(emp => emp.Id);
 
             var employeesWithRoles = employees.Select(emp => new EmployeeRequestModel
@@ -309,7 +311,7 @@ namespace KHRMS.Services
                 CurrentAddress = emp.CurrentAddress,
                 PermanentAddress = emp.PermanentAddress,
                 IsActive = emp.IsActive,
-                ManagerId = emp.ManagerId,
+                ManagerId = emp?.ManagerId,
                 CreatedDate = emp.CreatedDate,
                 ShiftId = emp.ShiftIds,
                 PrimaryEmailAddress = emp.PrimaryEmailAddress,
@@ -343,6 +345,10 @@ namespace KHRMS.Services
                 Skills = (emp.SkillIds ?? Enumerable.Empty<long>())
                     .Where(id=>skills.ContainsKey(id))
                     .Select(id => skills[id]).ToList(),
+                ProjectIds = emp.ProjectIds ?? new List<long>(),
+                Projects = (emp.ProjectIds ?? Enumerable.Empty<long>())
+                    .Where(id => projects.ContainsKey(id))
+                    .Select(id => projects[id]).ToList(),
                 RoleIds = employeeroleMapping
                     .Where(mapping => mapping.EmployeeId == emp.Id && mapping.IsActive)
                     .Select(mapping => mapping.RoleId)
@@ -354,7 +360,9 @@ namespace KHRMS.Services
                     .Where(roleId => rolemaster.ContainsKey(roleId))
                     .Select(roleId => rolemaster[roleId].RoleName)
                     .ToList(),
-                ManagerName = employeeDictionary.ContainsKey(emp.ManagerId) ? $"{employeeDictionary[emp.ManagerId].FirstName} {employeeDictionary[emp.ManagerId].LastName}" : "Manager Not Assigned"
+                ManagerName = (emp.ManagerId.HasValue && employeeDictionary.TryGetValue(emp.ManagerId.Value, out var mgr))
+                    ? $"{mgr.FirstName} {mgr.LastName}"
+                    : "Manager Not Assigned"
 
             }).OrderByDescending(emp => emp.CreatedDate) // Sort new entries at the top
     .ToList();
@@ -397,7 +405,7 @@ namespace KHRMS.Services
                 employeeDetails.MobileNumber = employeeRequestModel.MobileNumber;
                 employeeDetails.PermanentAddress = employeeRequestModel.PermanentAddress;
                 employeeDetails.Gender = employeeRequestModel.Gender;
-                employeeDetails.ProfileCompleted = (bool)employeeRequestModel.ProfileCompleted;
+                employeeDetails.ProfileCompleted = employeeRequestModel.ProfileCompleted ?? false;
                 _unitOfWork.Employees.Update(employeeDetails);
                 var result = _unitOfWork.Save();
                 return result > 0;
@@ -418,7 +426,7 @@ namespace KHRMS.Services
                 employeeDetails.IsActive = employeeRequestModel.IsActive;
                 employeeDetails.UpdatedDate = DateTime.Now;
                 employeeDetails.ShiftIds = employeeRequestModel.ShiftId;
-                employeeDetails.ManagerId = (long)employeeRequestModel.ManagerId;
+                employeeDetails.ManagerId = employeeRequestModel.ManagerId;
                 employeeDetails.PrimaryEmailAddress = employeeRequestModel.PrimaryEmailAddress;
                 employeeDetails.PrimaryContactName = employeeRequestModel.PrimaryContactName;
                 employeeDetails.PrimaryContactRelationship = employeeRequestModel.PrimaryContactRelationship;
@@ -447,43 +455,47 @@ namespace KHRMS.Services
                 employeeDetails.Branch = employeeRequestModel.Branch;
                 employeeDetails.DateOfBirth = employeeRequestModel.DateOfBirth;
                 employeeDetails.SkillIds = employeeRequestModel.SkillIds;
+                employeeDetails.ProjectIds = employeeRequestModel.ProjectIds;
                 _unitOfWork.Employees.Update(employeeDetails);
                 var saveEmployeeResult = _unitOfWork.Save();
 
-                var existingRoleMappings = (await _unitOfWork.EmployeeRoleMappings.GetAll())
-                    .Where(r => r.EmployeeId == employeeDetails.Id)
-                    .ToList();
-                foreach (var roleMapping in existingRoleMappings.Where(r => r.IsActive))
+                if (employeeRequestModel.RoleIds != null && employeeRequestModel.RoleIds.Any())
                 {
-                    roleMapping.IsActive = false;
-                    roleMapping.UpdatedDate = DateTime.Now;
-                    _unitOfWork.EmployeeRoleMappings.Update(roleMapping);
-                }
-
-                foreach (var roleId in employeeRequestModel.RoleIds)
-                {
-                    var existingMapping = existingRoleMappings.FirstOrDefault(r => r.RoleId == roleId);
-
-                    if (existingMapping != null)
+                    var existingRoleMappings = (await _unitOfWork.EmployeeRoleMappings.GetAll())
+                        .Where(r => r.EmployeeId == employeeDetails.Id)
+                        .ToList();
+                    foreach (var roleMapping in existingRoleMappings.Where(r => r.IsActive))
                     {
-                        existingMapping.IsActive = true;
-                        existingMapping.UpdatedDate = DateTime.Now;
-                        _unitOfWork.EmployeeRoleMappings.Update(existingMapping);
+                        roleMapping.IsActive = false;
+                        roleMapping.UpdatedDate = DateTime.Now;
+                        _unitOfWork.EmployeeRoleMappings.Update(roleMapping);
                     }
-                    else
+
+                    foreach (var roleId in employeeRequestModel.RoleIds)
                     {
-                        await _unitOfWork.EmployeeRoleMappings.Add(new EmployeeRoleMapping
+                        var existingMapping = existingRoleMappings.FirstOrDefault(r => r.RoleId == roleId);
+
+                        if (existingMapping != null)
                         {
-                            RoleId = roleId,
-                            EmployeeId = employeeDetails.Id,
-                            IsActive = true,
-                            CreatedDate = DateTime.Now
-                        });
+                            existingMapping.IsActive = true;
+                            existingMapping.UpdatedDate = DateTime.Now;
+                            _unitOfWork.EmployeeRoleMappings.Update(existingMapping);
+                        }
+                        else
+                        {
+                            await _unitOfWork.EmployeeRoleMappings.Add(new EmployeeRoleMapping
+                            {
+                                RoleId = roleId,
+                                EmployeeId = employeeDetails.Id,
+                                IsActive = true,
+                                CreatedDate = DateTime.Now
+                            });
+                        }
                     }
+                    _unitOfWork.Save();
                 }
-                var saveRoleMappingsResult = _unitOfWork.Save();
-                return saveEmployeeResult > 0 && saveRoleMappingsResult > 0;
 
+                return true;
             }
         }
 
@@ -513,6 +525,10 @@ namespace KHRMS.Services
             var employee = await _unitOfWork.Employees.GetById(employeeRequestModel.Id);
             if (employee == null) return false;
             employee.SkillIds = employeeRequestModel.SkillIds;
+            if (employeeRequestModel.ProjectIds != null)
+            {
+                employee.ProjectIds = employeeRequestModel.ProjectIds;
+            }
             _unitOfWork.Employees.Update(employee);
             var result =_unitOfWork.Save();
             return result > 0;

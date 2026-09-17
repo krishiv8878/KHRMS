@@ -1,4 +1,4 @@
-﻿
+
 using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
 
@@ -21,12 +21,15 @@ namespace KHRMS.Core
         public DateTime StartDate { get; set; }
         [Required]
         public DateTime EndDate { get; set; }
-        public bool IsApproved { get; set; }  // Nullable
-        public bool IsDeleted { get; set; }  // Nullable
-        public bool IsActive { get; set; }  // Nullable
-        public int ApprovedBy { get; set; }
-        public DateTime? ApprovedDate { get; set; }
 
         public string? LeaveReason { get; set; }
+
+        [StringLength(30)]
+        public string Status { get; set; } = "Pending";
+
+        public long? ActionBy { get; set; }
+        public DateTime? ActionDate { get; set; }
+
+        public string? RejectionReason { get; set; }
     }
 }

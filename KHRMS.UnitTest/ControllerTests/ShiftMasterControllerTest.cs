@@ -1,4 +1,4 @@
-﻿using KHRMS.Core;
+using KHRMS.Core;
 using KHRMS.Services;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
@@ -89,7 +89,7 @@ namespace KHRMS.UnitTest.ControllerTests
             _mock.Setup(x => x.UpdateShiftAsync(It.IsAny<ShiftMaster>())).Returns(Task.CompletedTask);
 
             // Act
-            var result = await _controller.Update(updatedShiftMaster);
+            var result = await _controller.Update(updatedShiftMaster.Id, updatedShiftMaster);
             var okResult = result as OkObjectResult;
 
             // Assert

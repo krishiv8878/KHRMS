@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
 
 namespace KHRMS.Core
@@ -23,5 +23,13 @@ namespace KHRMS.Core
         [StringLength(100)]
         public string? Category { get; set; } = "Employee Docs";
 
+        [StringLength(30)]
+        public string Status { get; set; } = "Pending";
+
+        public string? RejectionReason { get; set; }
+
+        public long? ActionBy { get; set; }
+
+        public DateTime? ActionDate { get; set; }
     }
 }

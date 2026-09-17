@@ -1,4 +1,4 @@
-﻿using KHRMS.Core;
+using KHRMS.Core;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
@@ -40,6 +40,8 @@ namespace KHRMS.Infrastructure
             services.AddScoped<ILeaveRequestRepository, LeaveRequestRepository>();
             services.AddScoped<IResignationRepository, ResignationRepository>();
             services.AddScoped<IAttendanceLogRepository, AttendanceLogRepository>();
+            services.AddScoped<ITimesheetRepository, TimesheetRepository>();
+            services.AddScoped<ITimesheetEntryRepository, TimesheetEntryRepository>();
             return services;
         }
     }

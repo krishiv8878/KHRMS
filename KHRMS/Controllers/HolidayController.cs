@@ -1,4 +1,4 @@
-﻿using KHRMS.Core;
+using KHRMS.Core;
 using KHRMS.Infrastructure;
 using KHRMS.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -53,6 +53,7 @@ namespace KHRMS
         /// <returns></returns>
 
         [HttpPost("AddHoliday")]
+        [Authorize(Roles = "Admin,System Admin,HR,HR Operations")]
         public async Task<IActionResult> AddHoliday([FromBody] Holiday holiday)
         {
             Log.Information("HolidayController - AddHoliday called.");
@@ -85,6 +86,7 @@ namespace KHRMS
         /// <returns></returns>
 
         [HttpPut("UpdateHoliday")]
+        [Authorize(Roles = "Admin,System Admin,HR,HR Operations")]
         public async Task<IActionResult> UpdateHoliday([FromBody] Holiday holiday)
         {
             Log.Information("HolidayController - UpdateHoliday called.");
@@ -118,6 +120,7 @@ namespace KHRMS
 
         [HttpDelete]
         [Route("DeleteHoliday")]
+        [Authorize(Roles = "Admin,System Admin,HR,HR Operations")]
         public async Task<IActionResult> DeleteHoliday(long holidayId)
         {
             Log.Information("HolidayController - DeleteHoliday called with ID: {Id}", holidayId);

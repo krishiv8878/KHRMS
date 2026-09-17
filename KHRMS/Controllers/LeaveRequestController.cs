@@ -1,4 +1,4 @@
-﻿using KHRMS.Core;
+using KHRMS.Core;
 using KHRMS.Core.Models;
 using KHRMS.Infrastructure;
 using KHRMS.Infrastructure.Migrations;
@@ -50,6 +50,7 @@ namespace KHRMS
 
 
         [HttpGet("GetAllEmployeesLeaveRequest")]
+        [Authorize(Roles = "Admin,System Admin,HR,HR Operations,Manager,Management")]
         public async Task<IActionResult> GetAllEmployeesLeaveRequest()
         {
             var result = await _leaveRequestTypeService.GetAllEmployeesLeaveRequest( );
@@ -169,6 +170,7 @@ namespace KHRMS
 
 
         [HttpDelete("DeleteLeaveRequest/{id}")]
+        [Authorize(Roles = "Admin,System Admin,HR,HR Operations")]
         public async Task<IActionResult> Delete(long id)
         {
             Log.Information("LeaveRequestController - DeleteLeaveRequest called for ID: {Id}", id);
@@ -196,46 +198,82 @@ namespace KHRMS
 
 
         [HttpPost("ApproveLeaveRequest")]
-        public async Task<IActionResult> ApproveLeaveRequest(ApproveLeaveRequest leaveRequest)
+        [Authorize(Roles = "Admin,System Admin,HR,HR Operations,Manager,Management")]
+        public async Task<IActionResult> ApproveLeaveRequest([FromBody] ApproveLeaveRequest leaveRequest)
         {
-            Log.Information("ApproveLeaveRequest called for ID: {LeaveRequestId}", leaveRequest.Id);
+            Log.Information("ApproveLeaveRequest called for ID: {LeaveRequestId}, Status: {Status}", 
+                leaveRequest?.Id, leaveRequest?.Status);
+
+            if (leaveRequest == null)
+            {
+                return BadRequest(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = "Invalid leave approval payload.",
+                    Data = false
+                });
+            }
 
             try
             {
-
-                var isApproved = await _leaveRequestTypeService.ApproveLeaveRequestAsync(leaveRequest);
-                if (!isApproved)
+                var result = await _leaveRequestTypeService.ApproveLeaveRequestAsync(leaveRequest);
+                if (!result)
                 {
-                    Log.Warning("Approval failed or already approved for ID: {Id}", leaveRequest.Id);
+                    Log.Warning("Approval/Rejection failed for ID: {Id}", leaveRequest.Id);
                     return BadRequest(new ApiResponse<bool>
                     {
                         StatusCode = (int)HttpStatusCode.BadRequest,
-                        Message = "Approval failed. Either leave not found or already approved.",
+                        Message = "Action failed. Leave request not found.",
                         Data = false
                     });
                 }
-                Log.Information("LeaveRequest ID {Id} approved by Manager ID {ManagerId}", leaveRequest.Id);
+
+                var statusLabel = leaveRequest.Status?.ToLower() ?? "processed";
+                Log.Information("LeaveRequest ID {Id} {Status} successfully", leaveRequest.Id, statusLabel);
                 return Ok(new ApiResponse<bool>
                 {
                     StatusCode = (int)HttpStatusCode.OK,
-                    Message = "Leave approved successfully.",
+                    Message = $"Leave {statusLabel} successfully.",
                     Data = true
                 });
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Error while approving leave ID: {LeaveRequestId}", leaveRequest.Id);
+                Log.Error(ex, "Error while processing leave ID: {LeaveRequestId}", leaveRequest.Id);
                 return StatusCode(500, new ApiResponse<string>
                 {
                     StatusCode = 500,
-                    Message = "Internal server error while approving leave.",
+                    Message = "Internal server error while processing leave decision.",
                     Data = null
                 });
             }
         }
 
+        [HttpGet("GetEmployeeLeaveBalance/{employeeId?}")]
+        public async Task<IActionResult> GetEmployeeLeaveBalance(long? employeeId = null)
+        {
+            try
+            {
+                var balances = await _leaveRequestTypeService.GetEmployeeLeaveBalances(employeeId);
+                return Ok(new ApiResponse<IEnumerable<EmployeeLeaveBalanceDto>>
+                {
+                    StatusCode = (int)HttpStatusCode.OK,
+                    Message = "Leave balances fetched successfully.",
+                    Data = balances
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error while fetching leave balances for Employee ID: {EmployeeId}", employeeId);
+                return StatusCode(500, new ApiResponse<string>
+                {
+                    StatusCode = 500,
+                    Message = "Internal server error while fetching leave balances.",
+                    Data = null
+                });
+            }
+        }
     }
-
 }
 
 

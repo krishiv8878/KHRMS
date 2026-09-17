@@ -1,4 +1,4 @@
-﻿using System.IdentityModel.Tokens.Jwt;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using KHRMS.Core;
@@ -58,47 +58,127 @@ namespace KHRMS.Services
                 {
                     // Find matching employee
                     var allEmployees = await _unitOfWork.Employees.GetAll();
-                    var matchedEmployee = allEmployees.FirstOrDefault(e => e.EmailAddress == Email && !e.IsDeleted && e.IsActive);
-                    var existingRoleMappings = (await _unitOfWork.EmployeeRoleMappings.GetAll())
-              .Where(r => r.EmployeeId == matchedEmployee.Id && r.IsActive != false)
-              .ToList().Select(x=> x.RoleId);
+                    var matchedEmployee = allEmployees.FirstOrDefault(e => string.Equals(e.EmailAddress, Email, StringComparison.OrdinalIgnoreCase) && !e.IsDeleted && e.IsActive);
 
+                    // If user exists in UserLogin but employee record is missing, auto-create it
+                    if (matchedEmployee == null)
+                    {
+                        var newEmp = new Employee
+                        {
+                            FirstName = !string.IsNullOrWhiteSpace(matchedUser.UserName) ? matchedUser.UserName : "Admin",
+                            LastName = "User",
+                            EmailAddress = matchedUser.Email,
+                            CreatedDate = DateTime.UtcNow,
+                            DateOfJoining = DateTime.UtcNow,
+                            IsActive = true,
+                            IsDeleted = false,
+                            ProfileCompleted = true
+                        };
+                        await _unitOfWork.Employees.Add(newEmp);
+                        _unitOfWork.Save();
+                        matchedEmployee = newEmp;
+                    }
+
+                    // Auto-seed base roles if RoleMaster is empty or missing standard roles
                     var allRole = (await _unitOfWork.RoleMaster.GetAll())
-              .Where(r =>  r.IsActive != false && r.IsDeleted != true)
-              .ToList();
-
-
-                    var roleNames = allRole
-                        .Where(r => existingRoleMappings.Contains(r.Id))
-                        .Select(r => r.RoleName)   // Modify property name if yours is different
+                        .Where(r => r.IsActive != false && r.IsDeleted != true)
                         .ToList();
 
-
-                    var roleTypes = "";
-                    if (roleNames.Count() > 0)
+                    var baseRoles = new[] { "Admin", "HR", "Manager", "Employee" };
+                    bool rolesAdded = false;
+                    foreach (var baseRole in baseRoles)
                     {
-                        roleTypes = string.Join(",", roleNames);
+                        if (!allRole.Any(r => string.Equals(r.RoleName, baseRole, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            await _unitOfWork.RoleMaster.Add(new RoleMaster
+                            {
+                                RoleName = baseRole,
+                                IsActive = true,
+                                IsDeleted = false,
+                                CreatedDate = DateTime.UtcNow
+                            });
+                            rolesAdded = true;
+                        }
                     }
+                    if (rolesAdded)
+                    {
+                        _unitOfWork.Save();
+                        allRole = (await _unitOfWork.RoleMaster.GetAll())
+                            .Where(r => r.IsActive != false && r.IsDeleted != true)
+                            .ToList();
+                    }
+
+                    var roleNames = new List<string>();
+                    var existingRoleMappings = (await _unitOfWork.EmployeeRoleMappings.GetAll())
+                        .Where(r => r.EmployeeId == matchedEmployee.Id && r.IsActive != false)
+                        .Select(x => x.RoleId)
+                        .ToList();
+
+                    roleNames = allRole
+                        .Where(r => existingRoleMappings.Contains(r.Id) && !string.IsNullOrWhiteSpace(r.RoleName))
+                        .Select(r => r.RoleName!)
+                        .ToList();
+
+                    // Check if ANY employee in the entire database has an Admin role mapped
+                    var allRoleMappings = (await _unitOfWork.EmployeeRoleMappings.GetAll())
+                        .Where(r => r.IsActive != false)
+                        .ToList();
+
+                    var adminRole = allRole.FirstOrDefault(r => string.Equals(r.RoleName, "Admin", StringComparison.OrdinalIgnoreCase));
+                    bool systemHasAdmin = adminRole != null && allRoleMappings.Any(m => m.RoleId == adminRole.Id);
+
+                    // If the system has NO admin account yet (initial setup), make this logging-in user the Admin!
+                    if (!systemHasAdmin && adminRole != null)
+                    {
+                        await _unitOfWork.EmployeeRoleMappings.Add(new EmployeeRoleMapping
+                        {
+                            EmployeeId = matchedEmployee.Id,
+                            RoleId = adminRole.Id,
+                            IsActive = true,
+                            CreatedDate = DateTime.UtcNow
+                        });
+                        _unitOfWork.Save();
+
+                        if (!roleNames.Contains("Admin"))
+                        {
+                            roleNames.Add("Admin");
+                        }
+                    }
+
+                    if (roleNames.Count == 0)
+                    {
+                        roleNames.Add("Employee");
+                    }
+
+                    var roleTypes = string.Join(",", roleNames);
+
                     if (matchedEmployee != null)
                     {
                         var issuer = _configuration["Jwt:issuer"];
                         var audience = _configuration["Jwt:audience"];
-                        var key = _configuration["Jwt:PasswordResetSecret"];
+                        var key = _configuration["Jwt:PasswordResetSecret"] ?? "DefaultSecretKeyForJwtTokenAuth12345";
                         var tokenExpiryTimeStamp = DateTime.UtcNow.AddMinutes(60);
-                      
+
+                        var claims = new List<Claim>
+                        {
+                            new Claim(JwtRegisteredClaimNames.Name, Email),
+                            new Claim("UserId", matchedEmployee.Id.ToString()),
+                            new Claim(ClaimTypes.Email, Email)
+                        };
+
+                        foreach (var role in roleNames)
+                        {
+                            claims.Add(new Claim(ClaimTypes.Role, role));
+                            claims.Add(new Claim("role", role));
+                        }
 
                         var tokenDescriptor = new SecurityTokenDescriptor
                         {
-
-                            Subject = new ClaimsIdentity(new[]
-                            {
-                                new Claim(JwtRegisteredClaimNames.Name, Email),
-                                new Claim("UserId", matchedEmployee.Id.ToString()),
-                            }),
+                            Subject = new ClaimsIdentity(claims),
                             Expires = tokenExpiryTimeStamp,
                             Issuer = issuer,
                             Audience = audience,
-                            SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(Encoding.ASCII.GetBytes(key)),
+                            SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
                                 SecurityAlgorithms.HmacSha256),
                         };
 

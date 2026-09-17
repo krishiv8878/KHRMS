@@ -1,4 +1,4 @@
-﻿
+
 using KHRMS.Core;
 
 namespace KHRMS.Services
@@ -8,6 +8,7 @@ namespace KHRMS.Services
 
         Task<IEnumerable<EmployeePaymentInfo>> GetAllAsync();
         Task<EmployeePaymentInfo?> GetByIdAsync(long id);
+        Task<EmployeePaymentInfo?> GetByEmployeeIdAsync(long employeeId);
         Task AddAsync(EmployeePaymentInfo entity);
         Task UpdateAsync(EmployeePaymentInfo entity);
         Task DeleteAsync(long id);

@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Nodes;
 using KHRMS.Core.Models;
@@ -42,7 +42,7 @@ namespace KHRMS.Core
         [StringLength(100)]
         public string? PermanentAddress { get; set; }
 
-        public long ManagerId { get; set; }
+        public long? ManagerId { get; set; }
 
         //Primary Email Address Field
         [StringLength(300)]
@@ -133,6 +133,7 @@ namespace KHRMS.Core
         public bool ProfileCompleted { get; set; } = false;
 
         public List<long>? SkillIds { get; set; }
+        public List<long>? ProjectIds { get; set; }
     }
 
 }

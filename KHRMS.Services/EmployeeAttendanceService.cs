@@ -1,4 +1,4 @@
-﻿using KHRMS.Core;
+using KHRMS.Core;
 using KHRMS.Core.Models;
 using KHRMS.Infrastructure.Migrations;
 using KHRMS.Services.Interfaces;
@@ -47,70 +47,87 @@ namespace KHRMS.Services
 
         public async Task AddAsync(EmployeeAttendance attendance)
         {
-            //var attendancebyid = (await _unitOfWork.EmployeeAttendance.GetAll()).FirstOrDefault(r => r.EmployeeId == attendance.EmployeeId && r.CreatedDate.Value.Date == attendance.CreatedDate.Value.Date);
-            //if (attendancebyid != null)
-            //{
-            //    if(attendancebyid.ClockOut == null)
-            //    {
-            //        attendancebyid.ClockOut = attendance.ClockOut;
-            //        attendancebyid.TotalHours = (decimal)(attendance.ClockOut - attendancebyid.ClockIn).Value.TotalHours;
-            //        attendancebyid.EffectiveHours = (decimal)(attendance.ClockOut - attendancebyid.ClockIn).Value.TotalHours;
-            //        await UpdateAsync(attendancebyid);
-            //    }
-            //    else
-            //    {
-            //        await UpdateExistingAsync(attendance, attendancebyid);
-            //    }
-            //}else{
-            //    attendance.ClockIn = attendance.ClockIn;
-            //    attendance.ClockOut = attendance.ClockOut;
-            //    attendance.CreatedDate = DateTime.Now;
-            //    attendance.EffectiveHours = attendance.TotalHours;
-            //    await _unitOfWork.EmployeeAttendance.Add(attendance);
-            //    var result = _unitOfWork.Save();
-            //}
-            var attendancebyid = (await _unitOfWork.EmployeeAttendance.GetAll()).FirstOrDefault(r => r.EmployeeId == attendance.EmployeeId && r.AttendanceDate == attendance.AttendanceDate);
+            var attendancebyid = (await _unitOfWork.EmployeeAttendance.GetAll())
+                .FirstOrDefault(r => r.EmployeeId == attendance.EmployeeId && r.AttendanceDate == attendance.AttendanceDate);
+
+            decimal initialDuration = (attendance.ClockOut.HasValue && attendance.ClockIn != default)
+                ? (decimal)(attendance.ClockOut.Value - attendance.ClockIn).TotalHours
+                : 0;
+
             var attendanceLog = new AttendanceLog
             {
                 EmployeeId = attendance.EmployeeId,
                 AttendanceDate = attendance.AttendanceDate,
                 InTime = attendance.ClockIn,
                 OutTime = attendance.ClockOut,
-                Duration = (decimal)(attendance.ClockOut - attendance.ClockIn).Value.TotalHours,
+                Duration = initialDuration
             };
+
             if (attendancebyid != null)
             {
                 await _attendanceLogService.UpdateAttendanceLogAsync(attendanceLog);
-                var logs = (await _attendanceLogService.GetAllAttendanceLogAsync()).Where(r => r.AttendanceDate == attendance.AttendanceDate).ToList();
+                var logs = (await _attendanceLogService.GetAllAttendanceLogAsync())
+                    .Where(r => r.EmployeeId == attendance.EmployeeId && r.AttendanceDate == attendance.AttendanceDate)
+                    .ToList();
+
                 if (attendance.ClockOut != null)
                 {
-                    attendancebyid.ClockIn = (DateTime)logs.Min(r=>r.InTime);
-                    attendancebyid.ClockOut = logs.Max(r => r.OutTime);
-                    attendancebyid.TotalHours = (decimal)(logs.Max(r => r.OutTime) - (DateTime)logs.Min(r => r.InTime)).Value.TotalHours;
+                    var inTimes = logs.Where(r => r.InTime.HasValue).Select(r => r.InTime.Value).ToList();
+                    var outTimes = logs.Where(r => r.OutTime.HasValue).Select(r => r.OutTime.Value).ToList();
+
+                    if (inTimes.Any()) attendancebyid.ClockIn = inTimes.Min();
+                    if (outTimes.Any()) attendancebyid.ClockOut = outTimes.Max();
+
+                    if (attendancebyid.ClockOut.HasValue && attendancebyid.ClockIn != default)
+                    {
+                        attendancebyid.TotalHours = (decimal)(attendancebyid.ClockOut.Value - attendancebyid.ClockIn).TotalHours;
+                    }
                     attendancebyid.EffectiveHours = logs.Sum(r => r.Duration);
+                    attendancebyid.UpdatedDate = DateTime.Now;
+                    await UpdateAsync(attendancebyid);
+                }
+                else
+                {
+                    var inTimes = logs.Where(r => r.InTime.HasValue).Select(r => r.InTime.Value).ToList();
+                    if (inTimes.Any()) attendancebyid.ClockIn = inTimes.Min();
+                    attendancebyid.ClockOut = null;
+                    attendancebyid.UpdatedDate = DateTime.Now;
                     await UpdateAsync(attendancebyid);
                 }
             }
             else
             {
-                attendance.AttendanceDate = attendance.AttendanceDate;
-                attendance.ClockIn = attendance.ClockIn;
-                attendance.ClockOut = attendance.ClockOut;
                 attendance.CreatedDate = DateTime.Now;
-                attendance.EffectiveHours = attendance.TotalHours;
+                attendance.TotalHours = initialDuration;
+                attendance.EffectiveHours = initialDuration;
+                attendance.IsActive = true;
+                attendance.IsDeleted = false;
                 await _unitOfWork.EmployeeAttendance.Add(attendance);
                 await _attendanceLogService.AddAttendanceLogAsync(attendanceLog);
-                var result = _unitOfWork.Save();
+                _unitOfWork.Save();
             }
-
         }
 
         public async Task UpdateAsync(EmployeeAttendance attendance)
         {
-            var attend = await _unitOfWork.EmployeeAttendance.GetByIdAsync(attendance.Id);
-            _unitOfWork.EmployeeAttendance.Update(attend);
-            var result = _unitOfWork.Save();
-            return;
+            var attend = await _unitOfWork.EmployeeAttendance.GetById(attendance.Id);
+            if (attend != null)
+            {
+                attend.ClockIn = attendance.ClockIn;
+                attend.ClockOut = attendance.ClockOut;
+                attend.TotalHours = attendance.TotalHours;
+                attend.EffectiveHours = attendance.EffectiveHours;
+                attend.UpdatedDate = DateTime.Now;
+                attend.UpdatedBy = attendance.UpdatedBy;
+                attend.IsActive = attendance.IsActive;
+                attend.IsDeleted = attendance.IsDeleted;
+                _unitOfWork.EmployeeAttendance.Update(attend);
+            }
+            else
+            {
+                _unitOfWork.EmployeeAttendance.Update(attendance);
+            }
+            _unitOfWork.Save();
         }
 
         //public async Task UpdateExistingAsync(EmployeeAttendance attendance,EmployeeAttendance attendancebyid)

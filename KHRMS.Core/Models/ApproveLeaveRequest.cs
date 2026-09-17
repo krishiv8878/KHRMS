@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
@@ -11,6 +11,8 @@ namespace KHRMS.Core.Models
     {
         public long Id { get; set; }  // Primary Key      
        
-        public bool IsApproved { get; set; }
+        public string Status { get; set; } = "Approved";
+        public long? ActionBy { get; set; }
+        public string? RejectionReason { get; set; }
     }
 }

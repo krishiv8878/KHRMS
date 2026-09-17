@@ -1,4 +1,4 @@
-﻿using KHRMS.Controllers;
+using KHRMS.Controllers;
 using KHRMS.Core;
 using KHRMS.Infrastructure;
 using KHRMS.Services;
@@ -100,7 +100,7 @@ namespace KHRMS.UnitTest.ControllerTests
             _mock.Setup(x => x.UpdateProjectMaster(updateprojectmaster)).ReturnsAsync(true);
 
             // Act
-            var result = await _controller.UpdateProjectMaster(updateprojectmaster);
+            var result = await _controller.UpdateProjectMaster(updateprojectmaster.Id, updateprojectmaster);
 
             // Assert
             Assert.NotNull(result);
