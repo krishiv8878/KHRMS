@@ -49,6 +49,13 @@ namespace KHRMS.Infrastructure
         public IAttendanceLogRepository AttendanceLog { get; }
         public ITimesheetRepository Timesheets { get; }
         public ITimesheetEntryRepository TimesheetEntries { get; }
+        public IAssetRequestRepository AssetRequests { get; }
+        public IAssetRequestLogRepository AssetRequestLogs { get; }
+        public INotificationRepository Notifications { get; }
+        public IEmailTriggerEventRepository EmailTriggerEvents { get; }
+        public IPermissionMasterRepository PermissionMaster { get; }
+        public IRolePermissionMappingRepository RolePermissionMappings { get; }
+        public IUserPermissionMappingRepository UserPermissionMappings { get; }
 
         public UnitOfWork(KHRMSContextClass dbContext,
                             ICandidateRepository candidateRepository,
@@ -75,7 +82,13 @@ namespace KHRMS.Infrastructure
                             IResignationRepository resignation,
                             IAttendanceLogRepository attendanceLog,
                             ITimesheetRepository? timesheets = null,
-                            ITimesheetEntryRepository? timesheetEntries = null)
+                            ITimesheetEntryRepository? timesheetEntries = null,
+                            IAssetRequestRepository? assetRequests = null,
+                            IAssetRequestLogRepository? assetRequestLogs = null,
+                            IEmailTriggerEventRepository? emailTriggerEvents = null,
+                            IPermissionMasterRepository? permissionMaster = null,
+                            IRolePermissionMappingRepository? rolePermissionMappings = null,
+                            IUserPermissionMappingRepository? userPermissionMappings = null)
         {
             _dbContext = dbContext;
             Candidates = candidateRepository;
@@ -103,6 +116,13 @@ namespace KHRMS.Infrastructure
             AttendanceLog = attendanceLog;
             Timesheets = timesheets ?? new TimesheetRepository(_dbContext);
             TimesheetEntries = timesheetEntries ?? new TimesheetEntryRepository(_dbContext);
+            AssetRequests = assetRequests ?? new AssetRequestRepository(_dbContext);
+            AssetRequestLogs = assetRequestLogs ?? new AssetRequestLogRepository(_dbContext);
+            Notifications = new NotificationRepository(_dbContext);
+            EmailTriggerEvents = emailTriggerEvents ?? new EmailTriggerEventRepository(_dbContext);
+            PermissionMaster = permissionMaster ?? new PermissionMasterRepository(_dbContext);
+            RolePermissionMappings = rolePermissionMappings ?? new RolePermissionMappingRepository(_dbContext);
+            UserPermissionMappings = userPermissionMappings ?? new UserPermissionMappingRepository(_dbContext);
         }
 
         public int Save()

@@ -29,6 +29,7 @@ builder.Services.AddScoped<ICandidateService, CandidateService>();
 builder.Services.AddScoped<ISkillService, SkillService>();
 builder.Services.AddScoped<IDesignationService, DesignationService>();
 builder.Services.AddScoped<IAssetsMasterService, AssetsMasterService>();
+builder.Services.AddScoped<IAssetRequestService, AssetRequestService>();
 builder.Services.AddScoped<IHolidayService, HolidayService>();
 builder.Services.AddScoped<IEmployeeService, EmployeeService>();
 builder.Services.AddScoped<ILeaveTypeService, LeaveTypeService>();
@@ -51,10 +52,14 @@ builder.Services.AddScoped<IResignationService, ResignationService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAttendanceLogService, AttendanceLogService>();
 builder.Services.AddScoped<ITimesheetService, TimesheetService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<IEmailTriggerEventService, EmailTriggerEventService>();
+builder.Services.AddScoped<IPermissionService, PermissionService>();
+builder.Services.AddMemoryCache();
 
 // Add context-aware services
 builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
-builder.Services.AddTransient<IUserContextService, UserContextService>();
+builder.Services.AddScoped<IUserContextService, UserContextService>();
 
 // Add Session support
 builder.Services.AddDistributedMemoryCache();

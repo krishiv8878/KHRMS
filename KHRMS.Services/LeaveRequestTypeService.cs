@@ -5,6 +5,7 @@ using KHRMS.Services.Interfaces;
 using KHRMS.Services.Request;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 
 namespace KHRMS.Services
 {
@@ -103,6 +104,33 @@ namespace KHRMS.Services
                 {
                     // Ignore email sending failure so leave submission is not blocked
                 }
+            }
+
+            try
+            {
+                await _unitOfWork.Notifications.Add(new Notification
+                {
+                    EmployeeId = 0,
+                    Title = $"New Leave Request from {employeeName}",
+                    Message = $"{employeeName} applied for leave ({leaverequest.StartDate:yyyy-MM-dd} to {leaverequest.EndDate:yyyy-MM-dd}). Reason: {leaverequest.LeaveReason ?? "Time off request"}",
+                    Category = "Leave",
+                    Type = "request",
+                    Icon = "beach_access",
+                    IconBg = "#eff6ff",
+                    IconColor = "#2563eb",
+                    Route = "/index/request",
+                    QueryParams = "tab=leave",
+                    IsRead = false,
+                    CreatedDate = DateTime.UtcNow,
+                    UpdatedDate = DateTime.UtcNow,
+                    IsActive = true,
+                    IsDeleted = false
+                });
+                _unitOfWork.Save();
+            }
+            catch
+            {
+                // Ignore notification failure so leave submission is not blocked
             }
 
             return true;
@@ -259,7 +287,89 @@ namespace KHRMS.Services
                 }
             }
 
+            try
+            {
+                await _unitOfWork.Notifications.Add(new Notification
+                {
+                    EmployeeId = leaveRequest1.EmployeeId,
+                    Title = isApprovedDecision ? "Leave Approved" : "Leave Rejected",
+                    Message = isApprovedDecision
+                        ? $"Your leave request for {leaveRequest1.StartDate:yyyy-MM-dd} to {leaveRequest1.EndDate:yyyy-MM-dd} has been approved."
+                        : $"Your leave request for {leaveRequest1.StartDate:yyyy-MM-dd} to {leaveRequest1.EndDate:yyyy-MM-dd} was rejected. Reason: {leaveRequest.RejectionReason ?? "No reason provided"}",
+                    Category = "Leave",
+                    Type = isApprovedDecision ? "approval" : "alert",
+                    Icon = isApprovedDecision ? "check_circle" : "cancel",
+                    IconBg = isApprovedDecision ? "#f0fdf4" : "#fef2f2",
+                    IconColor = isApprovedDecision ? "#16a34a" : "#dc2626",
+                    Route = "/index/leaveRequest",
+                    IsRead = false,
+                    CreatedDate = DateTime.UtcNow,
+                    UpdatedDate = DateTime.UtcNow,
+                    IsActive = true,
+                    IsDeleted = false
+                });
+                _unitOfWork.Save();
+            }
+            catch
+            {
+            }
+
             return true;
+        }
+
+        public async Task<bool> CancelLeaveRequestAsync(long leaveRequestId, string? reason, long currentUserId, bool isAdminOrManager)
+        {
+            if (leaveRequestId <= 0) return false;
+
+            var leaveRequest = await _unitOfWork.LeaveRequest.GetById(leaveRequestId);
+            if (leaveRequest == null || leaveRequest.IsDeleted == true) return false;
+
+            // Authorization: either the owner of the leave request or an Admin/HR/Manager can cancel
+            if (!isAdminOrManager && leaveRequest.EmployeeId != currentUserId && currentUserId > 0)
+            {
+                Log.Warning("User {UserId} unauthorized to cancel leave request {LeaveId} owned by employee {OwnerId}",
+                    currentUserId, leaveRequestId, leaveRequest.EmployeeId);
+                return false;
+            }
+
+            leaveRequest.Status = "Cancelled";
+            leaveRequest.ActionDate = DateTime.Now;
+            leaveRequest.ActionBy = currentUserId > 0 ? currentUserId : leaveRequest.ActionBy;
+            leaveRequest.RejectionReason = !string.IsNullOrWhiteSpace(reason) ? reason : "Cancelled by Employee";
+
+            _unitOfWork.LeaveRequest.Update(leaveRequest);
+            var result = _unitOfWork.Save();
+
+            if (result > 0)
+            {
+                try
+                {
+                    await _unitOfWork.Notifications.Add(new Notification
+                    {
+                        EmployeeId = 0,
+                        Title = "Leave Request Cancelled",
+                        Message = $"Leave request #{leaveRequest.Id} ({leaveRequest.StartDate:yyyy-MM-dd} to {leaveRequest.EndDate:yyyy-MM-dd}) was cancelled.",
+                        Category = "Leave",
+                        Type = "info",
+                        Icon = "event_busy",
+                        IconBg = "#f3f4f6",
+                        IconColor = "#6b7280",
+                        Route = "/index/request",
+                        QueryParams = "tab=leave",
+                        IsRead = false,
+                        CreatedDate = DateTime.UtcNow,
+                        UpdatedDate = DateTime.UtcNow,
+                        IsActive = true,
+                        IsDeleted = false
+                    });
+                    _unitOfWork.Save();
+                }
+                catch
+                {
+                }
+            }
+
+            return result > 0;
         }
 
         public async Task<IEnumerable<LeaveRequest>> GetAllEmployeesLeaveRequest()
@@ -336,18 +446,21 @@ namespace KHRMS.Services
             foreach (var lt in leaveTypes)
             {
                 var typeName = lt.Type ?? "Leave";
-                int totalQuota = 14; // Default standard annual leave
-                if (typeName.IndexOf("sick", StringComparison.OrdinalIgnoreCase) >= 0)
+                int totalQuota = lt.AllowedDays;
+                if (totalQuota <= 0)
                 {
-                    totalQuota = 7;
-                }
-                else if (typeName.IndexOf("casual", StringComparison.OrdinalIgnoreCase) >= 0)
-                {
-                    totalQuota = 8;
-                }
-                else if (typeName.IndexOf("unpaid", StringComparison.OrdinalIgnoreCase) >= 0 || typeName.IndexOf("loss of pay", StringComparison.OrdinalIgnoreCase) >= 0)
-                {
-                    totalQuota = 0;
+                    if (typeName.IndexOf("unpaid", StringComparison.OrdinalIgnoreCase) >= 0 || typeName.IndexOf("loss of pay", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        totalQuota = 0;
+                    }
+                    else if (typeName.IndexOf("sick", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        totalQuota = 10;
+                    }
+                    else if (typeName.IndexOf("casual", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        totalQuota = 12;
+                    }
                 }
 
                 // Filter for requests in current year

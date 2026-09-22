@@ -23,7 +23,7 @@ namespace KHRMS
         /// </summary>
         /// <returns></returns>
         [HttpGet("GetEmployees")]
-        [Authorize(Roles = "Admin,System Admin,HR,HR Operations,Manager,Management")]
+        [Authorize(Roles = "Admin,System Admin,HR,HR Operations,Manager,Management,Employee")]
         public async Task<IActionResult> GetEmployees()
         {
             Log.Information("EmployeeController - GetEmployees called.");

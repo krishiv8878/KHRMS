@@ -1,4 +1,4 @@
-﻿using KHRMS.Core;
+using KHRMS.Core;
 
 namespace KHRMS.Services
 {
@@ -90,6 +90,7 @@ namespace KHRMS.Services
                    
                     leaveTypeDetail.Description = leaveType.Description;
                     leaveTypeDetail.Type = leaveType.Type;
+                    leaveTypeDetail.AllowedDays = leaveType.AllowedDays;
                     leaveTypeDetail.UpdatedDate = DateTime.Now;
                     // ✅ Ensure IsActive status is updated
                     leaveTypeDetail.IsActive = leaveType.IsActive;

@@ -31,5 +31,11 @@ namespace KHRMS.Core
         public long? ActionBy { get; set; }
 
         public DateTime? ActionDate { get; set; }
+
+        [NotMapped]
+        public string? EmployeeName { get; set; }
+
+        [NotMapped]
+        public string? UploadedByName { get; set; }
     }
 }
