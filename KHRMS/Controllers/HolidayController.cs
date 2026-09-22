@@ -145,5 +145,52 @@ namespace KHRMS
                 Data = false
             });
         }
+
+        /// <summary>
+        /// Duplicate existing holidays from source year to target year (e.g. 2026 -> 2027)
+        /// </summary>
+        /// <param name="sourceYear"></param>
+        /// <param name="targetYear"></param>
+        /// <returns></returns>
+        [HttpPost("CopyHolidaysToNextYear")]
+        [Authorize(Roles = "Admin,System Admin,HR,HR Operations")]
+        public async Task<IActionResult> CopyHolidaysToNextYear([FromQuery] int sourceYear, [FromQuery] int targetYear)
+        {
+            Log.Information("HolidayController - CopyHolidaysToNextYear called from {SourceYear} to {TargetYear}", sourceYear, targetYear);
+            if (sourceYear <= 2000 || targetYear <= 2000 || sourceYear >= targetYear)
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = "Valid source year and target year (where target > source) are required.",
+                    Data = null
+                });
+            }
+
+            var (copiedCount, skippedCount) = await _holidayService.CopyHolidaysToYear(sourceYear, targetYear);
+
+            if (copiedCount == 0 && skippedCount == 0)
+            {
+                return Ok(new ApiResponse<object>
+                {
+                    StatusCode = (int)HttpStatusCode.OK,
+                    Message = $"No holidays found for year {sourceYear} to copy.",
+                    Data = new { copiedCount = 0, skippedCount = 0, sourceYear, targetYear }
+                });
+            }
+
+            string msg = $"{copiedCount} holidays copied to {targetYear} successfully.";
+            if (skippedCount > 0)
+            {
+                msg += $" ({skippedCount} already existed in {targetYear} and were preserved).";
+            }
+
+            return Ok(new ApiResponse<object>
+            {
+                StatusCode = (int)HttpStatusCode.OK,
+                Message = msg,
+                Data = new { copiedCount, skippedCount, sourceYear, targetYear }
+            });
+        }
     }
 }

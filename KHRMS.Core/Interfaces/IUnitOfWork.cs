@@ -35,6 +35,13 @@ namespace KHRMS.Core
         IAttendanceLogRepository AttendanceLog { get; }
         ITimesheetRepository Timesheets { get; }
         ITimesheetEntryRepository TimesheetEntries { get; }
+        IAssetRequestRepository AssetRequests { get; }
+        IAssetRequestLogRepository AssetRequestLogs { get; }
+        INotificationRepository Notifications { get; }
+        IEmailTriggerEventRepository EmailTriggerEvents { get; }
+        IPermissionMasterRepository PermissionMaster { get; }
+        IRolePermissionMappingRepository RolePermissionMappings { get; }
+        IUserPermissionMappingRepository UserPermissionMappings { get; }
         int Save();
     }
 }

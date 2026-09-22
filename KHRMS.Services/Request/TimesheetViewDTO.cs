@@ -18,6 +18,13 @@ namespace KHRMS.Services.Request
         public decimal AttendanceHours { get; set; } = 0;
         public bool IsRegularized { get; set; } = false;
         public bool IsShiftInProgress { get; set; } = false;
+        public bool IsHoliday { get; set; } = false;
+        public string? HolidayName { get; set; }
+        public bool IsOptionalHoliday { get; set; } = false;
+        public bool IsLeave { get; set; } = false;
+        public string? LeaveTypeName { get; set; }
+        public bool IsWeekend { get; set; } = false;
+        public bool IsPriorToJoining { get; set; } = false;
         public List<TimesheetTaskItemDTO> Tasks { get; set; } = new();
         public decimal DayTotalHours => Tasks.Sum(t => t.Hours);
     }

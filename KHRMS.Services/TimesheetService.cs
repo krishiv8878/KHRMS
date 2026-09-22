@@ -68,6 +68,18 @@ namespace KHRMS.Services
                 .Select(r => r.RequestedDate.Date)
                 .ToHashSet();
 
+            // Holidays
+            var allHolidays = await _unitOfWork.Holidays.GetAll();
+            var holidaysList = allHolidays.Where(h => !h.IsDeleted && h.IsActive).ToList();
+
+            // Approved Leaves
+            var allLeaves = await _unitOfWork.LeaveRequest.GetAll();
+            var approvedLeaves = allLeaves
+                .Where(l => !l.IsDeleted && l.EmployeeId == employeeId && l.Status != null && l.Status.Equals("Approved", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            var allLeaveTypes = await _unitOfWork.LeaveType.GetAll();
+            var leaveTypeDict = allLeaveTypes.ToDictionary(lt => lt.Id, lt => lt.Type ?? "Leave");
+
             // Build Day-by-Day view
             var days = new List<TimesheetDayViewDTO>();
             for (var dt = start; dt <= end; dt = dt.AddDays(1))
@@ -80,6 +92,24 @@ namespace KHRMS.Services
                 decimal attHours = dayAttendance?.TotalHours ?? dayAttendance?.EffectiveHours ?? 0m;
                 bool isRegularized = regularizedDates.Contains(curDate);
                 bool isShiftInProgress = clockIn.HasValue && !clockOut.HasValue && curDate == DateTime.UtcNow.Date;
+
+                // Holiday check
+                var holidayMatch = holidaysList.FirstOrDefault(h => h.HolidayDate.ToDateTime(TimeOnly.MinValue).Date == curDate);
+                bool isHoliday = holidayMatch != null;
+                string? holidayName = holidayMatch?.HolidayName;
+                bool isOptionalHoliday = holidayMatch?.IsOptional ?? false;
+
+                // Approved Leave check
+                var leaveMatch = approvedLeaves.FirstOrDefault(l => curDate >= l.StartDate.Date && curDate <= l.EndDate.Date);
+                bool isLeave = leaveMatch != null;
+                string? leaveTypeName = null;
+                if (leaveMatch != null)
+                {
+                    leaveTypeName = leaveTypeDict.ContainsKey(leaveMatch.LeaveTypeId) ? leaveTypeDict[leaveMatch.LeaveTypeId] : "On Leave";
+                }
+
+                bool isWeekend = curDate.DayOfWeek == DayOfWeek.Saturday || curDate.DayOfWeek == DayOfWeek.Sunday;
+                bool isPriorToJoining = employee?.DateOfJoining.HasValue == true && curDate < employee.DateOfJoining.Value.Date;
 
                 var dayTasks = entries
                     .Where(e => e.EntryDate.Date == curDate)
@@ -102,6 +132,13 @@ namespace KHRMS.Services
                     AttendanceHours = attHours,
                     IsRegularized = isRegularized,
                     IsShiftInProgress = isShiftInProgress,
+                    IsHoliday = isHoliday,
+                    HolidayName = holidayName,
+                    IsOptionalHoliday = isOptionalHoliday,
+                    IsLeave = isLeave,
+                    LeaveTypeName = leaveTypeName,
+                    IsWeekend = isWeekend,
+                    IsPriorToJoining = isPriorToJoining,
                     Tasks = dayTasks
                 });
             }
@@ -114,7 +151,7 @@ namespace KHRMS.Services
                 TimesheetId = timesheet?.Id,
                 EmployeeId = employeeId,
                 EmployeeName = employeeName,
-                PeriodType = timesheet?.PeriodType ?? "Weekly",
+                PeriodType = timesheet?.PeriodType ?? (end.Subtract(start).TotalDays > 14 ? "Monthly" : "Weekly"),
                 StartDate = start,
                 EndDate = end,
                 TotalTimesheetHours = totalTimesheetHours,
@@ -130,6 +167,22 @@ namespace KHRMS.Services
 
         public async Task<TimesheetEntryDTO> SaveEntryAsync(TimesheetEntryDTO dto, long employeeId)
         {
+            var employee = await _unitOfWork.Employees.GetById(employeeId);
+            if (employee?.DateOfJoining.HasValue == true && dto.EntryDate.Date < employee.DateOfJoining.Value.Date)
+            {
+                throw new InvalidOperationException($"Cannot log timesheet tasks for {dto.EntryDate:yyyy-MM-dd} prior to your official joining date ({employee.DateOfJoining.Value:yyyy-MM-dd}).");
+            }
+
+            // Check if user has an approved leave on this entry date
+            var allLeaves = await _unitOfWork.LeaveRequest.GetAll();
+            var leaveOnDate = allLeaves.FirstOrDefault(l => !l.IsDeleted && l.EmployeeId == employeeId && 
+                l.Status != null && l.Status.Equals("Approved", StringComparison.OrdinalIgnoreCase) &&
+                dto.EntryDate.Date >= l.StartDate.Date && dto.EntryDate.Date <= l.EndDate.Date);
+            if (leaveOnDate != null)
+            {
+                throw new InvalidOperationException($"Cannot log timesheet tasks on an approved leave date ({dto.EntryDate:yyyy-MM-dd}).");
+            }
+
             var project = await _unitOfWork.ProjectMasters.GetById(dto.ProjectId);
             var projectName = project?.ProjectName ?? "Project";
 
@@ -265,6 +318,33 @@ namespace KHRMS.Services
             }
             _unitOfWork.Save();
 
+            try
+            {
+                var empName = employee != null ? $"{employee.FirstName} {employee.LastName}".Trim() : $"Employee #{employeeId}";
+                await _unitOfWork.Notifications.Add(new Notification
+                {
+                    EmployeeId = 0,
+                    Title = "Timesheet Awaiting Review",
+                    Message = $"{empName} submitted {timesheet.PeriodType} timesheet ({timesheet.TotalHours} hrs) for {timesheet.StartDate:yyyy-MM-dd} to {timesheet.EndDate:yyyy-MM-dd}.",
+                    Category = "Timesheet",
+                    Type = "request",
+                    Icon = "more_time",
+                    IconBg = "#f3e8ff",
+                    IconColor = "#9333ea",
+                    Route = "/index/request",
+                    QueryParams = "tab=timesheet",
+                    IsRead = false,
+                    CreatedDate = DateTime.UtcNow,
+                    UpdatedDate = DateTime.UtcNow,
+                    IsActive = true,
+                    IsDeleted = false
+                });
+                _unitOfWork.Save();
+            }
+            catch
+            {
+            }
+
             return await GetPeriodTimesheetAsync(employeeId, start, end, timesheet.Id);
         }
 
@@ -303,6 +383,37 @@ namespace KHRMS.Services
 
             _unitOfWork.Timesheets.Update(timesheet);
             var result = _unitOfWork.Save();
+
+            if (result > 0)
+            {
+                try
+                {
+                    await _unitOfWork.Notifications.Add(new Notification
+                    {
+                        EmployeeId = timesheet.EmployeeId,
+                        Title = isApproved ? "Timesheet Approved" : "Timesheet Rejected",
+                        Message = isApproved 
+                            ? $"Your timesheet for {timesheet.StartDate:yyyy-MM-dd} to {timesheet.EndDate:yyyy-MM-dd} ({timesheet.TotalHours} hrs) has been approved."
+                            : $"Your timesheet for {timesheet.StartDate:yyyy-MM-dd} to {timesheet.EndDate:yyyy-MM-dd} was rejected. Reason: {dto.RejectionReason ?? "No reason provided"}",
+                        Category = "Timesheet",
+                        Type = isApproved ? "approval" : "alert",
+                        Icon = isApproved ? "check_circle" : "cancel",
+                        IconBg = isApproved ? "#f0fdf4" : "#fef2f2",
+                        IconColor = isApproved ? "#16a34a" : "#dc2626",
+                        Route = "/index/timesheet",
+                        IsRead = false,
+                        CreatedDate = DateTime.UtcNow,
+                        UpdatedDate = DateTime.UtcNow,
+                        IsActive = true,
+                        IsDeleted = false
+                    });
+                    _unitOfWork.Save();
+                }
+                catch
+                {
+                }
+            }
+
             return result > 0;
         }
     }

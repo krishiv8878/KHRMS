@@ -65,5 +65,12 @@ namespace KHRMS.Infrastructure
         public DbSet<AttendanceLog> AttendanceLog { get; set; }
         public DbSet<Timesheet> Timesheets { get; set; }
         public DbSet<TimesheetEntry> TimesheetEntries { get; set; }
+        public DbSet<AssetRequest> AssetRequests { get; set; }
+        public DbSet<AssetRequestLog> AssetRequestLogs { get; set; }
+        public DbSet<Notification> Notifications { get; set; }
+        public DbSet<EmailTriggerEvent> EmailTriggerEvents { get; set; }
+        public DbSet<PermissionMaster> PermissionMasters { get; set; }
+        public DbSet<RolePermissionMapping> RolePermissionMappings { get; set; }
+        public DbSet<UserPermissionMapping> UserPermissionMappings { get; set; }
     }
 }

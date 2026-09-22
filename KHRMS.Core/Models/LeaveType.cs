@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
 
 namespace KHRMS.Core
@@ -18,6 +18,7 @@ namespace KHRMS.Core
         [StringLength(250)]
         [Required(ErrorMessage = "Leave Description is required")]
         public string? Description { get; set; }
-        
+
+        public int AllowedDays { get; set; } = 0;
     }
 }

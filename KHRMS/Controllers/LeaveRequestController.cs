@@ -249,6 +249,55 @@ namespace KHRMS
             }
         }
 
+        [HttpPost("CancelLeaveRequest")]
+        public async Task<IActionResult> CancelLeaveRequest([FromBody] CancelLeaveRequestDto dto)
+        {
+            if (dto == null || dto.LeaveRequestId <= 0)
+            {
+                return BadRequest(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = "Invalid leave cancellation payload.",
+                    Data = false
+                });
+            }
+
+            try
+            {
+                var userContext = HttpContext.RequestServices.GetService<IUserContextService>();
+                var currentUserId = userContext?.GetCurrentEmployeeId() ?? 0;
+                var isAdminOrManager = userContext != null && (userContext.IsAdmin() || userContext.IsHR() || userContext.IsManager());
+
+                var result = await _leaveRequestTypeService.CancelLeaveRequestAsync(dto.LeaveRequestId, dto.Reason, currentUserId, isAdminOrManager);
+                if (!result)
+                {
+                    return BadRequest(new ApiResponse<bool>
+                    {
+                        StatusCode = (int)HttpStatusCode.BadRequest,
+                        Message = "Failed to cancel leave request. Record not found or unauthorized.",
+                        Data = false
+                    });
+                }
+
+                return Ok(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.OK,
+                    Message = "Leave request cancelled successfully.",
+                    Data = true
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error cancelling leave request ID: {Id}", dto.LeaveRequestId);
+                return StatusCode(500, new ApiResponse<string>
+                {
+                    StatusCode = 500,
+                    Message = "Internal server error while cancelling leave request.",
+                    Data = null
+                });
+            }
+        }
+
         [HttpGet("GetEmployeeLeaveBalance/{employeeId?}")]
         public async Task<IActionResult> GetEmployeeLeaveBalance(long? employeeId = null)
         {
@@ -273,6 +322,12 @@ namespace KHRMS
                 });
             }
         }
+    }
+
+    public class CancelLeaveRequestDto
+    {
+        public long LeaveRequestId { get; set; }
+        public string? Reason { get; set; }
     }
 }
 

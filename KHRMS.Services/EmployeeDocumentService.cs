@@ -18,12 +18,61 @@ namespace KHRMS.Services
 
         public async Task<IEnumerable<EmployeeDocumentInfo>> GetAllAsync()
         {
-            return await _unitOfWork.EmployeementDocument.GetAll();
+            var docs = (await _unitOfWork.EmployeementDocument.GetAll()).ToList();
+            var empIds = docs.Select(d => d.EmployeeId).Union(docs.Select(d => d.UploadedBy)).Where(id => id > 0).Distinct().ToList();
+            if (empIds.Count != 0)
+            {
+                var employees = (await _unitOfWork.Employees.GetAll())
+                    .Where(e => empIds.Contains(e.Id))
+                    .ToDictionary(e => e.Id, e => $"{e.FirstName} {e.LastName}".Trim());
+
+                foreach (var doc in docs)
+                {
+                    if (employees.TryGetValue(doc.EmployeeId, out var name) && !string.IsNullOrWhiteSpace(name))
+                    {
+                        doc.EmployeeName = name;
+                    }
+                    else if (employees.TryGetValue(doc.UploadedBy, out var upName) && !string.IsNullOrWhiteSpace(upName))
+                    {
+                        doc.EmployeeName = upName;
+                    }
+                    else
+                    {
+                        doc.EmployeeName = $"Employee #{doc.EmployeeId}";
+                    }
+
+                    if (employees.TryGetValue(doc.UploadedBy, out var uName))
+                    {
+                        doc.UploadedByName = uName;
+                    }
+                }
+            }
+            return docs;
         }
 
         public async Task<EmployeeDocumentInfo> GetByIdAsync(long id)
         {
-            return await _unitOfWork.EmployeementDocument.GetById(id);
+            var doc = await _unitOfWork.EmployeementDocument.GetById(id);
+            if (doc != null)
+            {
+                if (doc.EmployeeId > 0)
+                {
+                    var emp = await _unitOfWork.Employees.GetById(doc.EmployeeId);
+                    if (emp != null)
+                    {
+                        doc.EmployeeName = $"{emp.FirstName} {emp.LastName}".Trim();
+                    }
+                }
+                if (doc.UploadedBy > 0)
+                {
+                    var upEmp = await _unitOfWork.Employees.GetById(doc.UploadedBy);
+                    if (upEmp != null)
+                    {
+                        doc.UploadedByName = $"{upEmp.FirstName} {upEmp.LastName}".Trim();
+                    }
+                }
+            }
+            return doc;
         }
 
         public async Task AddAsync(EmployeeDocumentInfo document)

@@ -42,6 +42,12 @@ namespace KHRMS.Infrastructure
             services.AddScoped<IAttendanceLogRepository, AttendanceLogRepository>();
             services.AddScoped<ITimesheetRepository, TimesheetRepository>();
             services.AddScoped<ITimesheetEntryRepository, TimesheetEntryRepository>();
+            services.AddScoped<IAssetRequestRepository, AssetRequestRepository>();
+            services.AddScoped<IAssetRequestLogRepository, AssetRequestLogRepository>();
+            services.AddScoped<IEmailTriggerEventRepository, EmailTriggerEventRepository>();
+            services.AddScoped<IPermissionMasterRepository, PermissionMasterRepository>();
+            services.AddScoped<IRolePermissionMappingRepository, RolePermissionMappingRepository>();
+            services.AddScoped<IUserPermissionMappingRepository, UserPermissionMappingRepository>();
             return services;
         }
     }

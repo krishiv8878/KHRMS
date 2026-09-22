@@ -12,6 +12,7 @@ namespace KHRMS.Services
         Task<bool> UpdateLeaveRequestType(LeaveRequest leaveRequest);
         Task<bool> DeleteLeaveRequestType(long LeaveRequestTypeId);
         Task<bool> ApproveLeaveRequestAsync(ApproveLeaveRequest leaveRequest);
+        Task<bool> CancelLeaveRequestAsync(long leaveRequestId, string? reason, long currentUserId, bool isAdminOrManager);
         public Task<IEnumerable<LeaveRequest>> GetAllEmployeesLeaveRequest();
         Task<IEnumerable<EmployeeLeaveBalanceDto>> GetEmployeeLeaveBalances(long? employeeId = null);
     }

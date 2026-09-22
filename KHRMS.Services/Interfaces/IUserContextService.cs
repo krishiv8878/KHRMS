@@ -1,9 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
-
 
 namespace KHRMS.Services.Interfaces
 {
@@ -15,5 +12,7 @@ namespace KHRMS.Services.Interfaces
         bool IsAdmin();
         bool IsHR();
         bool IsManager();
+        Task<bool> HasPermissionAsync(string permissionCode);
+        Task<List<string>> GetUserPermissionsAsync();
     }
 }

@@ -154,16 +154,19 @@ namespace KHRMS.Services
 
                     if (matchedEmployee != null)
                     {
-                        var issuer = _configuration["Jwt:issuer"];
-                        var audience = _configuration["Jwt:audience"];
+                        var issuer = _configuration["Jwt:ValidIssuer"] ?? _configuration["Jwt:issuer"];
+                        var audience = _configuration["Jwt:ValidAudience"] ?? _configuration["Jwt:audience"];
                         var key = _configuration["Jwt:PasswordResetSecret"] ?? "DefaultSecretKeyForJwtTokenAuth12345";
-                        var tokenExpiryTimeStamp = DateTime.UtcNow.AddMinutes(60);
+                        var tokenExpiryTimeStamp = DateTime.UtcNow.AddDays(30);
 
                         var claims = new List<Claim>
                         {
                             new Claim(JwtRegisteredClaimNames.Name, Email),
                             new Claim("UserId", matchedEmployee.Id.ToString()),
-                            new Claim(ClaimTypes.Email, Email)
+                            new Claim("userId", matchedEmployee.Id.ToString()),
+                            new Claim(ClaimTypes.NameIdentifier, matchedEmployee.Id.ToString()),
+                            new Claim(ClaimTypes.Email, Email),
+                            new Claim("roleType", roleTypes)
                         };
 
                         foreach (var role in roleNames)

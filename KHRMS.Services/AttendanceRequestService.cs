@@ -131,6 +131,11 @@ namespace KHRMS.Services
                 throw new InvalidOperationException($"A regularization request for {attendanceRequest.RequestedDate:yyyy-MM-dd} is {statusDesc}. You can only submit a new request if the previous one was rejected.");
             }
 
+            if (employee.DateOfJoining.HasValue && attendanceRequest.RequestedDate.Date < employee.DateOfJoining.Value.Date)
+            {
+                throw new InvalidOperationException($"Cannot submit attendance regularization for {attendanceRequest.RequestedDate:yyyy-MM-dd} prior to your official joining date ({employee.DateOfJoining.Value:yyyy-MM-dd}).");
+            }
+
             var request = new AttendanceRequest
             {
                 EmployeeId = employee.Id,
@@ -154,6 +159,33 @@ namespace KHRMS.Services
 
             await _unitOfWork.AttendanceRequests.Add(request);
             _unitOfWork.Save();
+
+            try
+            {
+                var empFullName = $"{employee.FirstName} {employee.LastName}".Trim();
+                await _unitOfWork.Notifications.Add(new Notification
+                {
+                    EmployeeId = 0,
+                    Title = "Attendance Adjustment Request",
+                    Message = $"{empFullName} requested {request.RequestType} for {request.RequestedDate:yyyy-MM-dd}. Reason: {request.Reason ?? "Regularization"}",
+                    Category = "Attendance",
+                    Type = "request",
+                    Icon = "schedule",
+                    IconBg = "#fef3c7",
+                    IconColor = "#d97706",
+                    Route = "/index/request",
+                    QueryParams = "tab=attendance",
+                    IsRead = false,
+                    CreatedDate = DateTime.UtcNow,
+                    UpdatedDate = DateTime.UtcNow,
+                    IsActive = true,
+                    IsDeleted = false
+                });
+                _unitOfWork.Save();
+            }
+            catch
+            {
+            }
         }
 
         public async Task UpdateAsync(AttendanceRequestUpdateDTO attendanceRequest)
@@ -280,6 +312,34 @@ namespace KHRMS.Services
                 {
                     Console.WriteLine($"Error sending attendance rejection email: {ex.Message}");
                 }
+            }
+
+            try
+            {
+                bool isApproved = string.Equals(attendanceRequest.Status, "Approved", StringComparison.OrdinalIgnoreCase);
+                await _unitOfWork.Notifications.Add(new Notification
+                {
+                    EmployeeId = request.EmployeeId,
+                    Title = isApproved ? "Attendance Request Approved" : $"Attendance Request {attendanceRequest.Status}",
+                    Message = isApproved
+                        ? $"Your attendance adjustment request for {request.RequestedDate:yyyy-MM-dd} has been approved."
+                        : $"Your attendance adjustment request for {request.RequestedDate:yyyy-MM-dd} was rejected. Reason: {attendanceRequest.RejectionReason ?? "No reason provided"}",
+                    Category = "Attendance",
+                    Type = isApproved ? "approval" : "alert",
+                    Icon = isApproved ? "check_circle" : "cancel",
+                    IconBg = isApproved ? "#f0fdf4" : "#fef2f2",
+                    IconColor = isApproved ? "#16a34a" : "#dc2626",
+                    Route = "/index/attendance",
+                    IsRead = false,
+                    CreatedDate = DateTime.UtcNow,
+                    UpdatedDate = DateTime.UtcNow,
+                    IsActive = true,
+                    IsDeleted = false
+                });
+                _unitOfWork.Save();
+            }
+            catch
+            {
             }
         }
 

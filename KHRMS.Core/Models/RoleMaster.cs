@@ -1,8 +1,9 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace KHRMS.Core
 {
+    [Table("RoleMasters")]
     public class RoleMaster : KHRMSBase
     {
         [Key]

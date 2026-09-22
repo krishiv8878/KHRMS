@@ -1,4 +1,4 @@
-﻿using KHRMS.Core;
+using KHRMS.Core;
 
 namespace KHRMS.Services
 {
@@ -9,5 +9,6 @@ namespace KHRMS.Services
         Task<Holiday> GetHolidayById(int holidayId);
         Task<bool> UpdateHoliday(Holiday holiday);
         Task<bool> DeleteHoliday(long holidayId);
+        Task<(int copiedCount, int skippedCount)> CopyHolidaysToYear(int sourceYear, int targetYear);
     }
 }
