@@ -1,5 +1,6 @@
 using KHRMS.Core;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace KHRMS.Services.Request
 {
@@ -109,6 +110,7 @@ namespace KHRMS.Services.Request
         public string? Branch { get; set; }
         public DateTime? DateOfBirth { get; set; }
 
+        [JsonConverter(typeof(FlexibleBoolConverter))]
         public bool? ProfileCompleted { get; set; } = true;
         public string? ClientUrl {  get; set; }
 

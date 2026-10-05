@@ -20,9 +20,41 @@ namespace KHRMS.Services
             _userContextService = userContextService;
         }
 
+        private async Task<bool> IsApproverUser(long employeeId)
+        {
+            if (_userContextService.IsAdmin() || _userContextService.IsHR() || _userContextService.IsManager())
+            {
+                return true;
+            }
+
+            if (employeeId > 0)
+            {
+                try
+                {
+                    var adminRoles = new[] { "Admin", "System Admin", "HR", "HR Operations", "Manager", "Management" };
+                    var empRoles = await _unitOfWork.EmployeeRoleMappings.GetAll();
+                    var roles = await _unitOfWork.RoleMaster.GetAll();
+                    var userRoles = from erm in empRoles
+                                    join r in roles on erm.RoleId equals r.Id
+                                    where erm.EmployeeId == employeeId && erm.IsActive == true && erm.IsDeleted != true
+                                    select r.RoleName;
+                    if (userRoles.Any(r => adminRoles.Contains(r, StringComparer.OrdinalIgnoreCase)))
+                    {
+                        return true;
+                    }
+                }
+                catch
+                {
+                    // Fall back to false if lookup fails
+                }
+            }
+
+            return false;
+        }
+
         public async Task<IEnumerable<Notification>> GetNotifications(long employeeId)
         {
-            bool isApprover = _userContextService.IsAdmin() || _userContextService.IsHR() || _userContextService.IsManager();
+            bool isApprover = await IsApproverUser(employeeId);
             var all = await _unitOfWork.Notifications.GetByEmployeeId(employeeId);
             if (!isApprover)
             {
@@ -33,7 +65,7 @@ namespace KHRMS.Services
 
         public async Task<int> GetUnreadCount(long employeeId)
         {
-            bool isApprover = _userContextService.IsAdmin() || _userContextService.IsHR() || _userContextService.IsManager();
+            bool isApprover = await IsApproverUser(employeeId);
             if (!isApprover)
             {
                 var userNotifs = await _unitOfWork.Notifications.GetByEmployeeId(employeeId);
@@ -54,7 +86,8 @@ namespace KHRMS.Services
 
         public async Task<bool> MarkAllAsRead(long employeeId)
         {
-            var res = await _unitOfWork.Notifications.MarkAllAsRead(employeeId);
+            bool isApprover = await IsApproverUser(employeeId);
+            var res = await _unitOfWork.Notifications.MarkAllAsRead(employeeId, isApprover);
             if (res)
             {
                 _unitOfWork.Save();
@@ -74,7 +107,8 @@ namespace KHRMS.Services
 
         public async Task<bool> ClearAllNotifications(long employeeId)
         {
-            var res = await _unitOfWork.Notifications.ClearAllNotifications(employeeId);
+            bool isApprover = await IsApproverUser(employeeId);
+            var res = await _unitOfWork.Notifications.ClearAllNotifications(employeeId, isApprover);
             if (res)
             {
                 _unitOfWork.Save();

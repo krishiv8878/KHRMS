@@ -1,4 +1,4 @@
-﻿using KHRMS.Core;
+using KHRMS.Core;
 using Microsoft.EntityFrameworkCore;
 
 namespace KHRMS.Infrastructure
@@ -39,10 +39,10 @@ namespace KHRMS.Infrastructure
 
         public async Task DeleteAsync(long id)
         {
-            var attendanceRequest = await _dbContext.AttendanceRequests.FindAsync(id);
-            if (attendanceRequest != null)
+            var entity = await _dbContext.Set<T>().FindAsync(id);
+            if (entity != null)
             {
-                _dbContext.AttendanceRequests.Remove(attendanceRequest);
+                _dbContext.Set<T>().Remove(entity);
             }
         }
 

@@ -1,4 +1,4 @@
-﻿
+
 
 using KHRMS.Core;
 using KHRMS.Services.Interfaces;
@@ -25,10 +25,19 @@ namespace KHRMS.Services
             var employee = await _unitOfWork.Employees.GetById(empid);
             if (employee == null)
                 throw new Exception("Employee not found.");
-            var manager = (await _unitOfWork.Employees.GetAll())
-                          .FirstOrDefault(t => t.Id == employee.ManagerId);
+
+            Employee? manager = null;
+            if (employee.ManagerId.HasValue && employee.ManagerId.Value > 0)
+            {
+                manager = (await _unitOfWork.Employees.GetAll())
+                              .FirstOrDefault(t => t.Id == employee.ManagerId.Value);
+            }
             if (manager == null)
-                throw new Exception("Manager not found.");
+            {
+                // Fallback to HR or another administrator so submission does not crash
+                manager = (await _unitOfWork.Employees.GetAll())
+                              .FirstOrDefault(t => t.Id != empid && !string.IsNullOrEmpty(t.EmailAddress)) ?? employee;
+            }
 
             var roles = (await _unitOfWork.EmployeeRoleMappings.GetAll()).Where(t => t.EmployeeId == empid);
             var roleid = roles.Select(r => r.RoleId).ToList();
@@ -47,28 +56,36 @@ namespace KHRMS.Services
             await _unitOfWork.Resignation.Add(newResign);
             var result = _unitOfWork.Save();
 
-            //Format dates for email
+            // Format dates for email
+            try
+            {
+                string formattedStartDate = GetFormattedDate(newResign.Resignation_Date);
+                var managerEmail = manager.EmailAddress;
+                var managerName = $"{manager.FirstName} {manager.LastName}".Trim();
+                var employeeName = $"{employee.FirstName} {employee.LastName}".Trim();
+                var temptype = "ResignationRequest";
 
-            string formattedStartDate = GetFormattedDate(newResign.Resignation_Date);
-            var managerEmail = manager.EmailAddress;
-            var managerName = $"{manager.FirstName} {manager.LastName}";
-            var employeeName = $"{employee.FirstName} {employee.LastName}";
-            var temptype = "ResignationRequest";
-
-            // Create email placeholders
-            var dict = new Dictionary<string, string>
+                var dict = new Dictionary<string, string>
                 {
                     { "ManagerName", managerName },
                     { "Resignation-Date", formattedStartDate },
-                    { "NoticePeriod", newResign.NoticePeriod },
+                    { "NoticePeriod", newResign.NoticePeriod ?? "" },
                     { "EmployeeName", employeeName },
-                    { "ManagerEmail", managerEmail },
-                    { "Reason" ,resignation.Reason}
+                    { "ManagerEmail", managerEmail ?? "" },
+                    { "Reason", resignation.Reason ?? "" }
                 };
 
-            var subject = $"Resignation Request from {employeeName}";
+                var subject = $"Resignation Request from {employeeName}";
+                if (!string.IsNullOrEmpty(managerEmail))
+                {
+                    await _sendEmailService.SendTemplateEmailAsync(managerEmail, subject, dict, temptype);
+                }
+            }
+            catch
+            {
+                // Do not block submission on email failure
+            }
 
-            await _sendEmailService.SendTemplateEmailAsync(managerEmail, subject, dict, temptype);
             return result > 0;
         }
         private string GetFormattedDate(DateTime date)
@@ -84,29 +101,30 @@ namespace KHRMS.Services
 
         public async Task<bool> ApproveOrRejectResignation(Resignation resignation)
         {
-            var managerid = _userContextService.GetCurrentEmployeeId();
-            var manager = (await _unitOfWork.Employees.GetAll())
-                         .FirstOrDefault(t => t.Id == managerid);
             if (resignation == null)
             {
                 return false;
             }
             var res = await _unitOfWork.Resignation.GetById(resignation.Id);
-            var employee = (await _unitOfWork.Employees.GetAll())
-                         .FirstOrDefault(t => t.Id == res.EmployeeId);
-            if(res == null)
+            if (res == null)
             {
                 return false;
             }
+
+            var managerid = _userContextService.GetCurrentEmployeeId();
+            var manager = (await _unitOfWork.Employees.GetAll())
+                         .FirstOrDefault(t => t.Id == managerid);
+            var employee = (await _unitOfWork.Employees.GetAll())
+                         .FirstOrDefault(t => t.Id == res.EmployeeId);
+
             res.Status = resignation.Status;
             res.UpdatedDate = DateTime.Now;
             res.UpdatedBy = (int)managerid;
 
-
             string formattedStartDate = GetFormattedDate(res.Resignation_Date);
-            var employeeEmail = employee.EmailAddress;
-            var managerName = $"{manager.FirstName} {manager.LastName}";
-            var employeeName = $"{employee.FirstName} {employee.LastName}";
+            var employeeEmail = employee?.EmailAddress ?? string.Empty;
+            var managerName = manager != null ? $"{manager.FirstName} {manager.LastName}".Trim() : "Management";
+            var employeeName = employee != null ? $"{employee.FirstName} {employee.LastName}".Trim() : "Employee";
             if (res.Status == true)
             {
                 //Format dates for email

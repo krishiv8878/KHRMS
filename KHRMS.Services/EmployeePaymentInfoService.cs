@@ -76,12 +76,10 @@ namespace KHRMS.Services
             _unitOfWork.Save();
         }
 
-        public Task DeleteAsync(long id)
+        public async Task DeleteAsync(long id)
         {
-            unitOfWork.EmployeePaymentInfo.DeleteAsync(id);
-           _unitOfWork.Save();
-            return Task.CompletedTask;
-
+            await _unitOfWork.EmployeePaymentInfo.DeleteAsync(id);
+            _unitOfWork.Save();
         }
 
     }

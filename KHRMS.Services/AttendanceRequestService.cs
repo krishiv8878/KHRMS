@@ -343,11 +343,10 @@ namespace KHRMS.Services
             }
         }
 
-        public Task DeleteAsync(long id)
+        public async Task DeleteAsync(long id)
         {
-            _unitOfWork.AttendanceRequests.DeleteAsync(id);
-            var result = _unitOfWork.Save();
-            return Task.CompletedTask;
+            await _unitOfWork.AttendanceRequests.DeleteAsync(id);
+            _unitOfWork.Save();
         }
     }
 }

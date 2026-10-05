@@ -20,7 +20,6 @@ namespace KHRMS.Infrastructure
         public DbSet<LeaveType> LeaveType { get; set; }
         public DbSet<UserLogin> UserLogins { get; set; }
 
-        public DbSet<Resignation> Resignations { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -47,6 +46,37 @@ namespace KHRMS.Infrastructure
                     v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
                     v => JsonSerializer.Deserialize<List<long>>(v, (JsonSerializerOptions)null)
                  ).HasColumnType("nvarchar(max)");
+
+            // Explicitly ignore IsDeleted on Email if Emails table does not have IsDeleted column
+            modelBuilder.Entity<Email>().Ignore(e => e.IsDeleted);
+
+            // Global Query Filter: Automatically exclude soft-deleted records across all KHRMSBase entities
+            foreach (var entityType in modelBuilder.Model.GetEntityTypes().ToList())
+            {
+                if (entityType.ClrType != null && typeof(KHRMSBase).IsAssignableFrom(entityType.ClrType))
+                {
+                    // Skip entities where IsDeleted is not mapped in the database table (e.g. Email)
+                    if (entityType.ClrType == typeof(Email))
+                    {
+                        continue;
+                    }
+
+                    var isDeletedProperty = entityType.FindProperty(nameof(KHRMSBase.IsDeleted));
+                    if (isDeletedProperty != null)
+                    {
+                        var parameter = System.Linq.Expressions.Expression.Parameter(entityType.ClrType, "e");
+                        var property = System.Linq.Expressions.Expression.Property(
+                            System.Linq.Expressions.Expression.Convert(parameter, typeof(KHRMSBase)), 
+                            nameof(KHRMSBase.IsDeleted)
+                        );
+                        var falseConstant = System.Linq.Expressions.Expression.Constant(false);
+                        var comparison = System.Linq.Expressions.Expression.Equal(property, falseConstant);
+                        var lambda = System.Linq.Expressions.Expression.Lambda(comparison, parameter);
+
+                        modelBuilder.Entity(entityType.ClrType).HasQueryFilter(lambda);
+                    }
+                }
+            }
         }
         public DbSet<ProjectMaster> ProjectMasters { get; set; }
         public DbSet<UserRegistration> UserRegistrations { get; set; }
