@@ -102,5 +102,37 @@ namespace KHRMS.Infrastructure
         public DbSet<PermissionMaster> PermissionMasters { get; set; }
         public DbSet<RolePermissionMapping> RolePermissionMappings { get; set; }
         public DbSet<UserPermissionMapping> UserPermissionMappings { get; set; }
+
+        // Payroll Management
+        public DbSet<SalaryComponent> SalaryComponents { get; set; }
+        public DbSet<SalaryStructure> SalaryStructures { get; set; }
+        public DbSet<EmployeeSalaryAssignment> EmployeeSalaryAssignments { get; set; }
+        public DbSet<PayRun> PayRuns { get; set; }
+        public DbSet<PayRunEmployeeDetail> PayRunEmployeeDetails { get; set; }
+        public DbSet<Payslip> Payslips { get; set; }
+        public DbSet<ReimbursementClaim> ReimbursementClaims { get; set; }
+        public DbSet<FullAndFinalSettlement> FullAndFinalSettlements { get; set; }
+
+        // Performance Management System (PMS)
+        public DbSet<PmsGoal> PmsGoals { get; set; }
+        public DbSet<PmsKeyResult> PmsKeyResults { get; set; }
+        public DbSet<PmsGoalCheckIn> PmsGoalCheckIns { get; set; }
+        public DbSet<PmsReviewCycle> PmsReviewCycles { get; set; }
+        public DbSet<PmsAppraisal> PmsAppraisals { get; set; }
+        public DbSet<PmsFeedback> PmsFeedbacks { get; set; }
+        public DbSet<PmsOneOnOne> PmsOneOnOnes { get; set; }
+        public DbSet<PmsPip> PmsPips { get; set; }
+
+        // Expense & Travel Management
+        public DbSet<ExpenseCategory> ExpenseCategories { get; set; }
+        public DbSet<ExpenseReport> ExpenseReports { get; set; }
+        public DbSet<ExpenseItem> ExpenseItems { get; set; }
+        public DbSet<ExpenseMileage> ExpenseMileages { get; set; }
+        public DbSet<ExpenseAdvance> ExpenseAdvances { get; set; }
+
+        // Recruitment & ATS Management
+        public DbSet<JobRequisition> JobRequisitions { get; set; }
+        public DbSet<JobInterview> JobInterviews { get; set; }
+        public DbSet<JobOffer> JobOffers { get; set; }
     }
 }

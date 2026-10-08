@@ -222,7 +222,14 @@ namespace KHRMS.Services
                 DateTime outTime = request.ClockOutTime ?? (attendanceRequest.clockOut.HasValue && attendanceRequest.clockOut.Value != DateTime.MinValue ? attendanceRequest.clockOut.Value : inTime);
 
                 decimal duration = (decimal)(outTime - inTime).TotalHours;
-                if (duration < 0) duration = 0;
+                if (duration <= 0)
+                {
+                    duration = 8.5m;
+                    if (outTime <= inTime)
+                    {
+                        outTime = inTime.AddHours(9);
+                    }
+                }
 
                 var existingAttendance = (await _unitOfWork.EmployeeAttendance.GetAll())
                     .FirstOrDefault(r => r.EmployeeId == request.EmployeeId && r.AttendanceDate == requestedDateOnly);
@@ -273,12 +280,29 @@ namespace KHRMS.Services
                     var manager = await _unitOfWork.Employees.GetById(actionById);
                     if (employee != null && !string.IsNullOrEmpty(employee.EmailAddress))
                     {
+                        TimeZoneInfo istZone;
+                        try
+                        {
+                            istZone = TimeZoneInfo.FindSystemTimeZoneById("India Standard Time");
+                        }
+                        catch
+                        {
+                            istZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Kolkata");
+                        }
+
+                        DateTime inTimeIst = inTime.Kind == DateTimeKind.Utc 
+                            ? TimeZoneInfo.ConvertTimeFromUtc(inTime, istZone) 
+                            : TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(inTime, DateTimeKind.Utc), istZone);
+                        DateTime outTimeIst = outTime.Kind == DateTimeKind.Utc 
+                            ? TimeZoneInfo.ConvertTimeFromUtc(outTime, istZone) 
+                            : TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(outTime, DateTimeKind.Utc), istZone);
+
                         var dict = new Dictionary<string, string>
                         {
                             { "EmployeeName", $"{employee.FirstName} {employee.LastName}" },
                             { "Date", request.RequestedDate.ToString("yyyy-MM-dd") },
-                            { "InTime", inTime.ToString("hh:mm tt") },
-                            { "OutTime", outTime.ToString("hh:mm tt") },
+                            { "InTime", inTimeIst.ToString("hh:mm tt") },
+                            { "OutTime", outTimeIst.ToString("hh:mm tt") },
                             { "ManagerName", manager != null ? $"{manager.FirstName} {manager.LastName}" : "Manager" }
                         };
                         await _emailService.SendTemplateEmailAsync(employee.EmailAddress, "Attendance Regularization Approved", dict, "RegularizationRequestApproved");

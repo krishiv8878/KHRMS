@@ -244,12 +244,35 @@ namespace KHRMS.Services
                 var manager = await _unitOfWork.Employees.GetById(managerId);
                 if (manager != null && !string.IsNullOrEmpty(manager.EmailAddress))
                 {
+                    TimeZoneInfo istZone;
+                    try
+                    {
+                        istZone = TimeZoneInfo.FindSystemTimeZoneById("India Standard Time");
+                    }
+                    catch
+                    {
+                        istZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Kolkata");
+                    }
+
+                    DateTime inTimeIst = attendance.ClockIn.Kind == DateTimeKind.Utc 
+                        ? TimeZoneInfo.ConvertTimeFromUtc(attendance.ClockIn, istZone) 
+                        : TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(attendance.ClockIn, DateTimeKind.Utc), istZone);
+
+                    string outTimeStr = "--";
+                    if (attendance.ClockOut.HasValue)
+                    {
+                        DateTime outTimeIst = attendance.ClockOut.Value.Kind == DateTimeKind.Utc 
+                            ? TimeZoneInfo.ConvertTimeFromUtc(attendance.ClockOut.Value, istZone) 
+                            : TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(attendance.ClockOut.Value, DateTimeKind.Utc), istZone);
+                        outTimeStr = outTimeIst.ToString("hh:mm tt");
+                    }
+
                     var dict = new Dictionary<string, string>
                     {
                         { "ManagerName", $"{manager.FirstName} {manager.LastName}".Trim() },
                         { "Date", request.RequestedDate.ToString("dd-MM-yyyy") },
-                        { "InTime", attendance.ClockIn.ToString("hh:mm tt") },
-                        { "OutTime", attendance.ClockOut?.ToString("hh:mm tt") ?? "--" },
+                        { "InTime", inTimeIst.ToString("hh:mm tt") },
+                        { "OutTime", outTimeStr },
                         { "EmployeeName", $"{employee.FirstName} {employee.LastName}".Trim() },
                         { "ManagerEmail", manager.EmailAddress },
                         { "RegularizationReason", attendance.RegularizationReason ?? "Regularization Request" }

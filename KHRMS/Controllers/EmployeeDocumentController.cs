@@ -1,3 +1,4 @@
+using KHRMS.Authorization;
 using KHRMS.Core;
 using KHRMS.Core.Models;
 using KHRMS.Infrastructure;
@@ -327,7 +328,7 @@ namespace KHRMS
         /// <summary>
         /// Approves or rejects an employee document submission.
         /// </summary>
-        [Authorize(Roles = "Admin,System Admin,HR,HR Operations")]
+        [RequirePermission("EMPLOYEE_DOCUMENTS_MANAGE")]
         [HttpPost("ApproveOrRejectDocument")]
         public async Task<IActionResult> ApproveOrRejectDocument([FromBody] DocumentApprovalDTO dto)
         {
