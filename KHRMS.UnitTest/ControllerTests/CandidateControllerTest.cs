@@ -1,6 +1,7 @@
 ﻿using KHRMS.Controllers;
 using KHRMS.Core;
 using KHRMS.Services;
+using KHRMS.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using Xunit;
@@ -10,11 +11,12 @@ namespace KHRMS.UnitTest.ControllerTests
     public class CandidateControllerTest
     {
         private readonly Mock<ICandidateService> _mock;
+        private readonly Mock<IRecruitmentService> _mock2;
         private readonly CandidateController _controller;
         public CandidateControllerTest()
         {
             _mock = new Mock<ICandidateService>();
-            _controller = new CandidateController(_mock.Object);
+            _controller = new CandidateController(_mock.Object,_mock2.Object);
         }
 
         [Fact]

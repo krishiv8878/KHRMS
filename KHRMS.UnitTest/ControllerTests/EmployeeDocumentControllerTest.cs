@@ -1,4 +1,4 @@
-﻿using KHRMS.Core;
+using KHRMS.Core;
 using KHRMS.Infrastructure;
 using KHRMS.Services;
 using Microsoft.AspNetCore.Http;
@@ -17,7 +17,7 @@ namespace KHRMS.UnitTest.ControllerTests
         public EmployeeDocumentControllerTest()
         {
             _mockService = new Mock<IEmployeeDocumentService>();
-            _controller = new EmployeeDocumentController(_mockService.Object, Mock.Of<ILogger<EmployeeDocumentController>>());
+            _controller = new EmployeeDocumentController(_mockService.Object, Mock.Of<ILogger<EmployeeDocumentController>>(), Mock.Of<IUnitOfWork>());
         }
 
         [Fact]

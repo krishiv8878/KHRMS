@@ -1,3 +1,4 @@
+using KHRMS.Authorization;
 using KHRMS.Core;
 using KHRMS.Core.Models;
 using KHRMS.Infrastructure;
@@ -16,12 +17,14 @@ namespace KHRMS
     [Authorize]
     [Route("api/[controller]")]
     [ApiController]
-    public class LeaveRequestController(ILeaveRequestTypeService leaveRequestTypeService, IHttpContextAccessor httpContextAccessor) : ControllerBase
+    public class LeaveRequestController(ILeaveRequestTypeService leaveRequestTypeService, IHttpContextAccessor httpContextAccessor, IUserContextService userContextService) : ControllerBase
     {
         public readonly ILeaveRequestTypeService _leaveRequestTypeService = leaveRequestTypeService;
-        private readonly IUserContextService _userContext; public readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
+        public readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
+        private readonly IUserContextService _userContext = userContextService;
 
         [HttpGet("GetAllLeaveRequest")]
+        [RequirePermission("LEAVE_APPLY_SELF")]
         public async Task<IActionResult> GetAll()
         {
             
@@ -39,6 +42,16 @@ namespace KHRMS
                 });
             }
 
+            var canViewAll = await _userContext.HasPermissionAsync("LEAVE_VIEW_ALL");
+            if (!canViewAll)
+            {
+                var currentEmpId = _userContext.GetCurrentEmployeeId();
+                if (currentEmpId > 0)
+                {
+                    result = result.Where(r => r.EmployeeId == currentEmpId);
+                }
+            }
+
             Log.Information("LeaveRequestController - {Count} leave requests found.", result.Count());
             return Ok(new ApiResponse<List<LeaveReqestModel>>
             {
@@ -50,7 +63,7 @@ namespace KHRMS
 
 
         [HttpGet("GetAllEmployeesLeaveRequest")]
-        [Authorize(Roles = "Admin,System Admin,HR,HR Operations,Manager,Management")]
+        [RequirePermission("LEAVE_VIEW_ALL")]
         public async Task<IActionResult> GetAllEmployeesLeaveRequest()
         {
             var result = await _leaveRequestTypeService.GetAllEmployeesLeaveRequest( );
@@ -104,6 +117,7 @@ namespace KHRMS
 
 
         [HttpPost("AddLeaveRequest")]
+        [RequirePermission("LEAVE_APPLY_SELF")]
         public async Task<IActionResult> Create([FromBody] LeaveRequest leaveRequest)
         {
             Log.Information("LeaveRequestController - AddLeaveRequest called.");
@@ -170,7 +184,7 @@ namespace KHRMS
 
 
         [HttpDelete("DeleteLeaveRequest/{id}")]
-        [Authorize(Roles = "Admin,System Admin,HR,HR Operations")]
+        [RequirePermission("LEAVE_APPROVE")]
         public async Task<IActionResult> Delete(long id)
         {
             Log.Information("LeaveRequestController - DeleteLeaveRequest called for ID: {Id}", id);
@@ -198,7 +212,7 @@ namespace KHRMS
 
 
         [HttpPost("ApproveLeaveRequest")]
-        [Authorize(Roles = "Admin,System Admin,HR,HR Operations,Manager,Management")]
+        [RequirePermission("LEAVE_APPROVE")]
         public async Task<IActionResult> ApproveLeaveRequest([FromBody] ApproveLeaveRequest leaveRequest)
         {
             Log.Information("ApproveLeaveRequest called for ID: {LeaveRequestId}, Status: {Status}", 

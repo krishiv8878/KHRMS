@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using KHRMS.Core.Models;
 
@@ -17,9 +17,5 @@ namespace KHRMS.Core
         public string? Category { get; set; } = "General";
         [Required(ErrorMessage = "ProficiencyLevel is required")]
         public string? ProficiencyLevel { get; set; } = "Advanced";
-        public bool? IsActive { get; set; }
-
-        public bool? IsDeleted { get; set; }
-
     }
 }

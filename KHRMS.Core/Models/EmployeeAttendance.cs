@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
 
 namespace KHRMS.Core
@@ -25,6 +25,8 @@ namespace KHRMS.Core
         [Required(ErrorMessage = "Gross Hours is required")]
         public decimal EffectiveHours { get; set; }
 
+        [NotMapped]
+        public string? RegularizationReason { get; set; }
     }
 }
 

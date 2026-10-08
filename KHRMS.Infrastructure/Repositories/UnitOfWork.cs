@@ -57,6 +57,34 @@ namespace KHRMS.Infrastructure
         public IRolePermissionMappingRepository RolePermissionMappings { get; }
         public IUserPermissionMappingRepository UserPermissionMappings { get; }
 
+        public ISalaryComponentRepository SalaryComponents { get; }
+        public ISalaryStructureRepository SalaryStructures { get; }
+        public IEmployeeSalaryAssignmentRepository EmployeeSalaryAssignments { get; }
+        public IPayRunRepository PayRuns { get; }
+        public IPayRunEmployeeDetailRepository PayRunEmployeeDetails { get; }
+        public IPayslipRepository Payslips { get; }
+        public IReimbursementClaimRepository ReimbursementClaims { get; }
+        public IFullAndFinalSettlementRepository FullAndFinalSettlements { get; }
+
+        public IPmsGoalRepository PmsGoals { get; }
+        public IPmsKeyResultRepository PmsKeyResults { get; }
+        public IPmsGoalCheckInRepository PmsGoalCheckIns { get; }
+        public IPmsReviewCycleRepository PmsReviewCycles { get; }
+        public IPmsAppraisalRepository PmsAppraisals { get; }
+        public IPmsFeedbackRepository PmsFeedbacks { get; }
+        public IPmsOneOnOneRepository PmsOneOnOnes { get; }
+        public IPmsPipRepository PmsPips { get; }
+
+        public IExpenseCategoryRepository ExpenseCategories { get; }
+        public IExpenseReportRepository ExpenseReports { get; }
+        public IExpenseItemRepository ExpenseItems { get; }
+        public IExpenseMileageRepository ExpenseMileages { get; }
+        public IExpenseAdvanceRepository ExpenseAdvances { get; }
+
+        public IJobRequisitionRepository JobRequisitions { get; }
+        public IJobInterviewRepository JobInterviews { get; }
+        public IJobOfferRepository JobOffers { get; }
+
         public UnitOfWork(KHRMSContextClass dbContext,
                             ICandidateRepository candidateRepository,
                             ISkillRepository skillRepository,
@@ -123,6 +151,34 @@ namespace KHRMS.Infrastructure
             PermissionMaster = permissionMaster ?? new PermissionMasterRepository(_dbContext);
             RolePermissionMappings = rolePermissionMappings ?? new RolePermissionMappingRepository(_dbContext);
             UserPermissionMappings = userPermissionMappings ?? new UserPermissionMappingRepository(_dbContext);
+
+            SalaryComponents = new SalaryComponentRepository(_dbContext);
+            SalaryStructures = new SalaryStructureRepository(_dbContext);
+            EmployeeSalaryAssignments = new EmployeeSalaryAssignmentRepository(_dbContext);
+            PayRuns = new PayRunRepository(_dbContext);
+            PayRunEmployeeDetails = new PayRunEmployeeDetailRepository(_dbContext);
+            Payslips = new PayslipRepository(_dbContext);
+            ReimbursementClaims = new ReimbursementClaimRepository(_dbContext);
+            FullAndFinalSettlements = new FullAndFinalSettlementRepository(_dbContext);
+
+            PmsGoals = new PmsGoalRepository(_dbContext);
+            PmsKeyResults = new PmsKeyResultRepository(_dbContext);
+            PmsGoalCheckIns = new PmsGoalCheckInRepository(_dbContext);
+            PmsReviewCycles = new PmsReviewCycleRepository(_dbContext);
+            PmsAppraisals = new PmsAppraisalRepository(_dbContext);
+            PmsFeedbacks = new PmsFeedbackRepository(_dbContext);
+            PmsOneOnOnes = new PmsOneOnOneRepository(_dbContext);
+            PmsPips = new PmsPipRepository(_dbContext);
+
+            ExpenseCategories = new ExpenseCategoryRepository(_dbContext);
+            ExpenseReports = new ExpenseReportRepository(_dbContext);
+            ExpenseItems = new ExpenseItemRepository(_dbContext);
+            ExpenseMileages = new ExpenseMileageRepository(_dbContext);
+            ExpenseAdvances = new ExpenseAdvanceRepository(_dbContext);
+
+            JobRequisitions = new JobRequisitionRepository(_dbContext);
+            JobInterviews = new JobInterviewRepository(_dbContext);
+            JobOffers = new JobOfferRepository(_dbContext);
         }
 
         public int Save()

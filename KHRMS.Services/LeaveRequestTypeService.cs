@@ -27,13 +27,63 @@ namespace KHRMS.Services
 
         }
 
+        public async Task<HashSet<DateOnly>> GetActiveHolidayDatesAsync()
+        {
+            try
+            {
+                var holidays = await _unitOfWork.Holidays.GetAll();
+                return holidays
+                    .Where(h => h.IsActive != false && h.IsDeleted != true)
+                    .Select(h => h.HolidayDate)
+                    .ToHashSet();
+            }
+            catch (Exception ex)
+            {
+                Log.Warning("Could not load holidays for leave calculation: {Message}", ex.Message);
+                return new HashSet<DateOnly>();
+            }
+        }
+
+        public double CalculateWorkingLeaveDays(DateTime startDate, DateTime endDate, string? leaveMode, HashSet<DateOnly> holidayDates)
+        {
+            if (endDate.Date < startDate.Date) return 0;
+
+            bool isHalfDay = !string.IsNullOrEmpty(leaveMode) && leaveMode.IndexOf("half", StringComparison.OrdinalIgnoreCase) >= 0;
+            double count = 0;
+
+            for (var cur = startDate.Date; cur <= endDate.Date; cur = cur.AddDays(1))
+            {
+                // Ignore weekends (Saturday and Sunday)
+                if (cur.DayOfWeek == DayOfWeek.Saturday || cur.DayOfWeek == DayOfWeek.Sunday)
+                {
+                    continue;
+                }
+
+                // Ignore public holidays
+                var curDate = DateOnly.FromDateTime(cur);
+                if (holidayDates.Contains(curDate))
+                {
+                    continue;
+                }
+
+                count += isHalfDay ? 0.5 : 1.0;
+            }
+
+            return count;
+        }
+
         public async Task<bool> AddLeaveRequestType(LeaveRequest leaveRequest)
         {
             if (leaveRequest == null)
                 return false;
-            long employeeId = _userContext.GetCurrentEmployeeId(); 
 
-
+            long currentUserId = _userContext.GetCurrentEmployeeId();
+            bool isPrivileged = _userContext.IsAdmin() || _userContext.IsHR();
+            long employeeId = (isPrivileged && leaveRequest.EmployeeId > 0) ? leaveRequest.EmployeeId : currentUserId;
+            if (employeeId <= 0)
+            {
+                employeeId = leaveRequest.EmployeeId > 0 ? leaveRequest.EmployeeId : 1;
+            }
 
             var leaverequest = new LeaveRequest
             {
@@ -72,6 +122,9 @@ namespace KHRMS.Services
 
             _unitOfWork.Save();
 
+            var holidayDates = await GetActiveHolidayDatesAsync();
+            var workingDays = CalculateWorkingLeaveDays(leaverequest.StartDate, leaverequest.EndDate, leaverequest.LeaveMode, holidayDates);
+
             // Format dates for email
             string formattedStartDate = GetFormattedDate(leaverequest.StartDate);
             string formattedEndDate = GetFormattedDate(leaverequest.EndDate);
@@ -79,6 +132,7 @@ namespace KHRMS.Services
             var managerName = $"{manager.FirstName} {manager.LastName}".Trim();
             var employeeName = $"{employee.FirstName} {employee.LastName}".Trim();
             var leavetype = "LeaveRequest";
+            string daysSuffix = workingDays == 1 ? "Day" : "Days";
 
             // Create email placeholders
             var dict = new Dictionary<string, string>
@@ -86,13 +140,14 @@ namespace KHRMS.Services
                     { "ManagerName", managerName },
                     { "StartDate", formattedStartDate },
                     { "EndDate", formattedEndDate },
+                    { "Duration", $"{workingDays} Working {daysSuffix}" },
                     { "LeaveType", leavetype },
                     { "EmployeeName", employeeName },
                     { "ManagerEmail", managerEmail },
                     { "LeaveDescription" ,leaveRequest.LeaveReason ?? string.Empty}
                 };
 
-            var subject = $"Leave Request from {employeeName}";
+            var subject = $"Leave Request from {employeeName} ({workingDays} Working {daysSuffix})";
 
             if (!string.IsNullOrEmpty(managerEmail))
             {
@@ -111,8 +166,8 @@ namespace KHRMS.Services
                 await _unitOfWork.Notifications.Add(new Notification
                 {
                     EmployeeId = 0,
-                    Title = $"New Leave Request from {employeeName}",
-                    Message = $"{employeeName} applied for leave ({leaverequest.StartDate:yyyy-MM-dd} to {leaverequest.EndDate:yyyy-MM-dd}). Reason: {leaverequest.LeaveReason ?? "Time off request"}",
+                    Title = $"New Leave Request from {employeeName} ({workingDays} {daysSuffix})",
+                    Message = $"{employeeName} applied for leave ({leaverequest.StartDate:yyyy-MM-dd} to {leaverequest.EndDate:yyyy-MM-dd}, {workingDays} working day(s)). Reason: {leaverequest.LeaveReason ?? "Time off request"}",
                     Category = "Leave",
                     Type = "request",
                     Icon = "beach_access",
@@ -149,20 +204,23 @@ namespace KHRMS.Services
 
         public async Task<IEnumerable<LeaveReqestModel>> GetAllLeaveRequestType()
         {
-
-           var employeeId = _userContext.GetCurrentEmployeeId();
-
-
+            var employeeId = _userContext.GetCurrentEmployeeId();
             var requests = await _unitOfWork.LeaveRequest.GetAll();
             var leavetypes = (await _unitOfWork.LeaveType.GetAll());
+            var employees = (await _unitOfWork.Employees.GetAll());
+            var holidayDates = await GetActiveHolidayDatesAsync();
 
             var result = from request in requests
                          join leaveType in leavetypes on request.LeaveTypeId equals leaveType.Id
+                         join emp in employees on request.EmployeeId equals emp.Id into empGroup
+                         from emp in empGroup.DefaultIfEmpty()
                          where request.EmployeeId == employeeId && request.IsActive == true
                                  && request.IsDeleted != true
                          select new LeaveReqestModel 
                          {
                              Id = request.Id,
+                             EmployeeId = request.EmployeeId,
+                             EmployeeName = emp != null ? $"{emp.FirstName} {emp.LastName}".Trim() : null,
                              StartDate = request.StartDate,
                              EndDate = request.EndDate,
                              LeaveMode = request.LeaveMode,
@@ -172,13 +230,11 @@ namespace KHRMS.Services
                              Status = request.Status,
                              ActionBy = request.ActionBy,
                              ActionDate = request.ActionDate,
-                             RejectionReason = request.RejectionReason
+                             RejectionReason = request.RejectionReason,
+                             TotalDays = CalculateWorkingLeaveDays(request.StartDate, request.EndDate, request.LeaveMode, holidayDates)
                          };
 
-
             return result;
-
-
         }
 
 
@@ -253,6 +309,10 @@ namespace KHRMS.Services
 
             if (result <= 0) return false;
 
+            var holidayDates = await GetActiveHolidayDatesAsync();
+            var workingDays = CalculateWorkingLeaveDays(leaveRequest1.StartDate, leaveRequest1.EndDate, leaveRequest1.LeaveMode, holidayDates);
+            string daysSuffix = workingDays == 1 ? "Day" : "Days";
+
             if (employee != null && !string.IsNullOrEmpty(employee.EmailAddress))
             {
                 var managerName = manager != null ? $"{manager.FirstName} {manager.LastName}".Trim() : "Manager / HR";
@@ -263,6 +323,7 @@ namespace KHRMS.Services
                     { "ManagerName", managerName },
                     { "StartDate", GetFormattedDate(leaveRequest1.StartDate) },
                     { "EndDate", GetFormattedDate(leaveRequest1.EndDate) },
+                    { "Duration", $"{workingDays} Working {daysSuffix}" },
                     { "LeaveReason", isApprovedDecision ? "Approval Request" : (leaveRequest.RejectionReason ?? "Request Rejected") },
                     { "EmployeeName", $"{employee.FirstName} {employee.LastName}".Trim() },
                     { "ManagerEmail", managerEmail }
@@ -272,12 +333,12 @@ namespace KHRMS.Services
                 {
                     if (isApprovedDecision)
                     {
-                        string subject = "Your Leave Request Has Been Approved";
+                        string subject = $"Your Leave Request ({workingDays} {daysSuffix}) Has Been Approved";
                         await _sendEmailService.SendTemplateEmailAsync(employee.EmailAddress, subject, dict, "ApprovalRequest");
                     }
                     else
                     {
-                        string subject = "Your Leave Request Has Been Rejected";
+                        string subject = $"Your Leave Request Has Been Rejected";
                         await _sendEmailService.SendTemplateEmailAsync(employee.EmailAddress, subject, dict, "RejectRequest");
                     }
                 }
@@ -292,9 +353,9 @@ namespace KHRMS.Services
                 await _unitOfWork.Notifications.Add(new Notification
                 {
                     EmployeeId = leaveRequest1.EmployeeId,
-                    Title = isApprovedDecision ? "Leave Approved" : "Leave Rejected",
+                    Title = isApprovedDecision ? $"Leave Approved ({workingDays} {daysSuffix})" : "Leave Rejected",
                     Message = isApprovedDecision
-                        ? $"Your leave request for {leaveRequest1.StartDate:yyyy-MM-dd} to {leaveRequest1.EndDate:yyyy-MM-dd} has been approved."
+                        ? $"Your leave request for {leaveRequest1.StartDate:yyyy-MM-dd} to {leaveRequest1.EndDate:yyyy-MM-dd} ({workingDays} working day(s)) has been approved."
                         : $"Your leave request for {leaveRequest1.StartDate:yyyy-MM-dd} to {leaveRequest1.EndDate:yyyy-MM-dd} was rejected. Reason: {leaveRequest.RejectionReason ?? "No reason provided"}",
                     Category = "Leave",
                     Type = isApprovedDecision ? "approval" : "alert",
@@ -382,6 +443,7 @@ namespace KHRMS.Services
                 var leaveRequestsList = await _unitOfWork.LeaveRequest.GetAll();
                 var leaveTypesList = await _unitOfWork.LeaveType.GetAll();
                 var employeesList = await _unitOfWork.Employees.GetAll();
+                var holidayDates = await GetActiveHolidayDatesAsync();
 
                 var query = from lr in leaveRequestsList
                             join leaveType in leaveTypesList on lr.LeaveTypeId equals leaveType.Id
@@ -407,6 +469,7 @@ namespace KHRMS.Services
                     ActionBy = x.lr.ActionBy,
                     ActionDate = x.lr.ActionDate,
                     RejectionReason = x.lr.RejectionReason,
+                    TotalDays = CalculateWorkingLeaveDays(x.lr.StartDate, x.lr.EndDate, x.lr.LeaveMode, holidayDates),
                     EmployeeId = x.emp.Id,
                     Employee = new Employee
                     {
@@ -439,6 +502,7 @@ namespace KHRMS.Services
             var leaveRequests = (await _unitOfWork.LeaveRequest.GetAll())
                                 .Where(lr => lr.EmployeeId == empId && lr.IsActive == true && lr.IsDeleted != true)
                                 .ToList();
+            var holidayDates = await GetActiveHolidayDatesAsync();
 
             var currentYear = DateTime.Now.Year;
             var balances = new List<EmployeeLeaveBalanceDto>();
@@ -471,13 +535,7 @@ namespace KHRMS.Services
 
                 foreach (var req in requestsForType)
                 {
-                    double days = (req.EndDate.Date - req.StartDate.Date).TotalDays + 1;
-                    if (days < 0.5) days = 1;
-
-                    if (!string.IsNullOrEmpty(req.LeaveMode) && req.LeaveMode.IndexOf("half", StringComparison.OrdinalIgnoreCase) >= 0)
-                    {
-                        days = 0.5;
-                    }
+                    double days = CalculateWorkingLeaveDays(req.StartDate, req.EndDate, req.LeaveMode, holidayDates);
 
                     if (string.Equals(req.Status, "Approved", StringComparison.OrdinalIgnoreCase))
                     {

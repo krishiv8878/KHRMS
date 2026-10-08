@@ -41,11 +41,19 @@ namespace KHRMS.Infrastructure.Repositories
             return false;
         }
 
-        public async Task<bool> MarkAllAsRead(long employeeId)
+        public async Task<bool> MarkAllAsRead(long employeeId, bool isApprover = false)
         {
-            var notifs = await _dbContext.Notifications
-                .Where(n => !n.IsDeleted && !n.IsRead && (n.EmployeeId == employeeId || n.EmployeeId == 0))
-                .ToListAsync();
+            var query = _dbContext.Notifications.Where(n => !n.IsDeleted && !n.IsRead);
+            if (isApprover)
+            {
+                query = query.Where(n => n.EmployeeId == employeeId || n.EmployeeId == 0);
+            }
+            else
+            {
+                query = query.Where(n => n.EmployeeId == employeeId && employeeId > 0);
+            }
+
+            var notifs = await query.ToListAsync();
 
             foreach (var n in notifs)
             {
@@ -68,11 +76,22 @@ namespace KHRMS.Infrastructure.Repositories
             return false;
         }
 
-        public async Task<bool> ClearAllNotifications(long employeeId)
+        public async Task<bool> ClearAllNotifications(long employeeId, bool isApprover = false)
         {
-            var notifs = await _dbContext.Notifications
-                .Where(n => !n.IsDeleted && (n.EmployeeId == employeeId || n.EmployeeId == 0))
-                .ToListAsync();
+            var query = _dbContext.Notifications.Where(n => !n.IsDeleted);
+            if (isApprover)
+            {
+                // When an Admin or Approver clears all notifications, clear both their personal
+                // inbox and the broadcast/system request notifications (EmployeeId == 0) so they don't persist or reappear.
+                query = query.Where(n => n.EmployeeId == employeeId || n.EmployeeId == 0);
+            }
+            else
+            {
+                // Regular employees only clear notifications specifically assigned to them.
+                query = query.Where(n => n.EmployeeId == employeeId && employeeId > 0);
+            }
+
+            var notifs = await query.ToListAsync();
 
             foreach (var n in notifs)
             {

@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 namespace KHRMS.Core
 {
@@ -47,6 +47,10 @@ namespace KHRMS.Core
         public string? Stage { get; set; }
 
         [Required(ErrorMessage = "Candidate MatchScore is required")]
-        public int? MatchScore { get; set; }         
+        public int? MatchScore { get; set; }
+
+        public long? JobRequisitionId { get; set; }
+        public string? ResumeUrl { get; set; }
+        public string? Source { get; set; }
     }
 }

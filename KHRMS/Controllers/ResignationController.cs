@@ -1,4 +1,5 @@
-﻿using System.Net;
+using System.Net;
+using KHRMS.Authorization;
 using KHRMS.Core;
 using KHRMS.Infrastructure;
 using KHRMS.Services;
@@ -99,6 +100,7 @@ namespace KHRMS.Controllers
 
         [HttpDelete]
         [Route("DeleteResignation")]
+        [RequirePermission("RESIGNATION_MANAGE")]
         public async Task<IActionResult> DeleteResignation(long ResignationId)
         {
             Log.Information("DeleteResignation API called for ID {ResignationId}.", ResignationId);
@@ -126,6 +128,7 @@ namespace KHRMS.Controllers
 
         [HttpPut]
         [Route("ApproveOrRejectResignation")]
+        [RequirePermission("RESIGNATION_MANAGE")]
         public async Task<IActionResult> ApproveOrRejectResignation(Resignation resignation)
         {
             Log.Information("ApproveOrRejectResignation API called.");

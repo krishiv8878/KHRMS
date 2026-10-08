@@ -1,4 +1,5 @@
 using Azure;
+using KHRMS.Authorization;
 using KHRMS.Core;
 using KHRMS.Infrastructure;
 using KHRMS.Services;
@@ -54,7 +55,7 @@ namespace KHRMS.Controllers
         /// <returns></returns>
 
         [HttpPost("AssignEmployeeRole")]
-        [Authorize(Roles = "Admin,System Admin")]
+        [RequirePermission("ROLE_ASSIGN")]
         public async Task<IActionResult> AssignEmployeeRole([FromBody] EmployeeRoleMapping employeeRoleMapping)
         {
             Log.Information("EmployeeRoleMappingController - AssignEmployeeRole called.");
@@ -87,7 +88,7 @@ namespace KHRMS.Controllers
         /// <returns></returns>
 
         [HttpPut("UpdateEmployeeRole")]
-        [Authorize(Roles = "Admin,System Admin")]
+        [RequirePermission("ROLE_ASSIGN")]
         public async Task<IActionResult> UpdateEmployeeRole([FromBody] EmployeeRoleMapping employeeRoleMapping)
         {
             Log.Information("EmployeeRoleMappingController - UpdateEmployeeRole called.");
@@ -121,7 +122,7 @@ namespace KHRMS.Controllers
         /// <returns></returns>
 
         [HttpDelete("DeleteEmployeeRole")]
-        [Authorize(Roles = "Admin,System Admin")]
+        [RequirePermission("ROLE_ASSIGN")]
         public async Task<IActionResult> DeleteEmployeeRole(long employeeRoleMappingId)
         {
             Log.Information("EmployeeRoleMappingController - DeleteEmployeeRole called with ID: {Id}", employeeRoleMappingId);

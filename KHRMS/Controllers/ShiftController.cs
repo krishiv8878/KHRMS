@@ -1,3 +1,4 @@
+using KHRMS.Authorization;
 using KHRMS.Core;
 using KHRMS.Infrastructure;
 using KHRMS.Services;
@@ -79,7 +80,7 @@ namespace KHRMS
 
 
         [HttpPost("CreateShiftType")]
-        [Authorize(Roles = "Admin,System Admin,HR,HR Operations")]
+        [RequirePermission("SHIFT_MANAGE")]
         public async Task<IActionResult> AddShift([FromBody] ShiftMaster shift)
         {
             Log.Information("ShiftController - AddShift called.");
@@ -113,7 +114,7 @@ namespace KHRMS
         /// <param name="shiftMaster">Updated Employee Shift Info object</param>
 
         [HttpPut("UpdateShift/{id}")]
-        [Authorize(Roles = "Admin,System Admin,HR,HR Operations")]
+        [RequirePermission("SHIFT_MANAGE")]
         public async Task<IActionResult> Update(long id, [FromBody] ShiftMaster shiftMaster)
         {
             if (shiftMaster == null)
@@ -174,7 +175,7 @@ namespace KHRMS
 
 
         [HttpDelete("DeleteShift")]
-        [Authorize(Roles = "Admin,System Admin,HR,HR Operations")]
+        [RequirePermission("SHIFT_MANAGE")]
         public async Task<IActionResult> DeleteShift(long id)
         {
             Log.Information("ShiftController - DeleteShift called for ID: {Id}", id);

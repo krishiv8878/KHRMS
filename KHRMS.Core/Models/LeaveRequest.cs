@@ -31,5 +31,7 @@ namespace KHRMS.Core
         public DateTime? ActionDate { get; set; }
 
         public string? RejectionReason { get; set; }
+        [NotMapped]
+        public double TotalDays { get; set; }
     }
 }
