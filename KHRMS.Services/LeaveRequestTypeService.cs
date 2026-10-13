@@ -85,6 +85,34 @@ namespace KHRMS.Services
                 employeeId = leaveRequest.EmployeeId > 0 ? leaveRequest.EmployeeId : 1;
             }
 
+            if (leaveRequest.EndDate.Date < leaveRequest.StartDate.Date)
+            {
+                throw new InvalidOperationException("End date cannot be earlier than start date.");
+            }
+
+            var holidayDates = await GetActiveHolidayDatesAsync();
+            var workingDays = CalculateWorkingLeaveDays(leaveRequest.StartDate, leaveRequest.EndDate, leaveRequest.LeaveMode, holidayDates);
+            if (workingDays <= 0)
+            {
+                throw new InvalidOperationException("The requested dates fall entirely on official holidays or weekends. Leave cannot be applied for non-working days.");
+            }
+
+            // Check for overlapping active requests (Approved or Pending) for the same employee
+            var allExistingLeaves = await _unitOfWork.LeaveRequest.GetAll();
+            var overlappingLeave = allExistingLeaves.FirstOrDefault(lr =>
+                lr.EmployeeId == employeeId &&
+                lr.IsActive == true &&
+                lr.IsDeleted != true &&
+                (string.Equals(lr.Status, "Approved", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(lr.Status, "Pending", StringComparison.OrdinalIgnoreCase)) &&
+                !(leaveRequest.EndDate.Date < lr.StartDate.Date || leaveRequest.StartDate.Date > lr.EndDate.Date));
+
+            if (overlappingLeave != null)
+            {
+                string statusDesc = string.Equals(overlappingLeave.Status, "Approved", StringComparison.OrdinalIgnoreCase) ? "an approved" : "a pending";
+                throw new InvalidOperationException($"You already have {statusDesc} leave request (#{overlappingLeave.Id}: {overlappingLeave.StartDate:yyyy-MM-dd} to {overlappingLeave.EndDate:yyyy-MM-dd}) overlapping with the selected dates.");
+            }
+
             var leaverequest = new LeaveRequest
             {
                 EmployeeId = employeeId,
@@ -121,9 +149,6 @@ namespace KHRMS.Services
             }
 
             _unitOfWork.Save();
-
-            var holidayDates = await GetActiveHolidayDatesAsync();
-            var workingDays = CalculateWorkingLeaveDays(leaverequest.StartDate, leaverequest.EndDate, leaverequest.LeaveMode, holidayDates);
 
             // Format dates for email
             string formattedStartDate = GetFormattedDate(leaverequest.StartDate);
