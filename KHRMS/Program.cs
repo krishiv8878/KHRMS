@@ -2,6 +2,7 @@
 using KHRMS.Services;
 using KHRMS.Infrastructure;
 using KHRMS.Services.Interfaces;
+using KHRMS.AI;
 using Serilog;
 using GlobalExceptionHandlingDemo.Middleware;
 using Microsoft.OpenApi.Models;
@@ -10,6 +11,8 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using System.IdentityModel.Tokens.Jwt;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.AI;
+using OpenAI;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -119,6 +122,36 @@ builder.Services.AddSwaggerGen(options =>
         { jwtSecurityScheme, Array.Empty<string>() }
     });
 });
+
+// ── Phase 1: Gemini AI client ────────────────────────────────────────────────
+// API key lives in user-secrets ("Gemini:ApiKey") — never in appsettings.json.
+// Model name and endpoint are read from appsettings.json ("Gemini" section).
+var geminiApiKey = builder.Configuration["Gemini:ApiKey"]
+    ?? "AI_KEY_NOT_CONFIGURED";
+
+var geminiEndpoint = new Uri(
+    builder.Configuration["Gemini:Endpoint"]
+    ?? "https://generativelanguage.googleapis.com/v1beta/openai/");
+
+var geminiModel = builder.Configuration["Gemini:Model"]
+    ?? builder.Configuration["Gemini:ModelName"]
+    ?? "gemini-3.1-flash-lite";
+
+var openAiOptions = new OpenAIClientOptions { Endpoint = geminiEndpoint };
+openAiOptions.AddPolicy(new GeminiThoughtSignaturePolicy(), System.ClientModel.Primitives.PipelinePosition.PerCall);
+
+var openAiClient = new OpenAIClient(
+    new System.ClientModel.ApiKeyCredential(geminiApiKey),
+    openAiOptions);
+
+// Register with UseFunctionInvocation so tools are called automatically.
+builder.Services.AddChatClient(
+    openAiClient.GetChatClient(geminiModel).AsIChatClient())
+    .UseFunctionInvocation();
+
+// Phase 3: Policy search service (in-memory; replace with EF Core later).
+builder.Services.AddSingleton<IChatPolicyService, InMemoryChatPolicyService>();
+// ─────────────────────────────────────────────────────────────────────────────
 
 var app = builder.Build();
 

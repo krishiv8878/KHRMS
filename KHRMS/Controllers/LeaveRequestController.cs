@@ -128,25 +128,38 @@ namespace KHRMS
                 return BadRequest("Invalid data.");
             }
 
-            var result = await _leaveRequestTypeService.AddLeaveRequestType(leaveRequest);
-            if (result)
+            try
             {
-                Log.Information("LeaveRequestController - Leave request added successfully.");
-                return Ok(new ApiResponse<bool>
+                var result = await _leaveRequestTypeService.AddLeaveRequestType(leaveRequest);
+                if (result)
                 {
-                    StatusCode = (int)HttpStatusCode.OK,
-                    Message = ApiMessageConstant.LeaveRequestTypeAdded,
-                    Data = true
+                    Log.Information("LeaveRequestController - Leave request added successfully.");
+                    return Ok(new ApiResponse<bool>
+                    {
+                        StatusCode = (int)HttpStatusCode.OK,
+                        Message = ApiMessageConstant.LeaveRequestTypeAdded,
+                        Data = true
+                    });
+                }
+
+                Log.Warning("LeaveRequestController - Failed to add leave request.");
+                return BadRequest(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = ApiMessageConstant.LeaveRequestTypeNotAdded,
+                    Data = false
                 });
             }
-
-            Log.Warning("LeaveRequestController - Failed to add leave request.");
-            return BadRequest(new ApiResponse<bool>
+            catch (InvalidOperationException ex)
             {
-                StatusCode = (int)HttpStatusCode.BadRequest,
-                Message = ApiMessageConstant.LeaveRequestTypeNotAdded,
-                Data = false
-            });
+                Log.Warning("LeaveRequestController - Validation failed: {Message}", ex.Message);
+                return BadRequest(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = ex.Message,
+                    Data = false
+                });
+            }
         }
 
 
