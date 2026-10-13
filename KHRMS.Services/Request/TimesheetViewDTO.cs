@@ -25,6 +25,8 @@ namespace KHRMS.Services.Request
         public string? LeaveTypeName { get; set; }
         public bool IsWeekend { get; set; } = false;
         public bool IsPriorToJoining { get; set; } = false;
+        public string? RegularizationStatus { get; set; }
+        public bool IsAbsent { get; set; } = false;
         public List<TimesheetTaskItemDTO> Tasks { get; set; } = new();
         public decimal DayTotalHours => Tasks.Sum(t => t.Hours);
     }

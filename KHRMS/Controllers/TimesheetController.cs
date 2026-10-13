@@ -1,3 +1,4 @@
+using KHRMS.Authorization;
 using KHRMS.Core;
 using KHRMS.Infrastructure;
 using KHRMS.Services;
@@ -30,6 +31,7 @@ namespace KHRMS.Controllers
         }
 
         [HttpGet("GetMyTimesheet")]
+        [RequirePermission("TIMESHEET_LOG_SELF")]
         public async Task<IActionResult> GetMyTimesheet([FromQuery] DateTime startDate, [FromQuery] DateTime endDate, [FromQuery] long? employeeId = null, [FromQuery] long? timesheetId = null)
         {
             var empId = _userContextService.GetCurrentEmployeeId();
@@ -65,6 +67,7 @@ namespace KHRMS.Controllers
         }
 
         [HttpPost("SaveEntry")]
+        [RequirePermission("TIMESHEET_LOG_SELF")]
         public async Task<IActionResult> SaveEntry([FromBody] TimesheetEntryDTO dto)
         {
             if (dto == null || dto.ProjectId <= 0 || dto.Hours <= 0 || string.IsNullOrWhiteSpace(dto.TaskDescription))
@@ -100,6 +103,7 @@ namespace KHRMS.Controllers
         }
 
         [HttpDelete("DeleteEntry/{id}")]
+        [RequirePermission("TIMESHEET_LOG_SELF")]
         public async Task<IActionResult> DeleteEntry(long id)
         {
             var employeeId = _userContextService.GetCurrentEmployeeId();
@@ -134,6 +138,7 @@ namespace KHRMS.Controllers
         }
 
         [HttpPost("SubmitPeriod")]
+        [RequirePermission("TIMESHEET_LOG_SELF")]
         public async Task<IActionResult> SubmitPeriod([FromBody] TimesheetSubmitDTO dto)
         {
             if (dto == null)
@@ -169,6 +174,7 @@ namespace KHRMS.Controllers
         }
 
         [HttpGet("GetPendingApprovals")]
+        [RequirePermission("TIMESHEET_APPROVE")]
         public async Task<IActionResult> GetPendingApprovals()
         {
             var currentUserId = _userContextService.GetCurrentEmployeeId();
@@ -192,6 +198,7 @@ namespace KHRMS.Controllers
         }
 
         [HttpPost("ApproveOrReject")]
+        [RequirePermission("TIMESHEET_APPROVE")]
         public async Task<IActionResult> ApproveOrReject([FromBody] TimesheetApprovalDTO dto)
         {
             if (dto == null || dto.TimesheetId <= 0 || string.IsNullOrWhiteSpace(dto.Status))

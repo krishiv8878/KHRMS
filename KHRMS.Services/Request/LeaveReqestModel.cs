@@ -9,6 +9,8 @@ namespace KHRMS.Services.Request
     public class LeaveReqestModel
     {
         public long Id { get; set; }
+        public long? EmployeeId { get; set; }
+        public string? EmployeeName { get; set; }
         public long LeaveTypeId { get; set; }
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }
@@ -20,6 +22,7 @@ namespace KHRMS.Services.Request
         public long? ActionBy { get; set; }
         public DateTime? ActionDate { get; set; }
         public string? RejectionReason { get; set; }
+        public double TotalDays { get; set; }
     }
 
     public class EmployeeLeaveBalanceDto

@@ -55,6 +55,10 @@ builder.Services.AddScoped<ITimesheetService, TimesheetService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IEmailTriggerEventService, EmailTriggerEventService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
+builder.Services.AddScoped<IPayrollService, PayrollService>();
+builder.Services.AddScoped<IPmsService, PmsService>();
+builder.Services.AddScoped<IExpenseService, ExpenseService>();
+builder.Services.AddScoped<IRecruitmentService, RecruitmentService>();
 builder.Services.AddMemoryCache();
 
 // Add context-aware services
@@ -144,5 +148,19 @@ app.UseAuthorization();
 app.UseStaticFiles();
 
 app.MapControllers();
+
+// Reconcile default permissions and system roles on startup
+using (var scope = app.Services.CreateScope())
+{
+    try
+    {
+        var permissionService = scope.ServiceProvider.GetRequiredService<IPermissionService>();
+        await permissionService.SeedDefaultPermissionsAsync();
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Failed to run startup permission reconciliation.");
+    }
+}
 
 app.Run();

@@ -1,3 +1,4 @@
+using KHRMS.Authorization;
 using KHRMS.Core;
 using KHRMS.Infrastructure;
 using KHRMS.Services;
@@ -275,7 +276,7 @@ namespace KHRMS
 
         [HttpDelete]
         [Route("DeletePaymentInfo")]
-        [Authorize(Roles = "Admin,System Admin,HR,HR Operations")]
+        [RequirePermission("EMPLOYEE_PAYMENT_MANAGE")]
         public async Task<IActionResult> Delete(long id)
         {
             Log.Information("EmployeePaymentInfoController - DeletePaymentInfo called with ID: {Id}", id);

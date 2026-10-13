@@ -7,8 +7,8 @@ namespace KHRMS.Core.Interfaces
         Task<IEnumerable<Notification>> GetByEmployeeId(long employeeId);
         Task<int> GetUnreadCount(long employeeId);
         Task<bool> MarkAsRead(long notificationId, long employeeId);
-        Task<bool> MarkAllAsRead(long employeeId);
+        Task<bool> MarkAllAsRead(long employeeId, bool isApprover = false);
         Task<bool> DeleteNotification(long notificationId, long employeeId);
-        Task<bool> ClearAllNotifications(long employeeId);
+        Task<bool> ClearAllNotifications(long employeeId, bool isApprover = false);
     }
 }

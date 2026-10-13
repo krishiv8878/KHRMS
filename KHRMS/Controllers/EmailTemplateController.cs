@@ -1,4 +1,5 @@
-﻿using KHRMS.Core;
+using KHRMS.Authorization;
+using KHRMS.Core;
 using KHRMS.Infrastructure;
 using KHRMS.Services;
 using System.Net;
@@ -76,6 +77,7 @@ namespace KHRMS
 
 
         [HttpPost("AddEmailTemplates")]
+        [RequirePermission("EMAIL_TEMPLATE_MANAGE")]
         public async Task<IActionResult> AddEmailTemplates([FromBody] EmailTemplatesMaster emailTemplatesMaster)
         {
             Log.Information("AddEmailTemplates API called.");
@@ -104,6 +106,7 @@ namespace KHRMS
 
 
         [HttpPut("UpdateEmailTemplates")]
+        [RequirePermission("EMAIL_TEMPLATE_MANAGE")]
         public async Task<IActionResult> UpdateEmailTemplates(EmailTemplatesMaster emailTemplatesMaster)
         {
             Log.Information("UpdateEmailTemplates API called.");
@@ -131,6 +134,7 @@ namespace KHRMS
 
 
         [HttpDelete("DeleteemailTemplatesMaster/{id:long}")]
+        [RequirePermission("EMAIL_TEMPLATE_MANAGE")]
         public async Task<IActionResult> DeleteemailTemplatesMaster(long id)
         {
             Log.Information("DeleteEmailTemplatesMaster API called for ID: {Id}.", id);

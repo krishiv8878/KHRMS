@@ -1,6 +1,8 @@
-﻿using KHRMS.Core;
+using KHRMS.Authorization;
+using KHRMS.Core;
 using KHRMS.Infrastructure;
 using KHRMS.Services;
+using KHRMS.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
 using Serilog;
@@ -10,13 +12,13 @@ namespace KHRMS
     [Authorize]
     [Route("api/[controller]")]
     [ApiController]
-    public class EmployeeAttendanceController(IEmployeeAttendanceService employeeAttendanceService) : ControllerBase
-
+    public class EmployeeAttendanceController(IEmployeeAttendanceService employeeAttendanceService, IUserContextService userContextService) : ControllerBase
     {
         private readonly IEmployeeAttendanceService _attendanceService = employeeAttendanceService;
-
+        private readonly IUserContextService _userContext = userContextService;
 
         [HttpGet("GetAll")]
+        [RequirePermission("ATTENDANCE_VIEW_SELF")]
         public async Task<IActionResult> GetAll()
         {
             Log.Information("EmployeeAttendanceController - GetAll called.");
@@ -34,6 +36,16 @@ namespace KHRMS
                 });
             }
 
+            var canViewAll = await _userContext.HasPermissionAsync("ATTENDANCE_VIEW_ALL");
+            if (!canViewAll)
+            {
+                var currentEmpId = _userContext.GetCurrentEmployeeId();
+                if (currentEmpId > 0)
+                {
+                    attendances = attendances.Where(a => a.EmployeeId == currentEmpId).ToList();
+                }
+            }
+
             Log.Information("EmployeeAttendanceController - Attendance records retrieved.");
             return Ok(new ApiResponse<IEnumerable<EmployeeAttendance>>
             {
@@ -46,6 +58,7 @@ namespace KHRMS
 
         [HttpGet]
         [Route("GetByEmployeeId")]
+        [RequirePermission("ATTENDANCE_VIEW_SELF")]
         public async Task<IActionResult> GetByEmployeeId(long employeeId)
         {
             Log.Information("EmployeeAttendanceController - GetByEmployeeId called for ID: {EmployeeId}", employeeId);
@@ -129,6 +142,7 @@ namespace KHRMS
 
         [HttpDelete]
         [Route("DeleteEmployeeAttendanceRequest")]
+        [RequirePermission("ATTENDANCE_REGULARIZE_APPROVE")]
         public async Task<IActionResult> DeleteEmployeeAttendanceRequest(long id)
         {
             Log.Information("EmployeeAttendanceController - DeleteEmployeeAttendanceRequest called for ID: {Id}", id);
@@ -158,6 +172,7 @@ namespace KHRMS
 
 
         [HttpPost("AddRegularizationRequest")]
+        [RequirePermission("ATTENDANCE_REGULARIZE_APPLY")]
         public async Task<IActionResult> Create([FromBody] EmployeeAttendance attendance)
         {
             Log.Information("EmployeeAttendanceController - AddLeaveRequest called.");
@@ -191,6 +206,7 @@ namespace KHRMS
 
 
         [HttpPost("ApproveRegularizationRequest")]
+        [RequirePermission("ATTENDANCE_REGULARIZE_APPROVE")]
         public async Task<IActionResult> ApproveRegularization([FromBody] EmployeeAttendance attendance)
         {
             Log.Information("EmployeeAttendanceController - ApproveRegularizationRequest called.");

@@ -41,14 +41,24 @@ namespace KHRMS.Services
 
         public async Task<EmployeeAttendance> GetByEmployeeIdAsync(long employeeId)
         {
-            return await _unitOfWork.EmployeeAttendance.GetById(employeeId);
-
+            var all = await _unitOfWork.EmployeeAttendance.GetAll();
+            return all
+                .Where(r => r.EmployeeId == employeeId && !r.IsDeleted)
+                .OrderByDescending(r => r.AttendanceDate)
+                .FirstOrDefault()!;
         }
 
         public async Task AddAsync(EmployeeAttendance attendance)
         {
+            if (attendance.AttendanceDate == default)
+            {
+                attendance.AttendanceDate = attendance.ClockIn != default 
+                    ? DateOnly.FromDateTime(attendance.ClockIn) 
+                    : DateOnly.FromDateTime(DateTime.Today);
+            }
+
             var attendancebyid = (await _unitOfWork.EmployeeAttendance.GetAll())
-                .FirstOrDefault(r => r.EmployeeId == attendance.EmployeeId && r.AttendanceDate == attendance.AttendanceDate);
+                .FirstOrDefault(r => r.EmployeeId == attendance.EmployeeId && r.AttendanceDate == attendance.AttendanceDate && !r.IsDeleted);
 
             decimal initialDuration = (attendance.ClockOut.HasValue && attendance.ClockIn != default)
                 ? (decimal)(attendance.ClockOut.Value - attendance.ClockIn).TotalHours
@@ -78,11 +88,9 @@ namespace KHRMS.Services
                     if (inTimes.Any()) attendancebyid.ClockIn = inTimes.Min();
                     if (outTimes.Any()) attendancebyid.ClockOut = outTimes.Max();
 
-                    if (attendancebyid.ClockOut.HasValue && attendancebyid.ClockIn != default)
-                    {
-                        attendancebyid.TotalHours = (decimal)(attendancebyid.ClockOut.Value - attendancebyid.ClockIn).TotalHours;
-                    }
-                    attendancebyid.EffectiveHours = logs.Sum(r => r.Duration);
+                    var sumDuration = logs.Sum(r => r.Duration);
+                    attendancebyid.EffectiveHours = sumDuration;
+                    attendancebyid.TotalHours = sumDuration > 0 ? sumDuration : (attendancebyid.ClockOut.HasValue && attendancebyid.ClockIn != default ? (decimal)(attendancebyid.ClockOut.Value - attendancebyid.ClockIn).TotalHours : 0);
                     attendancebyid.UpdatedDate = DateTime.Now;
                     await UpdateAsync(attendancebyid);
                 }
@@ -195,62 +203,89 @@ namespace KHRMS.Services
 
         public async Task<bool> SendRegularizationRequestEmail(EmployeeAttendance attendance)
         {
-    //        if (attendance == null)
-    //            return false;
-    //        long employeeId = _userContext.GetCurrentEmployeeId();
+            if (attendance == null) return false;
+            long employeeId = attendance.EmployeeId > 0 ? attendance.EmployeeId : _userContext.GetCurrentEmployeeId();
+            if (employeeId <= 0) return false;
 
+            var employee = await _unitOfWork.Employees.GetById(employeeId);
+            if (employee == null) return false;
 
+            long managerId = employee.ManagerId.HasValue && employee.ManagerId.Value > 0 ? employee.ManagerId.Value : 0;
+            if (managerId == 0)
+            {
+                var admin = (await _unitOfWork.Employees.GetAll()).FirstOrDefault(e => e.Id != employeeId);
+                managerId = admin?.Id ?? employeeId;
+            }
 
-    //        var regularizationRequest = new EmployeeAttendance
-    //        {
-    //            EmployeeId = employeeId,
-    //            ClockIn = attendance.ClockIn,
-    //            ClockOut = attendance.ClockOut,
-    //            TotalHours = attendance.TotalHours,
-    //            EffectiveHours = attendance.EffectiveHours,
-    //            RegularizationReason = attendance.RegularizationReason,
-    //            IsRegularized = false,
-    //            RegularizationRequestedDate = DateTime.Now,
-    //            CreatedDate = DateTime.Now,
-    //            IsActive = true,
-    //            IsDeleted = false
-    //        };
-    //        await _unitOfWork.EmployeeAttendance.Add(regularizationRequest);
+            var request = new AttendanceRequest
+            {
+                EmployeeId = employeeId,
+                RequestType = "Regularization",
+                RequestedDate = attendance.AttendanceDate != default ? attendance.AttendanceDate.ToDateTime(TimeOnly.MinValue) : (attendance.ClockIn != default ? attendance.ClockIn.Date : DateTime.Today),
+                RequestedBy = employeeId,
+                Reason = attendance.RegularizationReason ?? "Missed Punch Regularization",
+                Status = "Pending",
+                LastActionBy = employeeId,
+                ClockInTime = attendance.ClockIn,
+                ClockOutTime = attendance.ClockOut,
+                CreatedBy = (int)employeeId,
+                CreatedDate = DateTime.UtcNow,
+                ManagerId = managerId,
+                IsActive = true,
+                IsDeleted = false
+            };
 
-    //        _unitOfWork.Save();
-    //        var employee = await _unitOfWork.Employees.GetById(employeeId);
-    //        if (employee == null)
-    //            throw new Exception("Employee not found.");
+            await _unitOfWork.AttendanceRequests.Add(request);
+            var result = _unitOfWork.Save();
 
-    //        var manager = (await _unitOfWork.Employees.GetAll()).FirstOrDefault(t => t.Id == employee.ManagerId);
-    //        if (manager == null)
-    //            throw new Exception("Manager not found.");
+            // Try sending email notification
+            try
+            {
+                var manager = await _unitOfWork.Employees.GetById(managerId);
+                if (manager != null && !string.IsNullOrEmpty(manager.EmailAddress))
+                {
+                    TimeZoneInfo istZone;
+                    try
+                    {
+                        istZone = TimeZoneInfo.FindSystemTimeZoneById("India Standard Time");
+                    }
+                    catch
+                    {
+                        istZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Kolkata");
+                    }
 
-    //        string formattedDate = attendance.ClockIn.ToString("dd-MM-yyyy");
-    //        string inTime = attendance.ClockIn.ToString("hh:mm tt");
-    //        string outTime = attendance.ClockOut.ToString("hh:mm tt");
+                    DateTime inTimeIst = attendance.ClockIn.Kind == DateTimeKind.Utc 
+                        ? TimeZoneInfo.ConvertTimeFromUtc(attendance.ClockIn, istZone) 
+                        : TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(attendance.ClockIn, DateTimeKind.Utc), istZone);
 
-    //        var managerEmail = manager.EmailAddress;
-    //        var managerName = $"{manager.FirstName} {manager.LastName}";
-    //        var employeeName = $"{employee.FirstName} {employee.LastName}";
-    //        var regularizationType = "RegularizationRequest";
+                    string outTimeStr = "--";
+                    if (attendance.ClockOut.HasValue)
+                    {
+                        DateTime outTimeIst = attendance.ClockOut.Value.Kind == DateTimeKind.Utc 
+                            ? TimeZoneInfo.ConvertTimeFromUtc(attendance.ClockOut.Value, istZone) 
+                            : TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(attendance.ClockOut.Value, DateTimeKind.Utc), istZone);
+                        outTimeStr = outTimeIst.ToString("hh:mm tt");
+                    }
 
-    //        var dict = new Dictionary<string, string>
-    //{
-    //    { "ManagerName", managerName },
-    //    { "Date", formattedDate },
-    //    { "InTime", inTime },
-    //    { "OutTime", outTime },
-    //    { "EmployeeName", employeeName },
-    //    { "ManagerEmail", managerEmail },
-    //    { "RegularizationReason", attendance.RegularizationReason ?? "No specific reason provided." }
-    //};
+                    var dict = new Dictionary<string, string>
+                    {
+                        { "ManagerName", $"{manager.FirstName} {manager.LastName}".Trim() },
+                        { "Date", request.RequestedDate.ToString("dd-MM-yyyy") },
+                        { "InTime", inTimeIst.ToString("hh:mm tt") },
+                        { "OutTime", outTimeStr },
+                        { "EmployeeName", $"{employee.FirstName} {employee.LastName}".Trim() },
+                        { "ManagerEmail", manager.EmailAddress },
+                        { "RegularizationReason", attendance.RegularizationReason ?? "Regularization Request" }
+                    };
+                    await _sendEmailService.SendTemplateEmailAsync(manager.EmailAddress, $"Regularization Request from {employee.FirstName} {employee.LastName}", dict, "RegularizationRequest");
+                }
+            }
+            catch
+            {
+                // Non-blocking email sending
+            }
 
-    //        var subject = $"Regularization Request from {employeeName} for {formattedDate}";
-        
-    //        await _sendEmailService.SendTemplateEmailAsync(managerEmail, subject, dict, regularizationType);
-
-            return true;
+            return result > 0;
         }
 
 

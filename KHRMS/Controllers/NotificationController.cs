@@ -24,12 +24,30 @@ namespace KHRMS.Controllers
             _userContextService = userContextService;
         }
 
+        private long ResolveTargetEmployeeId(long? requestedEmpId)
+        {
+            long currentEmpId = _userContextService.GetCurrentEmployeeId();
+            if (currentEmpId <= 0 && requestedEmpId.HasValue && requestedEmpId.Value > 0)
+            {
+                return requestedEmpId.Value;
+            }
+            if (requestedEmpId.HasValue && requestedEmpId.Value > 0 && requestedEmpId.Value != currentEmpId)
+            {
+                // Only Admin or HR can access another employee's notifications
+                if (_userContextService.IsAdmin() || _userContextService.IsHR())
+                {
+                    return requestedEmpId.Value;
+                }
+            }
+            return currentEmpId;
+        }
+
         [HttpGet("GetNotifications")]
         public async Task<IActionResult> GetNotifications([FromQuery] long? employeeId)
         {
             try
             {
-                long empId = employeeId ?? _userContextService.GetCurrentEmployeeId();
+                long empId = ResolveTargetEmployeeId(employeeId);
                 var notifications = await _notificationService.GetNotifications(empId);
 
                 return Ok(new ApiResponse<IEnumerable<Notification>>
@@ -55,7 +73,7 @@ namespace KHRMS.Controllers
         {
             try
             {
-                long empId = employeeId ?? _userContextService.GetCurrentEmployeeId();
+                long empId = ResolveTargetEmployeeId(employeeId);
                 int count = await _notificationService.GetUnreadCount(empId);
 
                 return Ok(new ApiResponse<int>
@@ -81,7 +99,7 @@ namespace KHRMS.Controllers
         {
             try
             {
-                long empId = employeeId ?? _userContextService.GetCurrentEmployeeId();
+                long empId = ResolveTargetEmployeeId(employeeId);
                 bool result = await _notificationService.MarkAsRead(id, empId);
 
                 return Ok(new ApiResponse<bool>
@@ -107,7 +125,7 @@ namespace KHRMS.Controllers
         {
             try
             {
-                long empId = employeeId ?? _userContextService.GetCurrentEmployeeId();
+                long empId = ResolveTargetEmployeeId(employeeId);
                 bool result = await _notificationService.MarkAllAsRead(empId);
 
                 return Ok(new ApiResponse<bool>
@@ -134,7 +152,7 @@ namespace KHRMS.Controllers
         {
             try
             {
-                long empId = employeeId ?? _userContextService.GetCurrentEmployeeId();
+                long empId = ResolveTargetEmployeeId(employeeId);
                 bool result = await _notificationService.DeleteNotification(id, empId);
 
                 return Ok(new ApiResponse<bool>
@@ -161,7 +179,7 @@ namespace KHRMS.Controllers
         {
             try
             {
-                long empId = employeeId ?? _userContextService.GetCurrentEmployeeId();
+                long empId = ResolveTargetEmployeeId(employeeId);
                 bool result = await _notificationService.ClearAllNotifications(empId);
 
                 return Ok(new ApiResponse<bool>

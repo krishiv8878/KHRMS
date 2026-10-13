@@ -1,3 +1,4 @@
+using KHRMS.Authorization;
 using KHRMS.Core;
 using KHRMS.Infrastructure;
 using KHRMS.Services;
@@ -53,7 +54,7 @@ namespace KHRMS
         /// <returns></returns>
 
         [HttpPost("AddHoliday")]
-        [Authorize(Roles = "Admin,System Admin,HR,HR Operations")]
+        [RequirePermission("HOLIDAY_MANAGE")]
         public async Task<IActionResult> AddHoliday([FromBody] Holiday holiday)
         {
             Log.Information("HolidayController - AddHoliday called.");
@@ -86,7 +87,7 @@ namespace KHRMS
         /// <returns></returns>
 
         [HttpPut("UpdateHoliday")]
-        [Authorize(Roles = "Admin,System Admin,HR,HR Operations")]
+        [RequirePermission("HOLIDAY_MANAGE")]
         public async Task<IActionResult> UpdateHoliday([FromBody] Holiday holiday)
         {
             Log.Information("HolidayController - UpdateHoliday called.");
@@ -120,7 +121,7 @@ namespace KHRMS
 
         [HttpDelete]
         [Route("DeleteHoliday")]
-        [Authorize(Roles = "Admin,System Admin,HR,HR Operations")]
+        [RequirePermission("HOLIDAY_MANAGE")]
         public async Task<IActionResult> DeleteHoliday(long holidayId)
         {
             Log.Information("HolidayController - DeleteHoliday called with ID: {Id}", holidayId);
@@ -153,7 +154,7 @@ namespace KHRMS
         /// <param name="targetYear"></param>
         /// <returns></returns>
         [HttpPost("CopyHolidaysToNextYear")]
-        [Authorize(Roles = "Admin,System Admin,HR,HR Operations")]
+        [RequirePermission("HOLIDAY_MANAGE")]
         public async Task<IActionResult> CopyHolidaysToNextYear([FromQuery] int sourceYear, [FromQuery] int targetYear)
         {
             Log.Information("HolidayController - CopyHolidaysToNextYear called from {SourceYear} to {TargetYear}", sourceYear, targetYear);

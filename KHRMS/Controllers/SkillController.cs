@@ -1,4 +1,5 @@
-﻿using KHRMS.Core;
+using KHRMS.Authorization;
+using KHRMS.Core;
 using KHRMS.Infrastructure;
 using KHRMS.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -52,6 +53,7 @@ namespace KHRMS
         /// Add a new Skill
         /// </summary>
         [HttpPost("AddSkills")]
+        [RequirePermission("SKILL_MANAGE")]
         public async Task<IActionResult> AddSkill([FromBody] Skill skill)
         {
             Log.Information("SkillController - AddSkill called.");
@@ -83,6 +85,7 @@ namespace KHRMS
         /// Update existing Skill
         /// </summary>
         [HttpPut("UpdateSkill")]
+        [RequirePermission("SKILL_MANAGE")]
         public async Task<IActionResult> UpdateSkill([FromBody] Skill skill)
         {
             Log.Information("SkillController - UpdateSkill called for ID: {Id}", skill.Id);
@@ -114,6 +117,7 @@ namespace KHRMS
         /// Delete a Skill
         /// </summary>
         [HttpDelete("DeleteSkill")]
+        [RequirePermission("SKILL_MANAGE")]
         public async Task<IActionResult> DeleteSkill(long skillId)
         {
             Log.Information("SkillController - DeleteSkill called for ID: {Id}", skillId);

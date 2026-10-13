@@ -42,6 +42,38 @@ namespace KHRMS.Core
         IPermissionMasterRepository PermissionMaster { get; }
         IRolePermissionMappingRepository RolePermissionMappings { get; }
         IUserPermissionMappingRepository UserPermissionMappings { get; }
+
+        // Payroll Repositories
+        ISalaryComponentRepository SalaryComponents { get; }
+        ISalaryStructureRepository SalaryStructures { get; }
+        IEmployeeSalaryAssignmentRepository EmployeeSalaryAssignments { get; }
+        IPayRunRepository PayRuns { get; }
+        IPayRunEmployeeDetailRepository PayRunEmployeeDetails { get; }
+        IPayslipRepository Payslips { get; }
+        IReimbursementClaimRepository ReimbursementClaims { get; }
+        IFullAndFinalSettlementRepository FullAndFinalSettlements { get; }
+
+        // PMS Repositories
+        IPmsGoalRepository PmsGoals { get; }
+        IPmsKeyResultRepository PmsKeyResults { get; }
+        IPmsGoalCheckInRepository PmsGoalCheckIns { get; }
+        IPmsReviewCycleRepository PmsReviewCycles { get; }
+        IPmsAppraisalRepository PmsAppraisals { get; }
+        IPmsFeedbackRepository PmsFeedbacks { get; }
+        IPmsOneOnOneRepository PmsOneOnOnes { get; }
+        IPmsPipRepository PmsPips { get; }
+
+        IExpenseCategoryRepository ExpenseCategories { get; }
+        IExpenseReportRepository ExpenseReports { get; }
+        IExpenseItemRepository ExpenseItems { get; }
+        IExpenseMileageRepository ExpenseMileages { get; }
+        IExpenseAdvanceRepository ExpenseAdvances { get; }
+
+        // Recruitment & ATS Repositories
+        IJobRequisitionRepository JobRequisitions { get; }
+        IJobInterviewRepository JobInterviews { get; }
+        IJobOfferRepository JobOffers { get; }
+
         int Save();
     }
 }

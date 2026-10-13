@@ -396,8 +396,14 @@ namespace KHRMS.Services
                 });
 
                 // 2. Notification for Approvers (Admin / HR / Manager)
+                string approverTitle = $"Asset Ticket #{request.Id} Updated";
                 string approverMsg = $"Ticket #{request.Id} for {asset?.AssetsMasterName ?? "asset"} ({empFullName}) status updated to '{request.Status}' by {model.ActionByName ?? "Admin"}.";
-                if (!string.IsNullOrWhiteSpace(model.Remarks))
+                if (normalizedStatus.Contains("closed") && isRejectedFlow)
+                {
+                    approverTitle = $"Asset Ticket #{request.Id} Closed (Rejection Acknowledged)";
+                    approverMsg = $"Ticket #{request.Id} for {asset?.AssetsMasterName ?? "asset"} ({empFullName}) was closed by {model.ActionByName ?? "Employee"} (Rejection decision acknowledged).";
+                }
+                else if (!string.IsNullOrWhiteSpace(model.Remarks))
                 {
                     approverMsg += $" Note: {model.Remarks}";
                 }
@@ -405,7 +411,7 @@ namespace KHRMS.Services
                 await _unitOfWork.Notifications.Add(new Notification
                 {
                     EmployeeId = 0,
-                    Title = $"Asset Ticket #{request.Id} Updated",
+                    Title = approverTitle,
                     Message = approverMsg,
                     Category = "Asset",
                     Type = notifType,

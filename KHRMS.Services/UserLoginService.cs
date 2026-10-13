@@ -58,9 +58,19 @@ namespace KHRMS.Services
                 {
                     // Find matching employee
                     var allEmployees = await _unitOfWork.Employees.GetAll();
-                    var matchedEmployee = allEmployees.FirstOrDefault(e => string.Equals(e.EmailAddress, Email, StringComparison.OrdinalIgnoreCase) && !e.IsDeleted && e.IsActive);
+                    var existingEmpRecord = allEmployees.FirstOrDefault(e => string.Equals(e.EmailAddress, Email, StringComparison.OrdinalIgnoreCase));
 
-                    // If user exists in UserLogin but employee record is missing, auto-create it
+                    // If employee exists but has been terminated/deactivated, deny login!
+                    if (existingEmpRecord != null && (existingEmpRecord.IsDeleted || !existingEmpRecord.IsActive))
+                    {
+                        return null;
+                    }
+
+                    var matchedEmployee = existingEmpRecord != null && !existingEmpRecord.IsDeleted && existingEmpRecord.IsActive 
+                        ? existingEmpRecord 
+                        : null;
+
+                    // If user exists in UserLogin but employee record is missing completely (initial system bootstrap only), auto-create it
                     if (matchedEmployee == null)
                     {
                         var newEmp = new Employee

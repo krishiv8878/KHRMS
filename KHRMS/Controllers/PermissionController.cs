@@ -1,3 +1,4 @@
+using KHRMS.Authorization;
 using KHRMS.Core;
 using KHRMS.Core.Models;
 using KHRMS.Infrastructure;
@@ -65,7 +66,7 @@ namespace KHRMS.Controllers
         /// Update permissions for a specific role
         /// </summary>
         [HttpPost("SaveRolePermissions")]
-        [Authorize(Roles = "Admin,System Admin,HR,HR Operations")]
+        [RequirePermission("ROLE_MANAGE")]
         public async Task<IActionResult> SaveRolePermissions([FromBody] SaveRolePermissionsRequest request)
         {
             if (request == null || request.RoleId <= 0)
@@ -119,7 +120,7 @@ namespace KHRMS.Controllers
         /// Get effective permissions for any employee (Admin/HR only)
         /// </summary>
         [HttpGet("GetUserPermissions/{employeeId}")]
-        [Authorize(Roles = "Admin,System Admin,HR,HR Operations,Manager,Management")]
+        [RequirePermission("ROLE_VIEW")]
         public async Task<IActionResult> GetUserPermissions(long employeeId)
         {
             var perms = await _permissionService.GetUserEffectivePermissionsAsync(employeeId);

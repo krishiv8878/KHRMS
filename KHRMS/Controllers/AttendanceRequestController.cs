@@ -1,4 +1,5 @@
 using Azure.Core;
+using KHRMS.Authorization;
 using KHRMS.Core;
 using KHRMS.Infrastructure;
 using KHRMS.Services;
@@ -125,7 +126,7 @@ namespace KHRMS.Controllers
 
 
         [HttpPut("UpdateAttendanceRequest")]
-        [Authorize(Roles = "Admin,System Admin,HR,HR Operations,Manager,Management")]
+        [RequirePermission("ATTENDANCE_REGULARIZE_APPROVE")]
         public async Task<IActionResult> UpdateAttendanceRequest([FromBody] AttendanceRequestUpdateDTO attendanceRequest)
         {
             Log.Information("UpdateAttendanceRequest API called.");
@@ -154,7 +155,7 @@ namespace KHRMS.Controllers
 
 
         [HttpDelete("DeleteAttendanceRequest")]
-        [Authorize(Roles = "Admin,System Admin,HR,HR Operations,Manager,Management")]
+        [RequirePermission("ATTENDANCE_REGULARIZE_APPROVE")]
         public async Task<IActionResult> DeleteAttendanceRequest(long id)
         {
             Log.Information("DeleteAttendanceRequest API called for ID {Id}.", id);

@@ -1,4 +1,6 @@
+using KHRMS.Authorization;
 using KHRMS.Core;
+using KHRMS.Core.Models;
 using KHRMS.Infrastructure;
 using KHRMS.Services;
 using KHRMS.Services.Interfaces;
@@ -21,16 +23,19 @@ namespace KHRMS
     {
         private readonly IEmployeeDocumentService _employeeDocumentService;
         private readonly IUserContextService? _userContextService;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<EmployeeDocumentController>? _logger;
         private readonly List<string> _allowedExtensions = new List<string> { ".doc", ".docx", ".xaml" };
 
         public EmployeeDocumentController(
             IEmployeeDocumentService employeeDocumentService,
             ILogger<EmployeeDocumentController> logger,
+            IUnitOfWork unitOfWork,
             IUserContextService? userContextService = null)
         {
             _employeeDocumentService = employeeDocumentService;
             _logger = logger;
+            _unitOfWork = unitOfWork;
             _userContextService = userContextService;
         }
 
@@ -107,7 +112,13 @@ namespace KHRMS
 
 
         [HttpPost("UploadDocument")]
-        public async Task<IActionResult> UploadDocument([FromForm] long employeeId, [FromForm] string category, string documentName, IFormFile file)
+        public async Task<IActionResult> UploadDocument(
+            [FromForm] long employeeId, 
+            [FromForm] string category, 
+            string documentName, 
+            IFormFile file,
+            [FromForm] long? documentId = null,
+            [FromQuery] long? docId = null)
         {
             Log.Information("EmployeeDocumentController - UploadDocument called for EmployeeID: {EmployeeId}", employeeId);
 
@@ -135,31 +146,106 @@ namespace KHRMS
                 var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
                 Directory.CreateDirectory(uploadsDir);
 
-                var filePath = Path.Combine(uploadsDir, Path.GetFileName(file.FileName));
+                var uniqueFileName = $"{Guid.NewGuid()}_{Path.GetFileName(file.FileName)}";
+                var filePath = Path.Combine(uploadsDir, uniqueFileName);
 
                 using var stream = new FileStream(filePath, FileMode.Create);
                 await file.CopyToAsync(stream);
 
                 var currentUserId = _userContextService?.GetCurrentEmployeeId() ?? 0;
-                var document = new EmployeeDocumentInfo
+                long targetEmpId = employeeId > 0 ? employeeId : currentUserId;
+                long targetDocId = (documentId.HasValue && documentId.Value > 0) ? documentId.Value : (docId.HasValue ? docId.Value : 0);
+
+                EmployeeDocumentInfo? existingDoc = null;
+                if (targetDocId > 0)
                 {
-                    EmployeeId = employeeId > 0 ? employeeId : currentUserId,
-                    FilePath = filePath,
-                    DocumentName = documentName,
-                    Category = category,
-                    UploadedBy = currentUserId > 0 ? currentUserId : employeeId,
-                    UploadedDate = DateTime.UtcNow,
-                    Status = "Pending"
-                };
+                    existingDoc = await _unitOfWork.EmployeementDocument.GetById(targetDocId);
+                }
 
-                await _employeeDocumentService.AddAsync(document);
+                // If not found by direct ID, check if this employee has an existing Rejected document with the same name
+                if (existingDoc == null)
+                {
+                    var allDocs = await _unitOfWork.EmployeementDocument.GetAll();
+                    existingDoc = allDocs.FirstOrDefault(d => 
+                        !d.IsDeleted && 
+                        d.EmployeeId == targetEmpId && 
+                        string.Equals(d.Status, "Rejected", StringComparison.OrdinalIgnoreCase) && 
+                        string.Equals(d.DocumentName, documentName, StringComparison.OrdinalIgnoreCase));
+                }
 
-                Log.Information("EmployeeDocumentController - Document uploaded successfully for EmployeeID: {EmployeeId}", employeeId);
+                bool isReupload = existingDoc != null;
+                EmployeeDocumentInfo document;
+
+                if (existingDoc != null)
+                {
+                    existingDoc.FilePath = filePath;
+                    existingDoc.DocumentName = documentName;
+                    existingDoc.Category = category;
+                    existingDoc.UploadedDate = DateTime.UtcNow;
+                    existingDoc.Status = "Pending";
+                    existingDoc.RejectionReason = null;
+                    existingDoc.ActionBy = null;
+                    existingDoc.ActionDate = null;
+                    existingDoc.UpdatedBy = (int)currentUserId;
+                    existingDoc.UpdatedDate = DateTime.UtcNow;
+
+                    _unitOfWork.EmployeementDocument.Update(existingDoc);
+                    _unitOfWork.Save();
+                    document = existingDoc;
+                    Log.Information("EmployeeDocumentController - Existing rejected document updated/re-uploaded with ID: {Id}", document.Id);
+                }
+                else
+                {
+                    document = new EmployeeDocumentInfo
+                    {
+                        EmployeeId = targetEmpId,
+                        FilePath = filePath,
+                        DocumentName = documentName,
+                        Category = category,
+                        UploadedBy = currentUserId > 0 ? currentUserId : targetEmpId,
+                        UploadedDate = DateTime.UtcNow,
+                        Status = "Pending"
+                    };
+
+                    await _employeeDocumentService.AddAsync(document);
+                    Log.Information("EmployeeDocumentController - Document uploaded successfully with ID: {Id} for EmployeeID: {EmployeeId}", document.Id, targetEmpId);
+                }
+
+                // Broadcast Notification to Admins & HR
+                try
+                {
+                    var employee = await _unitOfWork.Employees.GetById(targetEmpId);
+                    var empFullName = employee != null ? $"{employee.FirstName} {employee.LastName}".Trim() : $"Employee #{targetEmpId}";
+
+                    await _unitOfWork.Notifications.Add(new Notification
+                    {
+                        EmployeeId = 0, // 0 = broadcast to Admins, HR & Managers
+                        Title = isReupload ? "Document Re-uploaded for Verification" : "New Document Uploaded for Verification",
+                        Message = $"{empFullName} {(isReupload ? "re-uploaded" : "submitted")} document '{documentName}' ({category}) for verification.",
+                        Category = "Document",
+                        Type = "request",
+                        Icon = "description",
+                        IconBg = "#eff6ff",
+                        IconColor = "#2563eb",
+                        Route = "/index/document",
+                        QueryParams = "tab=Pending",
+                        IsRead = false,
+                        CreatedDate = DateTime.UtcNow,
+                        UpdatedDate = DateTime.UtcNow,
+                        IsActive = true,
+                        IsDeleted = false
+                    });
+                    _unitOfWork.Save();
+                }
+                catch (Exception notifEx)
+                {
+                    Log.Error(notifEx, "Failed to create document upload notification");
+                }
 
                 return CreatedAtAction(nameof(GetDocument), new { id = document.Id }, new ApiResponse<EmployeeDocumentInfo>
                 {
-                    StatusCode = (int)HttpStatusCode.Created,
-                    Message = ApiMessageConstant.DocumentRequestAdded,
+                    StatusCode = isReupload ? (int)HttpStatusCode.OK : (int)HttpStatusCode.Created,
+                    Message = isReupload ? "Document re-uploaded successfully and submitted for verification." : ApiMessageConstant.DocumentRequestAdded,
                     Data = document
                 });
             }
@@ -189,7 +275,7 @@ namespace KHRMS
             if (document == null)
             {
                 Log.Warning("EmployeeDocumentController - Document not found for ID: {Id}", id);
-                return Ok("Document not found.");
+                return NotFound("Document not found.");
             }
 
             var filePath = document.FilePath;
@@ -242,7 +328,7 @@ namespace KHRMS
         /// <summary>
         /// Approves or rejects an employee document submission.
         /// </summary>
-        [Authorize(Roles = "Admin,System Admin,HR,HR Operations")]
+        [RequirePermission("EMPLOYEE_DOCUMENTS_MANAGE")]
         [HttpPost("ApproveOrRejectDocument")]
         public async Task<IActionResult> ApproveOrRejectDocument([FromBody] DocumentApprovalDTO dto)
         {
@@ -273,6 +359,39 @@ namespace KHRMS
 
             var updatedDoc = await _employeeDocumentService.GetByIdAsync(dto.Id);
             var isApproved = dto.Status.Equals("Approved", StringComparison.OrdinalIgnoreCase);
+
+            // Send notification to the employee whose document was approved/rejected
+            try
+            {
+                if (updatedDoc != null && updatedDoc.EmployeeId > 0)
+                {
+                    await _unitOfWork.Notifications.Add(new Notification
+                    {
+                        EmployeeId = updatedDoc.EmployeeId,
+                        Title = isApproved ? "Document Verified & Approved" : "Document Verification Rejected",
+                        Message = isApproved 
+                            ? $"Your document '{updatedDoc.DocumentName}' has been verified and approved by HR/Admin."
+                            : $"Your document '{updatedDoc.DocumentName}' was rejected. Reason: {dto.RejectionReason ?? "No reason provided."}",
+                        Category = "Document",
+                        Type = isApproved ? "approval" : "alert",
+                        Icon = isApproved ? "check_circle" : "cancel",
+                        IconBg = isApproved ? "#f0fdf4" : "#fef2f2",
+                        IconColor = isApproved ? "#16a34a" : "#dc2626",
+                        Route = "/index/document",
+                        QueryParams = isApproved ? "tab=Approved" : "tab=Rejected",
+                        IsRead = false,
+                        CreatedDate = DateTime.UtcNow,
+                        UpdatedDate = DateTime.UtcNow,
+                        IsActive = true,
+                        IsDeleted = false
+                    });
+                    _unitOfWork.Save();
+                }
+            }
+            catch (Exception notifEx)
+            {
+                Log.Error(notifEx, "Failed to create document status notification");
+            }
 
             return Ok(new ApiResponse<EmployeeDocumentInfo>
             {

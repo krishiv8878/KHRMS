@@ -1,4 +1,5 @@
 using System.Net;
+using KHRMS.Authorization;
 using KHRMS.Infrastructure;
 using KHRMS.Services.Interfaces;
 using KHRMS.Services.Request;
@@ -11,11 +12,13 @@ namespace KHRMS.Controllers
     [Authorize]
     [Route("api/[controller]")]
     [ApiController]
-    public class AssetRequestController(IAssetRequestService assetRequestService) : ControllerBase
+    public class AssetRequestController(IAssetRequestService assetRequestService, IUserContextService userContextService) : ControllerBase
     {
         private readonly IAssetRequestService _assetRequestService = assetRequestService;
+        private readonly IUserContextService _userContextService = userContextService;
 
         [HttpPost("CreateRequest")]
+        [RequirePermission("ASSET_REQUEST_SELF")]
         public async Task<IActionResult> CreateRequest([FromBody] CreateAssetRequestModel model)
         {
             Log.Information("CreateRequest API called for AssetId: {AssetId}, EmployeeId: {EmployeeId}", model?.AssetId, model?.EmployeeId);
@@ -62,6 +65,59 @@ namespace KHRMS.Controllers
                     Message = "Invalid update payload.",
                     Data = false
                 });
+            }
+
+            var hasApprovePerm = await _userContextService.HasPermissionAsync("ASSET_APPROVE");
+            if (!hasApprovePerm)
+            {
+                // Employee self-service check: User must have ASSET_REQUEST_SELF permission
+                var hasSelfPerm = await _userContextService.HasPermissionAsync("ASSET_REQUEST_SELF");
+                if (!hasSelfPerm)
+                {
+                    return StatusCode(StatusCodes.Status403Forbidden, new ApiResponse<bool>
+                    {
+                        StatusCode = StatusCodes.Status403Forbidden,
+                        Message = "Access Denied: Missing required permission 'ASSET_APPROVE' or 'ASSET_REQUEST_SELF'.",
+                        Data = false
+                    });
+                }
+
+                // Verify this ticket belongs to the current employee
+                var currentEmpId = _userContextService.GetCurrentEmployeeId();
+                var req = await _assetRequestService.GetAssetRequestById(model.RequestId);
+                if (req == null || (currentEmpId > 0 && req.EmployeeId != currentEmpId))
+                {
+                    return StatusCode(StatusCodes.Status403Forbidden, new ApiResponse<bool>
+                    {
+                        StatusCode = StatusCodes.Status403Forbidden,
+                        Message = "Access Denied: You can only update your own asset service tickets.",
+                        Data = false
+                    });
+                }
+
+                // Verify the requested status transition is a valid employee self-service action:
+                // 1. Acknowledging / closing rejected ticket ("Closed")
+                // 2. Handover / Courier dispatch ("Handed Over at IT Desk", "In Transit", "In Transit (Picked Up)")
+                // 3. Confirming receipt / delivery ("Completed", "Received")
+                // 4. Confirming desk handover received ("In Repair", "Received by Admin")
+                var normStatus = model.NewStatus?.Trim().ToLowerInvariant() ?? "";
+                bool isAllowedEmployeeStatus = normStatus.Contains("closed")
+                    || normStatus.Contains("transit")
+                    || normStatus.Contains("desk")
+                    || normStatus.Contains("handover")
+                    || normStatus.Contains("received")
+                    || normStatus.Contains("repair")
+                    || normStatus.Contains("completed");
+
+                if (!isAllowedEmployeeStatus)
+                {
+                    return StatusCode(StatusCodes.Status403Forbidden, new ApiResponse<bool>
+                    {
+                        StatusCode = StatusCodes.Status403Forbidden,
+                        Message = "Access Denied: Administrative approvals require 'ASSET_APPROVE' permission.",
+                        Data = false
+                    });
+                }
             }
 
             var isUpdated = await _assetRequestService.UpdateAssetRequestStatus(model);

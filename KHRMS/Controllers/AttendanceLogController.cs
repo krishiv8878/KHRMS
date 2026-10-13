@@ -1,4 +1,5 @@
-﻿using KHRMS.Core;
+using KHRMS.Authorization;
+using KHRMS.Core;
 using KHRMS.Infrastructure;
 using System.Net;
 using KHRMS.Services.Interfaces;
@@ -12,10 +13,13 @@ namespace KHRMS.Controllers
     [Authorize]
     [Route("api/[controller]")]
     [ApiController]
-    public class AttendanceLogController(IAttendanceLogService attendanceLogService) : ControllerBase
+    public class AttendanceLogController(IAttendanceLogService attendanceLogService, IUserContextService userContextService) : ControllerBase
     {
         private readonly IAttendanceLogService _attendanceLogService = attendanceLogService;
+        private readonly IUserContextService _userContext = userContextService;
+
         [HttpGet("GetAll")]
+        [RequirePermission("ATTENDANCE_VIEW_SELF")]
         public async Task<IActionResult> GetAll()
         {
             Log.Information("AttendanceLogController - GetAll called.");
@@ -33,6 +37,16 @@ namespace KHRMS.Controllers
                 });
             }
 
+            var canViewAll = await _userContext.HasPermissionAsync("ATTENDANCE_VIEW_ALL");
+            if (!canViewAll)
+            {
+                var currentEmpId = _userContext.GetCurrentEmployeeId();
+                if (currentEmpId > 0)
+                {
+                    attendanceLog = attendanceLog.Where(a => a.EmployeeId == currentEmpId).ToList();
+                }
+            }
+
             Log.Information("AttendanceLogController - AttendanceLog records retrieved.");
             return Ok(new ApiResponse<IEnumerable<AttendanceLog>>
             {
@@ -45,6 +59,7 @@ namespace KHRMS.Controllers
 
         [HttpGet]
         [Route("GetAttendanceLogById")]
+        [RequirePermission("ATTENDANCE_VIEW_SELF")]
         public async Task<IActionResult> GetById(long employeeId)
         {
             Log.Information("AttendanceLogController - GetAttendanceLogById called for ID: {EmployeeId}", employeeId);
@@ -73,6 +88,7 @@ namespace KHRMS.Controllers
 
 
         [HttpPost("AddAttendanceLog")]
+        [RequirePermission("ATTENDANCE_PUNCH")]
         public async Task<IActionResult> AddAttendanceLog([FromBody] AttendanceLog attendanceLog)
         {
             Log.Information("AttendanceLogController - AddAttendanceLog called.");
@@ -100,6 +116,7 @@ namespace KHRMS.Controllers
 
 
         [HttpPut("UpdateAttendanceLog")]
+        [RequirePermission("ATTENDANCE_REGULARIZE_APPROVE")]
         public async Task<IActionResult> UpdateAttendanceLog(AttendanceLog attendanceLog)
         {
             Log.Information("AttendanceLogController - UpdateAttendanceLog called.");
@@ -128,6 +145,7 @@ namespace KHRMS.Controllers
 
         [HttpDelete]
         [Route("DeleteAttendanceLog")]
+        [RequirePermission("ATTENDANCE_REGULARIZE_APPROVE")]
         public async Task<IActionResult> DeleteAttendanceLog(long id)
         {
             Log.Information("AttendanceLogController - DeleteAttendanceLog called for ID: {Id}", id);

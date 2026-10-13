@@ -31,46 +31,139 @@ namespace KHRMS.Services
             }
 
             // Find Timesheet for this period
-            var allTimesheets = await _unitOfWork.Timesheets.GetAll();
             Timesheet? timesheet = null;
             if (timesheetId.HasValue && timesheetId.Value > 0)
             {
-                timesheet = allTimesheets.FirstOrDefault(t => !t.IsDeleted && t.Id == timesheetId.Value);
+                timesheet = await _unitOfWork.Timesheets.Query()
+                    .FirstOrDefaultAsync(t => !t.IsDeleted && t.Id == timesheetId.Value);
             }
             if (timesheet == null)
             {
-                timesheet = allTimesheets
+                timesheet = await _unitOfWork.Timesheets.Query()
                     .Where(t => !t.IsDeleted && t.EmployeeId == employeeId && t.StartDate.Date == start && t.EndDate.Date == end)
                     .OrderByDescending(t => t.Id)
-                    .FirstOrDefault();
+                    .FirstOrDefaultAsync();
             }
 
             // Find all Entries for this employee in date range
-            var allEntries = await _unitOfWork.TimesheetEntries.GetAll();
-            var entries = allEntries
-                .Where(e => !e.IsDeleted && e.EmployeeId == employeeId && e.EntryDate.Date >= start && e.EntryDate.Date <= end)
-                .ToList();
+            var allEntries = await _unitOfWork.TimesheetEntries.Query()
+                .Where(e => e.EmployeeId == employeeId && ((e.EntryDate.Date >= start && e.EntryDate.Date <= end) || (timesheet != null && e.TimesheetId == timesheet.Id)))
+                .ToListAsync();
+
+            List<TimesheetEntry> entries;
+            if (timesheet != null && (timesheetId.HasValue || timesheet.Status == "Approved" || timesheet.Status == "Submitted"))
+            {
+                // Viewing a specific timesheet instance (e.g. from manager approval list or review modal)
+                // OR an approved/submitted locked timesheet
+                if (timesheet.Status == "Rejected")
+                {
+                    // For a REJECTED timesheet:
+                    // Any entry tagged with this timesheet's ID belonged to it when submitted/rejected,
+                    // EVEN IF the employee later soft-deleted it while editing their draft for resubmission!
+                    var tagged = allEntries.Where(e => e.TimesheetId == timesheet.Id).ToList();
+                    if (tagged.Any())
+                    {
+                        entries = tagged;
+                    }
+                    else
+                    {
+                        // Fallback for older historical records before TimesheetId tagging:
+                        var cutoff = timesheet.ActionDate ?? timesheet.SubmittedDate ?? timesheet.UpdatedDate;
+                        entries = allEntries
+                            .Where(e => e.EmployeeId == employeeId && e.EntryDate.Date >= start && e.EntryDate.Date <= end)
+                            .Where(e => (!e.CreatedDate.HasValue || e.CreatedDate.Value <= cutoff.AddMinutes(2)) &&
+                                        (!e.IsDeleted || e.UpdatedDate > cutoff.AddMinutes(2)))
+                            .ToList();
+                    }
+                }
+                else
+                {
+                    // Approved or Submitted: take active entries linked to this timesheet
+                    var tagged = allEntries.Where(e => !e.IsDeleted && e.TimesheetId == timesheet.Id).ToList();
+                    entries = tagged.Any() ? tagged : allEntries.Where(e => !e.IsDeleted && e.EmployeeId == employeeId && e.EntryDate.Date >= start && e.EntryDate.Date <= end).ToList();
+                }
+            }
+            else if (timesheet != null && timesheet.Status == "Rejected" && !timesheetId.HasValue)
+            {
+                // Employee is visiting their own timesheet page to edit after rejection.
+                // Check if working draft copies (TimesheetId == null) exist:
+                var workingDrafts = allEntries
+                    .Where(e => !e.IsDeleted && e.EmployeeId == employeeId && e.EntryDate.Date >= start && e.EntryDate.Date <= end && e.TimesheetId == null)
+                    .ToList();
+
+                if (workingDrafts.Any())
+                {
+                    entries = workingDrafts;
+                }
+                else
+                {
+                    // Clones don't exist yet for this rejected timesheet - clone the rejected entries into working draft now!
+                    var historical = allEntries.Where(e => e.TimesheetId == timesheet.Id && !e.IsDeleted).ToList();
+                    if (!historical.Any())
+                    {
+                        historical = allEntries
+                            .Where(e => !e.IsDeleted && e.EmployeeId == employeeId && e.EntryDate.Date >= start && e.EntryDate.Date <= end)
+                            .ToList();
+                    }
+
+                    var newWorkingList = new List<TimesheetEntry>();
+                    foreach (var h in historical)
+                    {
+                        var clone = new TimesheetEntry
+                        {
+                            TimesheetId = null, // working draft
+                            EmployeeId = h.EmployeeId,
+                            ProjectId = h.ProjectId,
+                            EntryDate = h.EntryDate,
+                            TaskDescription = h.TaskDescription,
+                            Hours = h.Hours,
+                            ClockInRef = h.ClockInRef,
+                            ClockOutRef = h.ClockOutRef,
+                            IsRegularized = h.IsRegularized,
+                            CreatedBy = h.CreatedBy,
+                            CreatedDate = h.CreatedDate,
+                            UpdatedBy = (int)employeeId,
+                            UpdatedDate = DateTime.UtcNow,
+                            IsActive = true,
+                            IsDeleted = false
+                        };
+                        await _unitOfWork.TimesheetEntries.Add(clone);
+                        newWorkingList.Add(clone);
+                    }
+                    if (newWorkingList.Any())
+                    {
+                        _unitOfWork.Save();
+                    }
+                    entries = newWorkingList;
+                }
+            }
+            else
+            {
+                // Draft / unsubmitted period
+                entries = allEntries
+                    .Where(e => !e.IsDeleted && e.EmployeeId == employeeId && e.EntryDate.Date >= start && e.EntryDate.Date <= end && e.TimesheetId == null)
+                    .ToList();
+            }
 
             // Projects map
             var allProjects = await _unitOfWork.ProjectMasters.GetAll();
             var projectDict = allProjects.ToDictionary(p => p.Id, p => p.ProjectName ?? "Project");
 
             // Attendance records in range
-            var allAttendance = await _unitOfWork.EmployeeAttendance.GetAll();
-            var attendanceList = allAttendance
+            var attendanceList = await _unitOfWork.EmployeeAttendance.Query()
                 .Where(a => !a.IsDeleted && a.EmployeeId == employeeId)
-                .ToList();
+                .ToListAsync();
 
             // Attendance requests (regularizations) in range
-            var allAttRequests = await _unitOfWork.AttendanceRequests.GetAll();
-            var regularizedDates = allAttRequests
-                .Where(r => !r.IsDeleted && r.EmployeeId == employeeId && r.Status != null && r.Status.Equals("Approved", StringComparison.OrdinalIgnoreCase))
-                .Select(r => r.RequestedDate.Date)
-                .ToHashSet();
+            var empAttRequests = await _unitOfWork.AttendanceRequests.Query()
+                .Where(r => !r.IsDeleted && r.EmployeeId == employeeId)
+                .OrderByDescending(r => r.Id)
+                .ToListAsync();
 
             // Holidays
-            var allHolidays = await _unitOfWork.Holidays.GetAll();
-            var holidaysList = allHolidays.Where(h => !h.IsDeleted && h.IsActive).ToList();
+            var holidaysList = await _unitOfWork.Holidays.Query()
+                .Where(h => !h.IsDeleted && h.IsActive)
+                .ToListAsync();
 
             // Approved Leaves
             var allLeaves = await _unitOfWork.LeaveRequest.GetAll();
@@ -90,26 +183,38 @@ namespace KHRMS.Services
                 DateTime? clockIn = dayAttendance?.ClockIn;
                 DateTime? clockOut = dayAttendance?.ClockOut;
                 decimal attHours = dayAttendance?.TotalHours ?? dayAttendance?.EffectiveHours ?? 0m;
-                bool isRegularized = regularizedDates.Contains(curDate);
+
+                var matchReg = empAttRequests.FirstOrDefault(r => r.RequestedDate.Date == curDate);
+                string? regStatus = matchReg?.Status;
+                bool isRegularized = matchReg != null && string.Equals(matchReg.Status, "Approved", StringComparison.OrdinalIgnoreCase);
                 bool isShiftInProgress = clockIn.HasValue && !clockOut.HasValue && curDate == DateTime.UtcNow.Date;
 
                 // Holiday check
-                var holidayMatch = holidaysList.FirstOrDefault(h => h.HolidayDate.ToDateTime(TimeOnly.MinValue).Date == curDate);
+                var curDateOnly = DateOnly.FromDateTime(curDate);
+                var holidayMatch = holidaysList.FirstOrDefault(h => 
+                    h.HolidayDate == curDateOnly || 
+                    (h.HolidayDate.Year == curDate.Year && h.HolidayDate.Month == curDate.Month && h.HolidayDate.Day == curDate.Day) ||
+                    h.HolidayDate.ToDateTime(TimeOnly.MinValue).Date == curDate);
                 bool isHoliday = holidayMatch != null;
                 string? holidayName = holidayMatch?.HolidayName;
                 bool isOptionalHoliday = holidayMatch?.IsOptional ?? false;
 
                 // Approved Leave check
-                var leaveMatch = approvedLeaves.FirstOrDefault(l => curDate >= l.StartDate.Date && curDate <= l.EndDate.Date);
+                var leaveMatch = approvedLeaves.FirstOrDefault(l => 
+                    (curDate >= l.StartDate.Date && curDate <= l.EndDate.Date) ||
+                    (curDateOnly >= DateOnly.FromDateTime(l.StartDate) && curDateOnly <= DateOnly.FromDateTime(l.EndDate)));
                 bool isLeave = leaveMatch != null;
                 string? leaveTypeName = null;
                 if (leaveMatch != null)
                 {
-                    leaveTypeName = leaveTypeDict.ContainsKey(leaveMatch.LeaveTypeId) ? leaveTypeDict[leaveMatch.LeaveTypeId] : "On Leave";
+                    leaveTypeName = leaveTypeDict.ContainsKey(leaveMatch.LeaveTypeId) ? leaveTypeDict[leaveMatch.LeaveTypeId] : (leaveMatch.LeaveType?.Type ?? "On Leave");
                 }
 
                 bool isWeekend = curDate.DayOfWeek == DayOfWeek.Saturday || curDate.DayOfWeek == DayOfWeek.Sunday;
                 bool isPriorToJoining = employee?.DateOfJoining.HasValue == true && curDate < employee.DateOfJoining.Value.Date;
+                bool hasPunch = clockIn.HasValue || attHours > 0;
+                bool isFuture = curDate > DateTime.UtcNow.Date;
+                bool isAbsent = !isFuture && !isPriorToJoining && !isLeave && !isHoliday && !isWeekend && !hasPunch && !isShiftInProgress && !isRegularized;
 
                 var dayTasks = entries
                     .Where(e => e.EntryDate.Date == curDate)
@@ -131,6 +236,8 @@ namespace KHRMS.Services
                     ClockOut = clockOut,
                     AttendanceHours = attHours,
                     IsRegularized = isRegularized,
+                    RegularizationStatus = regStatus,
+                    IsAbsent = isAbsent,
                     IsShiftInProgress = isShiftInProgress,
                     IsHoliday = isHoliday,
                     HolidayName = holidayName,
@@ -143,7 +250,12 @@ namespace KHRMS.Services
                 });
             }
 
-            var totalTimesheetHours = days.Sum(d => d.DayTotalHours);
+            var calculatedHours = days.Sum(d => d.DayTotalHours);
+            var totalTimesheetHours = (timesheet != null && timesheet.Status == "Rejected" && calculatedHours > 0)
+                ? calculatedHours
+                : (timesheet != null && timesheet.Status != "Draft" && timesheet.TotalHours > 0 && calculatedHours == 0
+                    ? timesheet.TotalHours
+                    : calculatedHours);
             var totalAttendanceHours = days.Sum(d => d.AttendanceHours);
 
             return new TimesheetViewDTO
@@ -173,14 +285,60 @@ namespace KHRMS.Services
                 throw new InvalidOperationException($"Cannot log timesheet tasks for {dto.EntryDate:yyyy-MM-dd} prior to your official joining date ({employee.DateOfJoining.Value:yyyy-MM-dd}).");
             }
 
+            var entryDate = dto.EntryDate.Date;
+            if (entryDate > DateTime.UtcNow.Date)
+            {
+                throw new InvalidOperationException($"Cannot log timesheet tasks for future dates ({dto.EntryDate:yyyy-MM-dd}).");
+            }
+
             // Check if user has an approved leave on this entry date
             var allLeaves = await _unitOfWork.LeaveRequest.GetAll();
             var leaveOnDate = allLeaves.FirstOrDefault(l => !l.IsDeleted && l.EmployeeId == employeeId && 
                 l.Status != null && l.Status.Equals("Approved", StringComparison.OrdinalIgnoreCase) &&
-                dto.EntryDate.Date >= l.StartDate.Date && dto.EntryDate.Date <= l.EndDate.Date);
+                entryDate >= l.StartDate.Date && entryDate <= l.EndDate.Date);
             if (leaveOnDate != null)
             {
                 throw new InvalidOperationException($"Cannot log timesheet tasks on an approved leave date ({dto.EntryDate:yyyy-MM-dd}).");
+            }
+
+            // Check if it is a weekend or company holiday
+            bool isWeekend = entryDate.DayOfWeek == DayOfWeek.Saturday || entryDate.DayOfWeek == DayOfWeek.Sunday;
+            var allHolidays = await _unitOfWork.Holidays.GetAll();
+            var entryDateOnly = DateOnly.FromDateTime(entryDate);
+            bool isHoliday = allHolidays.Any(h => !h.IsDeleted && h.IsActive && 
+                (h.HolidayDate == entryDateOnly || 
+                 (h.HolidayDate.Year == entryDate.Year && h.HolidayDate.Month == entryDate.Month && h.HolidayDate.Day == entryDate.Day) ||
+                 h.HolidayDate.ToDateTime(TimeOnly.MinValue).Date == entryDate));
+
+            // On regular working days (not weekend, not holiday, not approved leave):
+            // The employee MUST have recorded an attendance punch OR have an APPROVED regularization request!
+            if (!isWeekend && !isHoliday)
+            {
+                var allAttendance = await _unitOfWork.EmployeeAttendance.GetAll();
+                var hasPunch = allAttendance.Any(a => !a.IsDeleted && a.EmployeeId == employeeId &&
+                    a.AttendanceDate == entryDateOnly &&
+                    (a.ClockIn != default || a.TotalHours > 0 || a.EffectiveHours > 0));
+
+                var allAttRequests = await _unitOfWork.AttendanceRequests.GetAll();
+                var hasApprovedReg = allAttRequests.Any(r => !r.IsDeleted && r.EmployeeId == employeeId &&
+                    r.RequestedDate.Date == entryDate &&
+                    r.Status != null && r.Status.Equals("Approved", StringComparison.OrdinalIgnoreCase));
+
+                if (!hasPunch && !hasApprovedReg)
+                {
+                    var isRegPending = allAttRequests.Any(r => !r.IsDeleted && r.EmployeeId == employeeId &&
+                        r.RequestedDate.Date == entryDate &&
+                        r.Status != null && r.Status.Equals("Pending", StringComparison.OrdinalIgnoreCase));
+
+                    if (isRegPending)
+                    {
+                        throw new InvalidOperationException($"Cannot log tasks for {dto.EntryDate:yyyy-MM-dd}. Your attendance regularization request for this date is currently awaiting manager approval.");
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException($"Cannot log tasks for {dto.EntryDate:yyyy-MM-dd} because you were marked absent (no attendance punch recorded). Please request attendance regularization first; once approved by your manager, task logging will be enabled.");
+                    }
+                }
             }
 
             var project = await _unitOfWork.ProjectMasters.GetById(dto.ProjectId);
@@ -191,6 +349,32 @@ namespace KHRMS.Services
                 var existing = await _unitOfWork.TimesheetEntries.GetById(dto.Id);
                 if (existing != null && existing.EmployeeId == employeeId && !existing.IsDeleted)
                 {
+                    // If existing entry is already locked to a historical submitted/rejected/approved timesheet,
+                    // DO NOT mutate the historical entry! Clone it as a working draft instead!
+                    if (existing.TimesheetId.HasValue && existing.TimesheetId.Value > 0)
+                    {
+                        var workingCopy = new TimesheetEntry
+                        {
+                            TimesheetId = null,
+                            EmployeeId = employeeId,
+                            ProjectId = dto.ProjectId,
+                            EntryDate = dto.EntryDate.Date,
+                            TaskDescription = dto.TaskDescription,
+                            Hours = dto.Hours,
+                            CreatedBy = (int)employeeId,
+                            CreatedDate = DateTime.UtcNow,
+                            UpdatedBy = (int)employeeId,
+                            UpdatedDate = DateTime.UtcNow,
+                            IsActive = true,
+                            IsDeleted = false
+                        };
+                        await _unitOfWork.TimesheetEntries.Add(workingCopy);
+                        _unitOfWork.Save();
+                        dto.Id = workingCopy.Id;
+                        dto.ProjectName = projectName;
+                        return dto;
+                    }
+
                     existing.ProjectId = dto.ProjectId;
                     existing.EntryDate = dto.EntryDate.Date;
                     existing.TaskDescription = dto.TaskDescription;
@@ -236,14 +420,21 @@ namespace KHRMS.Services
             var entry = await _unitOfWork.TimesheetEntries.GetById(entryId);
             if (entry == null || entry.EmployeeId != employeeId || entry.IsDeleted) return false;
 
-            entry.IsDeleted = true;
-            entry.IsActive = false;
-            entry.UpdatedBy = (int)employeeId;
-            entry.UpdatedDate = DateTime.UtcNow;
+            // If the entry belongs to a historical submitted/rejected/approved timesheet,
+            // we do NOT soft-delete the historical entry from the old timesheet so its audit trail stays intact!
+            if (!entry.TimesheetId.HasValue || entry.TimesheetId.Value == 0)
+            {
+                entry.IsDeleted = true;
+                entry.IsActive = false;
+                entry.UpdatedBy = (int)employeeId;
+                entry.UpdatedDate = DateTime.UtcNow;
 
-            _unitOfWork.TimesheetEntries.Update(entry);
-            var result = _unitOfWork.Save();
-            return result > 0;
+                _unitOfWork.TimesheetEntries.Update(entry);
+                var result = _unitOfWork.Save();
+                return result > 0;
+            }
+
+            return true;
         }
 
         public async Task<TimesheetViewDTO> SubmitPeriodAsync(TimesheetSubmitDTO dto, long employeeId)
@@ -255,21 +446,109 @@ namespace KHRMS.Services
             var managerId = employee?.ManagerId;
 
             var allTimesheets = await _unitOfWork.Timesheets.GetAll();
-            var timesheet = allTimesheets
+            var existingTimesheets = allTimesheets
                 .Where(t => !t.IsDeleted && t.EmployeeId == employeeId && t.StartDate.Date == start && t.EndDate.Date == end)
                 .OrderByDescending(t => t.Id)
-                .FirstOrDefault();
+                .ToList();
+            var latestTimesheet = existingTimesheets.FirstOrDefault();
 
             var allEntries = await _unitOfWork.TimesheetEntries.GetAll();
-            var entries = allEntries
-                .Where(e => !e.IsDeleted && e.EmployeeId == employeeId && e.EntryDate.Date >= start && e.EntryDate.Date <= end)
+
+            // Candidate entries for this new submission:
+            // 1) Active entries with TimesheetId == null (working draft)
+            var workingEntries = allEntries
+                .Where(e => !e.IsDeleted && e.EmployeeId == employeeId && e.EntryDate.Date >= start && e.EntryDate.Date <= end && (e.TimesheetId == null || e.TimesheetId == 0))
                 .ToList();
 
-            var totalHours = entries.Sum(e => e.Hours);
+            List<TimesheetEntry> entriesToSubmit;
+            if (workingEntries.Any())
+            {
+                entriesToSubmit = workingEntries;
+            }
+            else if (latestTimesheet != null && latestTimesheet.Status == "Rejected")
+            {
+                // Fallback: If no working entries were created yet, clone active entries from the rejected timesheet
+                var historical = allEntries
+                    .Where(e => !e.IsDeleted && e.TimesheetId == latestTimesheet.Id)
+                    .ToList();
+                entriesToSubmit = new List<TimesheetEntry>();
+                foreach (var h in historical)
+                {
+                    var clone = new TimesheetEntry
+                    {
+                        TimesheetId = null,
+                        EmployeeId = h.EmployeeId,
+                        ProjectId = h.ProjectId,
+                        EntryDate = h.EntryDate,
+                        TaskDescription = h.TaskDescription,
+                        Hours = h.Hours,
+                        ClockInRef = h.ClockInRef,
+                        ClockOutRef = h.ClockOutRef,
+                        IsRegularized = h.IsRegularized,
+                        CreatedBy = h.CreatedBy,
+                        CreatedDate = h.CreatedDate,
+                        UpdatedBy = (int)employeeId,
+                        UpdatedDate = DateTime.UtcNow,
+                        IsActive = true,
+                        IsDeleted = false
+                    };
+                    await _unitOfWork.TimesheetEntries.Add(clone);
+                    entriesToSubmit.Add(clone);
+                }
+                if (entriesToSubmit.Any())
+                {
+                    _unitOfWork.Save();
+                }
+            }
+            else
+            {
+                entriesToSubmit = allEntries
+                    .Where(e => !e.IsDeleted && e.EmployeeId == employeeId && e.EntryDate.Date >= start && e.EntryDate.Date <= end && (e.TimesheetId == null || (latestTimesheet != null && e.TimesheetId == latestTimesheet.Id)))
+                    .ToList();
+            }
 
+            // Validate that no tasks in entriesToSubmit are logged on absent unregularized dates
+            var allAttendanceRecords = await _unitOfWork.EmployeeAttendance.GetAll();
+            var allAttRequestsForSubmit = await _unitOfWork.AttendanceRequests.GetAll();
+            var allHolidaysForSubmit = await _unitOfWork.Holidays.GetAll();
+            var allLeavesForSubmit = await _unitOfWork.LeaveRequest.GetAll();
+
+            foreach (var item in entriesToSubmit)
+            {
+                var curDate = item.EntryDate.Date;
+                bool isWeekend = curDate.DayOfWeek == DayOfWeek.Saturday || curDate.DayOfWeek == DayOfWeek.Sunday;
+                var curDateOnly = DateOnly.FromDateTime(curDate);
+                bool isHoliday = allHolidaysForSubmit.Any(h => !h.IsDeleted && h.IsActive &&
+                    (h.HolidayDate == curDateOnly ||
+                     (h.HolidayDate.Year == curDate.Year && h.HolidayDate.Month == curDate.Month && h.HolidayDate.Day == curDate.Day) ||
+                     h.HolidayDate.ToDateTime(TimeOnly.MinValue).Date == curDate));
+                bool isLeave = allLeavesForSubmit.Any(l => !l.IsDeleted && l.EmployeeId == employeeId &&
+                    l.Status != null && l.Status.Equals("Approved", StringComparison.OrdinalIgnoreCase) &&
+                    curDate >= l.StartDate.Date && curDate <= l.EndDate.Date);
+
+                if (!isWeekend && !isHoliday && !isLeave)
+                {
+                    bool hasPunch = allAttendanceRecords.Any(a => !a.IsDeleted && a.EmployeeId == employeeId &&
+                        a.AttendanceDate == curDateOnly &&
+                        (a.ClockIn != default || a.TotalHours > 0 || a.EffectiveHours > 0));
+
+                    bool hasApprovedReg = allAttRequestsForSubmit.Any(r => !r.IsDeleted && r.EmployeeId == employeeId &&
+                        r.RequestedDate.Date == curDate &&
+                        r.Status != null && r.Status.Equals("Approved", StringComparison.OrdinalIgnoreCase));
+
+                    if (!hasPunch && !hasApprovedReg)
+                    {
+                        throw new InvalidOperationException($"Timesheet contains tasks logged on {curDate:yyyy-MM-dd}, a day you were marked absent. Please regularize attendance for this date before submitting.");
+                    }
+                }
+            }
+
+            var totalHours = entriesToSubmit.Sum(e => e.Hours);
+
+            Timesheet timesheet;
             // If timesheet was never created OR was previously Rejected, create a NEW submission record
             // so that the previous Rejected record remains intact in history for the manager!
-            if (timesheet == null || timesheet.Status == "Rejected")
+            if (latestTimesheet == null || latestTimesheet.Status == "Rejected")
             {
                 var newTimesheet = new Timesheet
                 {
@@ -295,26 +574,24 @@ namespace KHRMS.Services
             }
             else
             {
-                timesheet.Status = "Submitted";
-                timesheet.SubmittedDate = DateTime.UtcNow;
-                timesheet.ManagerId = managerId;
-                timesheet.TotalHours = totalHours;
-                timesheet.RejectionReason = null;
-                timesheet.UpdatedBy = (int)employeeId;
-                timesheet.UpdatedDate = DateTime.UtcNow;
+                latestTimesheet.Status = "Submitted";
+                latestTimesheet.SubmittedDate = DateTime.UtcNow;
+                latestTimesheet.ManagerId = managerId;
+                latestTimesheet.TotalHours = totalHours;
+                latestTimesheet.RejectionReason = null;
+                latestTimesheet.UpdatedBy = (int)employeeId;
+                latestTimesheet.UpdatedDate = DateTime.UtcNow;
 
-                _unitOfWork.Timesheets.Update(timesheet);
+                _unitOfWork.Timesheets.Update(latestTimesheet);
                 _unitOfWork.Save();
+                timesheet = latestTimesheet;
             }
 
-            // Link all entries to this timesheet
-            foreach (var entry in entries)
+            // Link all submitted entries to this timesheet.
+            foreach (var entry in entriesToSubmit)
             {
-                if (entry.TimesheetId != timesheet.Id)
-                {
-                    entry.TimesheetId = timesheet.Id;
-                    _unitOfWork.TimesheetEntries.Update(entry);
-                }
+                entry.TimesheetId = timesheet.Id;
+                _unitOfWork.TimesheetEntries.Update(entry);
             }
             _unitOfWork.Save();
 
@@ -386,6 +663,48 @@ namespace KHRMS.Services
 
             if (result > 0)
             {
+                if (!isApproved)
+                {
+                    try
+                    {
+                        var allEntries = await _unitOfWork.TimesheetEntries.GetAll();
+                        var existingDrafts = allEntries.Where(e => !e.IsDeleted && e.EmployeeId == timesheet.EmployeeId &&
+                            e.EntryDate.Date >= timesheet.StartDate.Date && e.EntryDate.Date <= timesheet.EndDate.Date &&
+                            e.TimesheetId == null).ToList();
+
+                        if (!existingDrafts.Any())
+                        {
+                            var rejectedEntries = allEntries.Where(e => !e.IsDeleted && e.TimesheetId == timesheet.Id).ToList();
+                            foreach (var re in rejectedEntries)
+                            {
+                                var clone = new TimesheetEntry
+                                {
+                                    TimesheetId = null,
+                                    EmployeeId = re.EmployeeId,
+                                    ProjectId = re.ProjectId,
+                                    EntryDate = re.EntryDate,
+                                    TaskDescription = re.TaskDescription,
+                                    Hours = re.Hours,
+                                    ClockInRef = re.ClockInRef,
+                                    ClockOutRef = re.ClockOutRef,
+                                    IsRegularized = re.IsRegularized,
+                                    CreatedBy = re.CreatedBy,
+                                    CreatedDate = re.CreatedDate,
+                                    UpdatedBy = (int)timesheet.EmployeeId,
+                                    UpdatedDate = DateTime.UtcNow,
+                                    IsActive = true,
+                                    IsDeleted = false
+                                };
+                                await _unitOfWork.TimesheetEntries.Add(clone);
+                            }
+                            _unitOfWork.Save();
+                        }
+                    }
+                    catch
+                    {
+                    }
+                }
+
                 try
                 {
                     await _unitOfWork.Notifications.Add(new Notification

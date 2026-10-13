@@ -1,6 +1,8 @@
+using KHRMS.Authorization;
 using KHRMS.Core;
 using KHRMS.Infrastructure;
 using KHRMS.Services;
+using KHRMS.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
@@ -12,9 +14,10 @@ namespace KHRMS
     [Authorize]
     [Route("api/[controller]")]
     [ApiController]
-    public class CandidateController(ICandidateService candidateService) : ControllerBase
+    public class CandidateController(ICandidateService candidateService, IRecruitmentService recruitmentService) : ControllerBase
     {
         public readonly ICandidateService _candidateService = candidateService;
+        public readonly IRecruitmentService _recruitmentService = recruitmentService;
 
 
 
@@ -23,7 +26,7 @@ namespace KHRMS
         /// </summary>
         /// <returns></returns>
         [HttpGet("GetCandidates")]
-        [Authorize(Roles = "Admin,System Admin,HR,HR Operations,Manager,Management,Employee")]
+        [RequirePermission("RECRUITMENT_VIEW")]
         public async Task<IActionResult> GetCandidates()
         {
             Log.Information("GetCandidates API called.");
@@ -51,8 +54,25 @@ namespace KHRMS
             // Non-HR/Admin users (Interviewers: Managers/Employees) only receive candidates currently assigned to them and pending their feedback
             if (!isPrivileged)
             {
+                var assignedCandidateIds = new HashSet<long>();
+                if (currentEmpId > 0)
+                {
+                    var interviews = await _recruitmentService.GetInterviews(interviewerId: currentEmpId);
+                    if (interviews != null)
+                    {
+                        foreach (var i in interviews.Where(x => x.Status == "Scheduled" || x.Status == "Rescheduled"))
+                        {
+                            assignedCandidateIds.Add(i.CandidateId);
+                        }
+                    }
+                }
+
                 candidates = candidates.Where(c =>
                 {
+                    if (assignedCandidateIds.Contains(c.Id))
+                    {
+                        return true;
+                    }
                     if (string.IsNullOrWhiteSpace(c.RelevantExperience)) return false;
                     var exp = c.RelevantExperience.Trim();
                     if (!exp.StartsWith("{")) return false;
@@ -87,7 +107,7 @@ namespace KHRMS
         /// <returns></returns>
 
         [HttpPost("AddCandidate")]
-        [Authorize(Roles = "Admin,System Admin,HR,HR Operations")]
+        [RequirePermission("RECRUITMENT_MANAGE")]
         public async Task<IActionResult> AddCandidate(Candidate candidate)
         {
             Log.Information("AddCandidate API called.");
@@ -121,7 +141,7 @@ namespace KHRMS
         /// <returns></returns>
 
         [HttpPut("UpdateCandidate")]
-        [Authorize(Roles = "Admin,System Admin,HR,HR Operations,Manager,Management,Employee")]
+        [RequirePermission("RECRUITMENT_VIEW")]
         public async Task<IActionResult> UpdateCandidate(Candidate candidate)
         {
             Log.Information("UpdateCandidate API called.");
@@ -155,7 +175,7 @@ namespace KHRMS
         /// <returns></returns>
 
         [HttpDelete("DeleteCandidate/{candidateId}")]
-        [Authorize(Roles = "Admin,System Admin,HR,HR Operations")]
+        [RequirePermission("RECRUITMENT_MANAGE")]
         public async Task<IActionResult> DeleteCandidate(long candidateId)
         {
             Log.Information("DeleteCandidate API called for ID {CandidateId}.", candidateId);
@@ -185,7 +205,7 @@ namespace KHRMS
         /// Onboard a candidate to an Employee with credentials and CTC breakdown
         /// </summary>
         [HttpPost("OnboardCandidate")]
-        [Authorize(Roles = "Admin,System Admin,HR,HR Operations")]
+        [RequirePermission("RECRUITMENT_MANAGE")]
         public async Task<IActionResult> OnboardCandidate([FromBody] KHRMS.Services.Request.CandidateOnboardRequest request)
         {
             Log.Information("OnboardCandidate API called for CandidateId {CandidateId}, Email {Email}.", request?.CandidateId, request?.EmailAddress);

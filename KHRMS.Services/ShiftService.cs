@@ -1,4 +1,4 @@
-﻿using KHRMS.Core;
+using KHRMS.Core;
 using Microsoft.EntityFrameworkCore;
 
 namespace KHRMS.Services
@@ -34,17 +34,16 @@ namespace KHRMS.Services
             var result = _unitOfWork.Save();
             return Task.CompletedTask;
         }
-
-        public async  Task DeleteShiftAsync(long id)
+        public async Task DeleteShiftAsync(long id)
         {
-            
-
-            var shift = await unitOfWork.ShiftRepository.GetByIdAsync(id);
+            var shift = await _unitOfWork.ShiftRepository.GetByIdAsync(id);
             if (shift != null)
             {
                 shift.IsDeleted = true;
-                unitOfWork.ShiftRepository.Delete(shift);
-                unitOfWork.Save();
+                shift.IsActive = false;
+                shift.UpdatedDate = DateTime.UtcNow;
+                _unitOfWork.ShiftRepository.Update(shift);
+                _unitOfWork.Save();
             }
         }
 

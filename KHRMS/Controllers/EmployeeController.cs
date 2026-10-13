@@ -1,3 +1,4 @@
+using KHRMS.Authorization;
 using KHRMS.Core;
 using KHRMS.Infrastructure;
 using KHRMS.Services;
@@ -23,7 +24,7 @@ namespace KHRMS
         /// </summary>
         /// <returns></returns>
         [HttpGet("GetEmployees")]
-        [Authorize(Roles = "Admin,System Admin,HR,HR Operations,Manager,Management,Employee")]
+        [RequirePermission("EMPLOYEE_VIEW_DIRECTORY")]
         public async Task<IActionResult> GetEmployees()
         {
             Log.Information("EmployeeController - GetEmployees called.");
@@ -102,7 +103,7 @@ namespace KHRMS
         /// <param name="employee"></param>
         /// <returns></returns>
         [HttpPost("AddEmployee")]
-        [Authorize(Roles = "Admin,System Admin,HR,HR Operations")]
+        [RequirePermission("EMPLOYEE_MANAGE")]
         public async Task<IActionResult> AddEmployee(EmployeeRequestModel employeerequestModel)
         {
             Log.Information("EmployeeController - AddEmployee called.");
@@ -216,7 +217,7 @@ namespace KHRMS
         /// <param name="employee"></param>
         /// <returns></returns>
         [HttpDelete("DeleteEmployee")]
-        [Authorize(Roles = "Admin,System Admin,HR,HR Operations")]
+        [RequirePermission("EMPLOYEE_MANAGE")]
         public async Task<IActionResult> DeleteEmployee(long employeeId)
         {
             Log.Information("EmployeeController - DeleteEmployee called for ID: {EmployeeId}", employeeId);
@@ -250,7 +251,7 @@ namespace KHRMS
         /// <param name="employee"></param>
         /// <returns></returns>
         [HttpPut("UpdateExistingEmployee")]
-        [Authorize(Roles = "Admin,System Admin,HR,HR Operations,Manager,Management")]
+        [RequirePermission("EMPLOYEE_MANAGE")]
         public async Task<IActionResult> UpdateExistingEmployee(EmployeeRequestModel employeeRequestModel)
         {
             Log.Information("EmployeeController - UpdateEmployee called.");

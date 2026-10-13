@@ -1,3 +1,4 @@
+using KHRMS.Authorization;
 using KHRMS.Core;
 using KHRMS.Infrastructure;
 using KHRMS.Services;
@@ -53,6 +54,7 @@ namespace KHRMS.Controllers
         /// </summary>
 
         [HttpPost("AddProjectMaster")]
+        [RequirePermission("PROJECT_MANAGE")]
         public async Task<IActionResult> AddProjectMaster([FromBody] ProjectMaster projectMaster)
         {
             Log.Information("ProjectMasterController - AddProjectMaster called.");
@@ -91,6 +93,7 @@ namespace KHRMS.Controllers
         /// </summary>
 
         [HttpPut("UpdateProjectMaster/{id}")]
+        [RequirePermission("PROJECT_MANAGE")]
         public async Task<IActionResult> UpdateProjectMaster(long id, [FromBody] ProjectMaster projectMaster)
         {
             if (projectMaster == null)
@@ -138,6 +141,7 @@ namespace KHRMS.Controllers
         /// </summary>
 
         [HttpDelete("DeleteProjectMaster/{id}")]
+        [RequirePermission("PROJECT_MANAGE")]
         public async Task<IActionResult> DeleteProjectMaster(long id)
         {
             Log.Information("ProjectMasterController - DeleteProjectMaster called for ID: {Id}", id);

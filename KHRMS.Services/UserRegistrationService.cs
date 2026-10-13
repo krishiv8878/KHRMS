@@ -28,38 +28,60 @@ namespace KHRMS.Services
         //}
         public async Task<bool> GetRegistrationByUser(UserRegistration userRegistration)
         {
-            bool isUserRegistered = false;
-            if (userRegistration != null)
-            {
-                userRegistration.CreatedDate = DateTime.Now;
+            if (userRegistration == null || string.IsNullOrWhiteSpace(userRegistration.Email))
+                return false;
 
-                var passwordHasher = new PasswordHasher<UserRegistration>();
-                userRegistration.Password = passwordHasher.HashPassword(userRegistration, userRegistration.Password);
-                
-                await _unitOfWork.UserRegistrations.Add(userRegistration);
-                var result = _unitOfWork.Save();
+            var emailTrimmed = userRegistration.Email.Trim();
+
+            // Validate that email is unique across registrations, logins, and employees
+            var allRegistrations = await _unitOfWork.UserRegistrations.GetAll();
+            if (allRegistrations.Any(u => string.Equals(u.Email, emailTrimmed, StringComparison.OrdinalIgnoreCase) && !u.IsDeleted))
+            {
+                return false;
+            }
+
+            var allLogins = await _unitOfWork.UserLogins.GetAll();
+            if (allLogins.Any(u => string.Equals(u.Email, emailTrimmed, StringComparison.OrdinalIgnoreCase) && !u.IsDeleted))
+            {
+                return false;
+            }
+
+            var allEmployees = await _unitOfWork.Employees.GetAll();
+            if (allEmployees.Any(e => string.Equals(e.EmailAddress, emailTrimmed, StringComparison.OrdinalIgnoreCase) && !e.IsDeleted))
+            {
+                return false;
+            }
+
+            bool isUserRegistered = false;
+            userRegistration.Email = emailTrimmed;
+            userRegistration.CreatedDate = DateTime.Now;
+
+            var passwordHasher = new PasswordHasher<UserRegistration>();
+            userRegistration.Password = passwordHasher.HashPassword(userRegistration, userRegistration.Password);
+            
+            await _unitOfWork.UserRegistrations.Add(userRegistration);
+            var result = _unitOfWork.Save();
 
                 if (result > 0)
                 {
-                    // Add UserLogin
-                    isUserRegistered = await AddUserLogin(userRegistration);
+                    // 1. Create Employee first so we get the canonical Employee.Id
+                    var employee = await AddEmployeeFromRegistration(userRegistration);
 
-                    // Add Employee Record
-                    if (isUserRegistered)
+                    // 2. Link UserLogin directly to Employee.Id
+                    if (employee != null)
                     {
-                        await AddEmployeeFromRegistration(userRegistration);
+                        isUserRegistered = await AddUserLogin(userRegistration, employee.Id);
                     }
                 }
-            }
             return isUserRegistered;
         }
        
 
-        public async Task<bool> AddUserLogin(UserRegistration userRegistration)
+        public async Task<bool> AddUserLogin(UserRegistration userRegistration, long employeeId)
         {
             UserLogin userLogin = new()
             {
-                UserId = userRegistration.Id,
+                UserId = employeeId,
                 UserName = userRegistration.Email,
                 Email = userRegistration.Email,
                 Password = userRegistration.Password,
@@ -75,7 +97,7 @@ namespace KHRMS.Services
         }
 
 
-        public async Task<bool> AddEmployeeFromRegistration(UserRegistration userRegistration)
+        public async Task<Employee?> AddEmployeeFromRegistration(UserRegistration userRegistration)
         {
             Employee employee = new()
             {
@@ -154,7 +176,7 @@ namespace KHRMS.Services
                 }
             }
 
-            return result > 0;
+            return result > 0 ? employee : null;
         }
     }
 }

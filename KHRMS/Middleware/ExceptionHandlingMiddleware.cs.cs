@@ -1,4 +1,4 @@
-﻿
+using KHRMS.Infrastructure;
 using Serilog;
 using System.Net;
 using System.Text.Json;
@@ -26,39 +26,55 @@ namespace GlobalExceptionHandlingDemo.Middleware
                 await HandleExceptionAsync(context, ex, contextInfo);
             }
         }
+
         private async Task HandleExceptionAsync(HttpContext context, Exception exception, string contextInfo)
         {
             context.Response.ContentType = "application/json";
             var response = context.Response;
-            ResponseModel exModel = new ResponseModel();
             var routeData = context.GetRouteData();
             string controller = routeData.Values["controller"]?.ToString() ?? "UnknownController";
             string methodName = routeData.Values["action"]?.ToString() ?? "UnknownMethod";
+
+            var apiResponse = new ApiResponse<object>
+            {
+                Data = null
+            };
+
             switch (exception)
             {
                 case ApplicationException ex:
-                    exModel.responseCode = (int)HttpStatusCode.BadRequest;
+                    apiResponse.StatusCode = (int)HttpStatusCode.BadRequest;
                     response.StatusCode = (int)HttpStatusCode.BadRequest;
-                    exModel.responseMessage = "Application Exception Occurred, please retry after some time.";
-                    Log.Error(string.Format("Application Exception Occurred while processing the request from method {0} of {1}Controller with error {2}", methodName, controller, exception.Message));
+                    apiResponse.Message = !string.IsNullOrWhiteSpace(ex.Message) ? ex.Message : "Application Exception Occurred, please retry after some time.";
+                    Log.Error(exception, "Application Exception in {Method} of {Controller}: {Message}", methodName, controller, exception.Message);
                     break;
 
                 case FileNotFoundException ex:
-                    exModel.responseCode = (int)HttpStatusCode.NotFound;
+                    apiResponse.StatusCode = (int)HttpStatusCode.NotFound;
                     response.StatusCode = (int)HttpStatusCode.NotFound;
-                    exModel.responseMessage = "The requested resource is not found.";
-                    Log.Error(string.Format("The requested resource is not found, while processing the request from method {0} of {1}Controller with error {2}", methodName, controller, exception.Message));
+                    apiResponse.Message = "The requested file or resource is not found.";
+                    Log.Error(exception, "Resource not found in {Method} of {Controller}: {Message}", methodName, controller, exception.Message);
+                    break;
+
+                case UnauthorizedAccessException ex:
+                    apiResponse.StatusCode = (int)HttpStatusCode.Unauthorized;
+                    response.StatusCode = (int)HttpStatusCode.Unauthorized;
+                    apiResponse.Message = "Unauthorized request.";
+                    Log.Warning("Unauthorized access attempt in {Method} of {Controller}: {Message}", methodName, controller, exception.Message);
                     break;
 
                 default:
-                    exModel.responseCode = (int)HttpStatusCode.InternalServerError;
+                    apiResponse.StatusCode = (int)HttpStatusCode.InternalServerError;
                     response.StatusCode = (int)HttpStatusCode.InternalServerError;
-                    exModel.responseMessage = "Internal Server Error, Please retry after some time.";
-                    Log.Error(string.Format("An exception occured while processing the request from method {0} of {1}Controller with error {2}", methodName, controller, exception.Message));
+                    apiResponse.Message = "Internal Server Error. Please contact support or retry after some time.";
+                    Log.Error(exception, "Unhandled Exception in {Method} of {Controller}: {Message}", methodName, controller, exception.Message);
                     break;
             }
 
-            var exResult = JsonSerializer.Serialize(exModel);
+            var exResult = JsonSerializer.Serialize(apiResponse, new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            });
             await context.Response.WriteAsync(exResult);
         }
 
@@ -77,12 +93,6 @@ namespace GlobalExceptionHandlingDemo.Middleware
                 return "[ContextInfo: Unknown]";
             }
         }
-    }
-
-    public class ResponseModel
-    {
-        public int responseCode { get; set; }
-        public string responseMessage { get; set; }
     }
 }
 

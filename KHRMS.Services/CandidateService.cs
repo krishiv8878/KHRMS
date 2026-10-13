@@ -26,6 +26,15 @@ namespace KHRMS.Services
         {
             if (candidate != null)
             {
+                if (candidate.JobRequisitionId.HasValue && candidate.JobRequisitionId.Value > 0)
+                {
+                    var req = await _unitOfWork.JobRequisitions.GetById(candidate.JobRequisitionId.Value);
+                    if (req != null && string.Equals(req.Status, "Closed", StringComparison.OrdinalIgnoreCase))
+                    {
+                        throw new InvalidOperationException($"Job Opening '{req.Title}' is closed. Candidates cannot be added to closed requisitions.");
+                    }
+                }
+
                 candidate.CreatedDate = DateTime.Now;
                 await _unitOfWork.Candidates.Add(candidate);
 
@@ -95,6 +104,9 @@ namespace KHRMS.Services
                     candidateDetails.AppliedRole = candidate.AppliedRole;
                     candidateDetails.Stage = candidate.Stage;
                     candidateDetails.MatchScore = candidate.MatchScore;
+                    candidateDetails.JobRequisitionId = candidate.JobRequisitionId;
+                    candidateDetails.ResumeUrl = candidate.ResumeUrl;
+                    candidateDetails.Source = candidate.Source;
                     // ✅ Ensure IsActive status is updated
                     candidateDetails.IsActive = candidate.IsActive;
                     _unitOfWork.Candidates.Update(candidateDetails);
@@ -159,6 +171,32 @@ namespace KHRMS.Services
                 }
                 _unitOfWork.Candidates.Update(candidate);
                 _unitOfWork.Save();
+
+                // 1b. Mark related JobOffers as Onboarded
+                try
+                {
+                    var candId = candidate.Id > 0 ? candidate.Id : request.CandidateId;
+                    if (candId > 0)
+                    {
+                        var activeOffers = (await _unitOfWork.JobOffers.GetAll())
+                            .Where(o => o.CandidateId == candId)
+                            .ToList();
+                        foreach (var o in activeOffers)
+                        {
+                            o.Status = "Onboarded";
+                            o.UpdatedDate = now;
+                            _unitOfWork.JobOffers.Update(o);
+                        }
+                        if (activeOffers.Any())
+                        {
+                            _unitOfWork.Save();
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Failed to update JobOffer status to Onboarded for Candidate {CandidateId}", request.CandidateId);
+                }
             }
 
             // 2. Structured CTC Breakdown JSON stored in Responsibilities

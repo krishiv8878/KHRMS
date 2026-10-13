@@ -104,7 +104,18 @@ namespace KHRMS.Services
                 .Select(m => m.RoleId)
                 .ToList();
 
-            var allRoles = await _unitOfWork.RoleMaster.GetAll();
+            var allRoles = (await _unitOfWork.RoleMaster.GetAll()).ToList();
+
+            // Fallback: If no explicit roles are assigned, grant default Employee role
+            if (!roleMappings.Any())
+            {
+                var defaultEmpRole = allRoles.FirstOrDefault(r => string.Equals(r.RoleName, "Employee", StringComparison.OrdinalIgnoreCase));
+                if (defaultEmpRole != null)
+                {
+                    roleMappings.Add(defaultEmpRole.Id);
+                }
+            }
+
             var userRoles = allRoles.Where(r => roleMappings.Contains(r.Id)).Select(r => r.RoleName).ToList();
 
             var allPermissions = (await GetAllPermissionsAsync()).ToList();
@@ -156,7 +167,7 @@ namespace KHRMS.Services
             try
             {
                 var existing = (await _unitOfWork.PermissionMaster.GetAll()).ToList();
-                if (existing.Count > 0) return;
+                var existingCodes = existing.Select(p => p.PermissionCode).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
                 var defaultPerms = new List<PermissionMaster>
                 {
@@ -204,55 +215,124 @@ namespace KHRMS.Services
                     // Operations & Settings Module
                     new() { PermissionCode = "SHIFT_MANAGE", ModuleName = "System Operations", DisplayName = "Manage Shifts & Schedules", Description = "Configure day/night shifts, timings, and grace windows", SortOrder = 70, IsActive = true },
                     new() { PermissionCode = "HOLIDAY_MANAGE", ModuleName = "System Operations", DisplayName = "Manage Holiday Calendar", Description = "Configure national, regional, and company holidays", SortOrder = 71, IsActive = true },
-                    new() { PermissionCode = "EMAIL_TEMPLATE_MANAGE", ModuleName = "System Operations", DisplayName = "Manage Email Templates", Description = "Configure notification triggers and automated email templates", SortOrder = 72, IsActive = true }
+                    new() { PermissionCode = "EMAIL_TEMPLATE_MANAGE", ModuleName = "System Operations", DisplayName = "Manage Email Templates", Description = "Configure notification triggers and automated email templates", SortOrder = 72, IsActive = true },
+
+                    // Expense Management Module
+                    new() { PermissionCode = "EXPENSE_VIEW_SELF", ModuleName = "Expense Management", DisplayName = "Submit Expense Claims", Description = "Submit and track personal expense reimbursements", SortOrder = 80, IsActive = true },
+                    new() { PermissionCode = "EXPENSE_VIEW_ALL", ModuleName = "Expense Management", DisplayName = "View All Expense Claims", Description = "View all employee expense claim submissions", SortOrder = 81, IsActive = true },
+                    new() { PermissionCode = "EXPENSE_APPROVE", ModuleName = "Expense Management", DisplayName = "Approve Expense Claims", Description = "Approve or reject employee expense reimbursement requests", SortOrder = 82, IsActive = true },
+                    new() { PermissionCode = "EXPENSE_MANAGE", ModuleName = "Expense Management", DisplayName = "Manage Expense Policies", Description = "Configure expense categories and reimbursement policies", SortOrder = 83, IsActive = true },
+
+                    // Recruitment Module
+                    new() { PermissionCode = "RECRUITMENT_VIEW", ModuleName = "Recruitment", DisplayName = "View Recruitment Pipeline", Description = "View job requisitions, candidate pipeline, and interview schedules", SortOrder = 90, IsActive = true },
+                    new() { PermissionCode = "RECRUITMENT_MANAGE", ModuleName = "Recruitment", DisplayName = "Manage Recruitment", Description = "Create job requisitions, manage candidates, schedule interviews, issue offers", SortOrder = 91, IsActive = true },
+
+                    // Performance Management
+                    new() { PermissionCode = "PMS_VIEW_SELF", ModuleName = "Performance Management", DisplayName = "View Own Reviews", Description = "View personal performance reviews and goals", SortOrder = 100, IsActive = true },
+                    new() { PermissionCode = "PMS_MANAGE", ModuleName = "Performance Management", DisplayName = "Manage Performance Reviews", Description = "Create review cycles, assign goals, and finalize ratings", SortOrder = 101, IsActive = true },
+
+                    // Settings & Configuration
+                    new() { PermissionCode = "DESIGNATION_MANAGE", ModuleName = "System Operations", DisplayName = "Manage Designations", Description = "Create, update, or delete job designations", SortOrder = 73, IsActive = true },
+                    new() { PermissionCode = "SKILL_MANAGE", ModuleName = "System Operations", DisplayName = "Manage Skills Library", Description = "Create and manage skill categories and proficiency levels", SortOrder = 74, IsActive = true },
+                    new() { PermissionCode = "PROJECT_MANAGE", ModuleName = "System Operations", DisplayName = "Manage Projects", Description = "Create and manage project master records", SortOrder = 75, IsActive = true },
+                    new() { PermissionCode = "RESIGNATION_MANAGE", ModuleName = "Workforce", DisplayName = "Manage Resignations & FnF", Description = "Process employee resignation requests and full & final settlements", SortOrder = 44, IsActive = true }
                 };
 
-                foreach (var p in defaultPerms)
+                var missingPerms = defaultPerms.Where(p => !existingCodes.Contains(p.PermissionCode)).ToList();
+                foreach (var p in missingPerms)
                 {
                     p.CreatedDate = DateTime.UtcNow;
                     p.UpdatedDate = DateTime.UtcNow;
                     await _unitOfWork.PermissionMaster.Add(p);
                 }
 
-                _unitOfWork.Save();
+                if (missingPerms.Count > 0)
+                {
+                    _unitOfWork.Save();
+                }
 
                 // Seed Default Role Mappings for base roles
                 var savedPerms = (await _unitOfWork.PermissionMaster.GetAll()).ToList();
                 var roles = (await _unitOfWork.RoleMaster.GetAll()).ToList();
+                var existingRolePerms = (await _unitOfWork.RolePermissionMappings.GetAll()).ToList();
 
-                var hrRole = roles.FirstOrDefault(r => string.Equals(r.RoleName, "HR", StringComparison.OrdinalIgnoreCase) || string.Equals(r.RoleName, "HR Operations", StringComparison.OrdinalIgnoreCase));
-                var mgrRole = roles.FirstOrDefault(r => string.Equals(r.RoleName, "Manager", StringComparison.OrdinalIgnoreCase) || string.Equals(r.RoleName, "Management", StringComparison.OrdinalIgnoreCase));
-                var empRole = roles.FirstOrDefault(r => string.Equals(r.RoleName, "Employee", StringComparison.OrdinalIgnoreCase));
-
-                if (hrRole != null)
+                var empPermCodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
                 {
-                    var hrPermCodes = new[] { "ATTENDANCE_VIEW_ALL", "ATTENDANCE_VIEW_SELF", "ATTENDANCE_PUNCH", "ATTENDANCE_REGULARIZE_APPROVE", "LEAVE_VIEW_ALL", "LEAVE_APPROVE", "LEAVE_CONFIG_TYPES", "PAYROLL_VIEW_ALL", "PAYROLL_PROCESS", "EMPLOYEE_VIEW_DIRECTORY", "EMPLOYEE_MANAGE", "EMPLOYEE_DOCUMENTS_MANAGE", "ROLE_VIEW", "HOLIDAY_MANAGE", "EMAIL_TEMPLATE_MANAGE" };
-                    foreach (var p in savedPerms.Where(x => hrPermCodes.Contains(x.PermissionCode)))
+                    "ATTENDANCE_VIEW_SELF", "ATTENDANCE_PUNCH", "ATTENDANCE_REGULARIZE_APPLY",
+                    "LEAVE_APPLY_SELF", "PAYROLL_VIEW_SELF", "TIMESHEET_LOG_SELF",
+                    "EMPLOYEE_VIEW_DIRECTORY", "ASSET_REQUEST_SELF", "EXPENSE_VIEW_SELF", "PMS_VIEW_SELF"
+                };
+
+                var mgrPermCodes = new HashSet<string>(empPermCodes, StringComparer.OrdinalIgnoreCase)
+                {
+                    "ATTENDANCE_VIEW_ALL", "ATTENDANCE_REGULARIZE_APPROVE",
+                    "LEAVE_VIEW_ALL", "LEAVE_APPROVE",
+                    "TIMESHEET_VIEW_ALL", "TIMESHEET_APPROVE",
+                    "ASSET_APPROVE", "EXPENSE_APPROVE",
+                    "RECRUITMENT_VIEW", "PMS_MANAGE", "RESIGNATION_MANAGE", "SHIFT_MANAGE"
+                };
+
+                var hrPermCodes = new HashSet<string>(empPermCodes, StringComparer.OrdinalIgnoreCase)
+                {
+                    "ATTENDANCE_VIEW_ALL", "ATTENDANCE_REGULARIZE_APPROVE",
+                    "LEAVE_VIEW_ALL", "LEAVE_APPROVE", "LEAVE_CONFIG_TYPES",
+                    "PAYROLL_VIEW_ALL", "PAYROLL_PROCESS", "PAYROLL_CONFIG_RULES",
+                    "TIMESHEET_VIEW_ALL", "TIMESHEET_APPROVE",
+                    "EMPLOYEE_MANAGE", "EMPLOYEE_DOCUMENTS_MANAGE", "EMPLOYEE_PAYMENT_MANAGE",
+                    "ROLE_VIEW", "HOLIDAY_MANAGE", "EMAIL_TEMPLATE_MANAGE",
+                    "ASSET_VIEW_ALL", "ASSET_APPROVE", "ASSET_MANAGE",
+                    "SHIFT_MANAGE",
+                    "EXPENSE_VIEW_ALL", "EXPENSE_APPROVE", "EXPENSE_MANAGE",
+                    "RECRUITMENT_VIEW", "RECRUITMENT_MANAGE",
+                    "PMS_MANAGE",
+                    "DESIGNATION_MANAGE", "SKILL_MANAGE", "PROJECT_MANAGE", "RESIGNATION_MANAGE"
+                };
+
+                var adminPermCodes = savedPerms.Select(p => p.PermissionCode).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+                var hrRoles = roles.Where(r => string.Equals(r.RoleName, "HR", StringComparison.OrdinalIgnoreCase) || string.Equals(r.RoleName, "HR Operations", StringComparison.OrdinalIgnoreCase)).ToList();
+                var mgrRoles = roles.Where(r => string.Equals(r.RoleName, "Manager", StringComparison.OrdinalIgnoreCase) || string.Equals(r.RoleName, "Management", StringComparison.OrdinalIgnoreCase)).ToList();
+                var empRoles = roles.Where(r => string.Equals(r.RoleName, "Employee", StringComparison.OrdinalIgnoreCase)).ToList();
+                var adminRoles = roles.Where(r => string.Equals(r.RoleName, "Admin", StringComparison.OrdinalIgnoreCase) || string.Equals(r.RoleName, "System Admin", StringComparison.OrdinalIgnoreCase)).ToList();
+
+                bool changesMade = false;
+
+                void SyncRolePerms(RoleMaster role, HashSet<string> requiredCodes)
+                {
+                    var currentRoleMappings = existingRolePerms
+                        .Where(m => m.RoleId == role.Id && m.IsActive && !m.IsDeleted)
+                        .Select(m => m.PermissionId)
+                        .ToHashSet();
+
+                    var targetPerms = savedPerms.Where(p => requiredCodes.Contains(p.PermissionCode));
+                    foreach (var p in targetPerms)
                     {
-                        await _unitOfWork.RolePermissionMappings.Add(new RolePermissionMapping { RoleId = hrRole.Id, PermissionId = p.Id, IsActive = true, CreatedDate = DateTime.UtcNow, UpdatedDate = DateTime.UtcNow });
+                        if (!currentRoleMappings.Contains(p.Id))
+                        {
+                            _unitOfWork.RolePermissionMappings.Add(new RolePermissionMapping
+                            {
+                                RoleId = role.Id,
+                                PermissionId = p.Id,
+                                IsActive = true,
+                                CreatedDate = DateTime.UtcNow,
+                                UpdatedDate = DateTime.UtcNow
+                            });
+                            changesMade = true;
+                        }
                     }
                 }
 
-                if (mgrRole != null)
+                foreach (var r in empRoles) SyncRolePerms(r, empPermCodes);
+                foreach (var r in mgrRoles) SyncRolePerms(r, mgrPermCodes);
+                foreach (var r in hrRoles) SyncRolePerms(r, hrPermCodes);
+                foreach (var r in adminRoles) SyncRolePerms(r, adminPermCodes);
+
+                if (changesMade)
                 {
-                    var mgrPermCodes = new[] { "ATTENDANCE_VIEW_ALL", "ATTENDANCE_VIEW_SELF", "ATTENDANCE_PUNCH", "ATTENDANCE_REGULARIZE_APPROVE", "LEAVE_VIEW_ALL", "LEAVE_APPROVE", "TIMESHEET_VIEW_ALL", "TIMESHEET_APPROVE", "EMPLOYEE_VIEW_DIRECTORY", "ASSET_APPROVE" };
-                    foreach (var p in savedPerms.Where(x => mgrPermCodes.Contains(x.PermissionCode)))
-                    {
-                        await _unitOfWork.RolePermissionMappings.Add(new RolePermissionMapping { RoleId = mgrRole.Id, PermissionId = p.Id, IsActive = true, CreatedDate = DateTime.UtcNow, UpdatedDate = DateTime.UtcNow });
-                    }
+                    _unitOfWork.Save();
                 }
 
-                if (empRole != null)
-                {
-                    var empPermCodes = new[] { "ATTENDANCE_VIEW_SELF", "ATTENDANCE_PUNCH", "ATTENDANCE_REGULARIZE_APPLY", "LEAVE_APPLY_SELF", "PAYROLL_VIEW_SELF", "TIMESHEET_LOG_SELF", "EMPLOYEE_VIEW_DIRECTORY", "ASSET_REQUEST_SELF" };
-                    foreach (var p in savedPerms.Where(x => empPermCodes.Contains(x.PermissionCode)))
-                    {
-                        await _unitOfWork.RolePermissionMappings.Add(new RolePermissionMapping { RoleId = empRole.Id, PermissionId = p.Id, IsActive = true, CreatedDate = DateTime.UtcNow, UpdatedDate = DateTime.UtcNow });
-                    }
-                }
-
-                _unitOfWork.Save();
-                Log.Information("Successfully seeded default HRMS permissions and role mappings.");
+                Log.Information("Successfully reconciled default HRMS permissions and role mappings.");
             }
             catch (Exception ex)
             {
