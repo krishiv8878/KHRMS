@@ -102,14 +102,37 @@ namespace KHRMS
                 });
             }
 
-            await _attendanceService.AddAsync(attendance);
-            Log.Information("EmployeeAttendanceController - Attendance request added successfully.");
-            return Ok(new ApiResponse<bool>
+            try
             {
-                StatusCode = (int)HttpStatusCode.OK,
-                Message = ApiMessageConstant.AttendanceRequestAdded,
-                Data = true
-            });
+                await _attendanceService.AddAsync(attendance);
+                Log.Information("EmployeeAttendanceController - Attendance request added successfully.");
+                return Ok(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.OK,
+                    Message = ApiMessageConstant.AttendanceRequestAdded,
+                    Data = true
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+                Log.Warning("Validation failed for AddEmployeeAttendanceRequest: {Message}", ex.Message);
+                return BadRequest(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = ex.Message,
+                    Data = false
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error while adding attendance record.");
+                return StatusCode((int)HttpStatusCode.InternalServerError, new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.InternalServerError,
+                    Message = ex.Message,
+                    Data = false
+                });
+            }
         }
 
 

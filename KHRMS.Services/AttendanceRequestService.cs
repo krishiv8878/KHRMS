@@ -131,6 +131,13 @@ namespace KHRMS.Services
                 throw new InvalidOperationException($"A regularization request for {attendanceRequest.RequestedDate:yyyy-MM-dd} is {statusDesc}. You can only submit a new request if the previous one was rejected.");
             }
 
+            // Attendance regularization is strictly for past completed workdays
+            string requestType = attendanceRequest.RequestType ?? "Regularization";
+            if (string.Equals(requestType, "Regularization", StringComparison.OrdinalIgnoreCase) && attendanceRequest.RequestedDate.Date >= DateTime.Today)
+            {
+                throw new InvalidOperationException("Attendance regularization can only be requested for past completed workdays. You cannot regularize the current day or future dates.");
+            }
+
             if (employee.DateOfJoining.HasValue && attendanceRequest.RequestedDate.Date < employee.DateOfJoining.Value.Date)
             {
                 throw new InvalidOperationException($"Cannot submit attendance regularization for {attendanceRequest.RequestedDate:yyyy-MM-dd} prior to your official joining date ({employee.DateOfJoining.Value:yyyy-MM-dd}).");
@@ -371,6 +378,140 @@ namespace KHRMS.Services
         {
             await _unitOfWork.AttendanceRequests.DeleteAsync(id);
             _unitOfWork.Save();
+        }
+
+        public async Task<bool> SetDailyWorkModeAsync(DailyWorkModeDTO dto, ClaimsPrincipal user)
+        {
+            if (dto == null) throw new ArgumentNullException(nameof(dto));
+
+            long currentEmpId = _userContextService.GetCurrentEmployeeId();
+            if (currentEmpId == 0 && user != null)
+            {
+                var idStr = user.FindFirst("UserId")?.Value 
+                    ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+                    ?? user.FindFirst("id")?.Value;
+                if (long.TryParse(idStr, out var parsedId))
+                {
+                    currentEmpId = parsedId;
+                }
+            }
+
+            long targetEmpId = dto.EmployeeId > 0 ? dto.EmployeeId : currentEmpId;
+            if (targetEmpId <= 0)
+                throw new InvalidOperationException("Invalid employee ID specified for work mode.");
+
+            var employee = await _unitOfWork.Employees.GetById(targetEmpId);
+            if (employee == null)
+                throw new InvalidOperationException($"Employee with ID {targetEmpId} not found.");
+
+            // Normalize workMode input
+            string rawMode = (dto.WorkMode ?? string.Empty).Trim();
+            string normalizedRequestType;
+            string normalizedCode;
+
+            if (rawMode.Equals("WFH", StringComparison.OrdinalIgnoreCase) || 
+                rawMode.IndexOf("Home", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                normalizedRequestType = "Work From Home";
+                normalizedCode = "WFH";
+            }
+            else if (rawMode.Equals("OD", StringComparison.OrdinalIgnoreCase) || 
+                     rawMode.IndexOf("Duty", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                normalizedRequestType = "On-Duty";
+                normalizedCode = "OD";
+            }
+            else
+            {
+                normalizedRequestType = "Office";
+                normalizedCode = "WFO";
+            }
+
+            DateTime targetDate = dto.Date.Date;
+            DateOnly workDate = DateOnly.FromDateTime(targetDate);
+
+            // Upsert into EmployeeDailyWorkModes table
+            var existingRecord = await _unitOfWork.EmployeeDailyWorkModes.GetByEmployeeAndDateAsync(targetEmpId, workDate);
+            if (existingRecord != null)
+            {
+                existingRecord.WorkMode = normalizedCode;
+                existingRecord.SelectedBy = targetEmpId == currentEmpId ? "Employee" : "Manager";
+                if (!string.IsNullOrWhiteSpace(dto.Reason))
+                {
+                    existingRecord.Notes = dto.Reason;
+                }
+                existingRecord.UpdatedBy = (int)(currentEmpId > 0 ? currentEmpId : targetEmpId);
+                existingRecord.UpdatedDate = DateTime.Now;
+                _unitOfWork.EmployeeDailyWorkModes.Update(existingRecord);
+            }
+            else
+            {
+                var newRecord = new EmployeeDailyWorkMode
+                {
+                    EmployeeId = targetEmpId,
+                    WorkDate = workDate,
+                    WorkMode = normalizedCode,
+                    SelectedBy = targetEmpId == currentEmpId ? "Employee" : "Manager",
+                    Notes = dto.Reason,
+                    CreatedBy = (int)(currentEmpId > 0 ? currentEmpId : targetEmpId),
+                    CreatedDate = DateTime.Now,
+                    IsActive = true,
+                    IsDeleted = false
+                };
+
+                await _unitOfWork.EmployeeDailyWorkModes.Add(newRecord);
+            }
+
+            _unitOfWork.Save();
+            return true;
+        }
+
+        public async Task<IEnumerable<EmployeeWorkModeDTO>> GetDailyWorkModesAsync(DateTime? startDate = null, DateTime? endDate = null, long? employeeId = null)
+        {
+            DateTime startDt = startDate?.Date ?? DateTime.Today.AddDays(-60);
+            DateTime endDt = endDate?.Date ?? DateTime.Today.AddDays(30);
+            DateOnly start = DateOnly.FromDateTime(startDt);
+            DateOnly end = DateOnly.FromDateTime(endDt);
+
+            IEnumerable<EmployeeDailyWorkMode> modes;
+            if (employeeId.HasValue && employeeId.Value > 0)
+            {
+                modes = await _unitOfWork.EmployeeDailyWorkModes.GetByEmployeeAndDateRangeAsync(employeeId.Value, start, end);
+            }
+            else
+            {
+                modes = await _unitOfWork.EmployeeDailyWorkModes.GetAllForDateRangeAsync(start, end);
+            }
+
+            var employees = await _unitOfWork.Employees.GetAll();
+            var empDict = employees.ToDictionary(e => e.Id, e => $"{e.FirstName} {e.LastName}".Trim());
+
+            var result = new List<EmployeeWorkModeDTO>();
+            foreach (var m in modes.OrderByDescending(x => x.WorkDate))
+            {
+                empDict.TryGetValue(m.EmployeeId, out var empName);
+
+                string reqType = m.WorkMode switch
+                {
+                    "WFH" => "Work From Home",
+                    "OD" => "On-Duty",
+                    _ => "Office"
+                };
+
+                result.Add(new EmployeeWorkModeDTO
+                {
+                    EmployeeId = m.EmployeeId,
+                    EmployeeName = empName ?? $"Employee #{m.EmployeeId}",
+                    Date = m.WorkDate.ToString("yyyy-MM-dd"),
+                    WorkMode = m.WorkMode,
+                    RequestType = reqType,
+                    IsApproved = true,
+                    Status = "Approved",
+                    Reason = m.Notes
+                });
+            }
+
+            return result;
         }
     }
 }

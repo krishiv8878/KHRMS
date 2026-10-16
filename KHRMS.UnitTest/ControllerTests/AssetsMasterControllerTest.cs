@@ -2,6 +2,7 @@
 using KHRMS.Controllers;
 using KHRMS.Core;
 using KHRMS.Services;
+using KHRMS.Services.Interfaces;
 using Moq;
 
 namespace KHRMS.UnitTest.ControllerTests
@@ -9,11 +10,13 @@ namespace KHRMS.UnitTest.ControllerTests
     public class AssetsMasterControllerTest
     {
         private readonly Mock<IAssetsMasterService> _mock;
+        private readonly Mock<IUserContextService> _mock2;
         private readonly AssetsMasterController _Controller;
         public AssetsMasterControllerTest()
         {
            _mock = new Mock<IAssetsMasterService>();
-            _Controller = new AssetsMasterController(_mock.Object);
+           _mock2 = new Mock<IUserContextService>();
+            _Controller = new AssetsMasterController(_mock.Object, _mock2.Object);
         }
 
         [Fact]

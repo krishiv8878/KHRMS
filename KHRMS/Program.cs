@@ -62,6 +62,7 @@ builder.Services.AddScoped<IPayrollService, PayrollService>();
 builder.Services.AddScoped<IPmsService, PmsService>();
 builder.Services.AddScoped<IExpenseService, ExpenseService>();
 builder.Services.AddScoped<IRecruitmentService, RecruitmentService>();
+builder.Services.AddScoped<IEmployeeDailyWorkModeService, EmployeeDailyWorkModeService>();
 builder.Services.AddMemoryCache();
 
 // Add context-aware services

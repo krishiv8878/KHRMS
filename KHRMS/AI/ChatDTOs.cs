@@ -19,11 +19,21 @@ namespace KHRMS.AI
 
     // ─── Outbound ───────────────────────────────────────────────────────────────
 
-    /// <summary>Response sent back to Angular. Draft is null unless the AI prepared an action.</summary>
     public class ChatResponse
     {
-        public string     Reply { get; set; } = string.Empty;
-        public ChatDraft? Draft { get; set; }
+        public string         Reply { get; set; } = string.Empty;
+        public ChatDraft?     Draft { get; set; }
+        public TokenUsageDto? Usage { get; set; }
+    }
+
+    public class TokenUsageDto
+    {
+        public long   InputTokens        { get; set; }
+        public long   OutputTokens       { get; set; }
+        public long   TotalTokens        { get; set; }
+        public int    SystemPromptTokens { get; set; }
+        public int    HistoryTokens      { get; set; }
+        public string ToolsExecuted      { get; set; } = string.Empty;
     }
 
     /// <summary>

@@ -46,9 +46,9 @@ namespace KHRMS.Controllers
                 new(ChatRole.System, HrSystemPrompt.Text)
             };
 
-            // Keep only recent messages (sliding window of 8) to reduce token usage and prevent 429 TPM exhaustion
-            var recentMessages = request.Messages.Count > 8
-                ? request.Messages.Skip(request.Messages.Count - 8)
+            // Keep only recent messages (sliding window of 4) and sanitize heavy XML drafts to reduce input tokens
+            var recentMessages = request.Messages.Count > 4
+                ? request.Messages.Skip(request.Messages.Count - 4)
                 : request.Messages;
 
             foreach (var msg in recentMessages)
@@ -56,11 +56,20 @@ namespace KHRMS.Controllers
                 var role = msg.Role.Equals("user", StringComparison.OrdinalIgnoreCase)
                     ? ChatRole.User
                     : ChatRole.Assistant;
-                messages.Add(new ChatMessage(role, msg.Content ?? string.Empty));
+
+                var content = msg.Content ?? string.Empty;
+                // Strip bulky <hr-action> blocks from past messages to prevent token inflation
+                if (content.Contains("<hr-action>", StringComparison.OrdinalIgnoreCase))
+                {
+                    content = Regex.Replace(content, @"<hr-action>[\s\S]*?</hr-action>", "[Draft action prepared]").Trim();
+                }
+
+                messages.Add(new ChatMessage(role, content));
             }
 
-            // 2. Register tools (closures capture scoped services from DI, employee ID from JWT)
-            var tools = BuildTools();
+            // 2. Register tools with execution tracker
+            var executedTools = new List<(string Name, int ApproxTokens)>();
+            var tools = BuildTools(executedTools);
             var options = new ChatOptions { Tools = tools };
 
             int maxAttempts = 3;
@@ -75,10 +84,53 @@ namespace KHRMS.Controllers
                     // 4. Parse any <hr-action> draft block embedded in the reply
                     var (cleanReply, draft) = ExtractDraft(rawReply);
 
+                    // 5. Token Profiler logging
+                    var sysPromptTokens = (HrSystemPrompt.Text.Length + 3) / 4;
+                    var histTokens = recentMessages.Sum(m => (m.Content?.Length ?? 0) + 3) / 4;
+                    var userQuery = request.Messages.LastOrDefault()?.Content ?? "(empty)";
+                    var toolsLog = executedTools.Count > 0
+                        ? string.Join(", ", executedTools.Select(t => $"{t.Name} (~{t.ApproxTokens} tok)"))
+                        : "None (Direct Answer)";
+
+                    var inputTokens = aiResponse.Usage?.InputTokenCount ?? 0;
+                    var outputTokens = aiResponse.Usage?.OutputTokenCount ?? 0;
+                    var totalTokens = aiResponse.Usage?.TotalTokenCount ?? 0;
+
+                    Console.ForegroundColor = ConsoleColor.Cyan;
+                    Console.WriteLine("\n======================= AI TOKEN PROFILER =======================");
+                    Console.WriteLine($"User Query:       {userQuery}");
+                    Console.WriteLine($"System Prompt:    ~{sysPromptTokens} tokens");
+                    Console.WriteLine($"History Sent:     ~{histTokens} tokens ({recentMessages.Count()} msgs)");
+                    Console.WriteLine($"Tools Executed:   {toolsLog}");
+                    Console.WriteLine("-----------------------------------------------------------------");
+                    Console.WriteLine("Gemini Reported Usage:");
+                    Console.WriteLine($"  Input Tokens:   {inputTokens}");
+                    Console.WriteLine($"  Output Tokens:  {outputTokens}");
+                    Console.WriteLine($"  Total Tokens:   {totalTokens}");
+                    Console.WriteLine("=================================================================\n");
+                    Console.ResetColor();
+
+                    Serilog.Log.Information(
+                        "[AI Token Profiler] Query: '{Query}' | Input: {InputTokens} | Output: {OutputTokens} | Total: {TotalTokens} | Tools: {Tools}",
+                        userQuery, inputTokens, outputTokens, totalTokens, toolsLog);
+
+                    Response.Headers["X-AI-Input-Tokens"] = inputTokens.ToString();
+                    Response.Headers["X-AI-Output-Tokens"] = outputTokens.ToString();
+                    Response.Headers["X-AI-Total-Tokens"] = totalTokens.ToString();
+
                     return Ok(new KHRMS.AI.ChatResponse
                     {
                         Reply = cleanReply,
-                        Draft = draft
+                        Draft = draft,
+                        Usage = new KHRMS.AI.TokenUsageDto
+                        {
+                            InputTokens = inputTokens,
+                            OutputTokens = outputTokens,
+                            TotalTokens = totalTokens,
+                            SystemPromptTokens = sysPromptTokens,
+                            HistoryTokens = histTokens,
+                            ToolsExecuted = toolsLog
+                        }
                     });
                 }
                 catch (System.ClientModel.ClientResultException cre) when (cre.Status == 429)
@@ -204,6 +256,11 @@ namespace KHRMS.Controllers
                 return BadRequest(new { message = "Requested date and clock-in time are required." });
             }
 
+            if (dto.RequestedDate.Date >= DateTime.Today)
+            {
+                return BadRequest(new { message = "Attendance regularization can only be requested for past completed workdays. You cannot regularize the current day or future dates." });
+            }
+
             var summary = $"Attendance Regularization for {dto.RequestedDate:yyyy-MM-dd} (In: {dto.ClockIn:HH:mm}{(dto.ClockOut.HasValue ? $", Out: {dto.ClockOut.Value:HH:mm}" : "")})";
 
             var draft = new ChatDraft
@@ -265,7 +322,7 @@ namespace KHRMS.Controllers
         // Tools — thin wrappers over existing services, no DB access,
         // employee ID always comes from the JWT via IUserContextService.
         // ──────────────────────────────────────────────────────────────────────
-        private List<AITool> BuildTools()
+        private List<AITool> BuildTools(List<(string Name, int ApproxTokens)>? toolTracker = null)
         {
             var jso = new JsonSerializerOptions
             {
@@ -292,7 +349,9 @@ namespace KHRMS.Controllers
                                 pendingDays = b.PendingDays,
                                 remainingDays = b.RemainingDays
                             });
-                            return JsonSerializer.Serialize(result, jso);
+                            var json = JsonSerializer.Serialize(result, jso);
+                            toolTracker?.Add(("get_leave_balance", (json.Length + 3) / 4));
+                            return json;
                         }
                         catch (Exception ex)
                         {
@@ -313,18 +372,21 @@ namespace KHRMS.Controllers
                             {
                                 leaves = leaves.Where(l => string.Equals(l.Status, status, StringComparison.OrdinalIgnoreCase));
                             }
-                            var result = leaves.Select(l => new
-                            {
-                                id = l.Id,
-                                leaveTypeName = l.LeaveTypeName,
-                                startDate = l.StartDate.ToString("yyyy-MM-dd"),
-                                endDate = l.EndDate.ToString("yyyy-MM-dd"),
-                                leaveMode = l.LeaveMode,
-                                status = l.Status,
-                                leaveReason = l.LeaveReason,
-                                totalDays = l.TotalDays
-                            });
-                            return JsonSerializer.Serialize(result, jso);
+                            var result = leaves
+                                .OrderByDescending(l => l.StartDate)
+                                .Take(5)
+                                .Select(l => new
+                                {
+                                    leaveTypeName = l.LeaveTypeName,
+                                    startDate = l.StartDate.ToString("yyyy-MM-dd"),
+                                    endDate = l.EndDate.ToString("yyyy-MM-dd"),
+                                    leaveMode = l.LeaveMode,
+                                    status = l.Status,
+                                    totalDays = l.TotalDays
+                                });
+                            var json = JsonSerializer.Serialize(result, jso);
+                            toolTracker?.Add(("get_my_leave_history", (json.Length + 3) / 4));
+                            return json;
                         }
                         catch (Exception ex)
                         {
@@ -351,7 +413,7 @@ namespace KHRMS.Controllers
                             var targetCategory = string.IsNullOrWhiteSpace(category) ? "All" : category.Trim();
                             var pendingList = new List<object>();
 
-                            // 1. Team Leaves
+                            // 1. Team Leaves (cap to 6 to save context tokens)
                             if (string.Equals(targetCategory, "All", StringComparison.OrdinalIgnoreCase) ||
                                 string.Equals(targetCategory, "Leave", StringComparison.OrdinalIgnoreCase))
                             {
@@ -361,7 +423,7 @@ namespace KHRMS.Controllers
                                     teamLeaves = teamLeaves.Where(l => string.Equals(l.Status, targetStatus, StringComparison.OrdinalIgnoreCase));
                                 }
 
-                                foreach (var l in teamLeaves)
+                                foreach (var l in teamLeaves.Take(6))
                                 {
                                     pendingList.Add(new
                                     {
@@ -372,14 +434,12 @@ namespace KHRMS.Controllers
                                         startDate = l.StartDate.ToString("yyyy-MM-dd"),
                                         endDate = l.EndDate.ToString("yyyy-MM-dd"),
                                         totalDays = l.TotalDays,
-                                        leaveMode = l.LeaveMode,
-                                        status = l.Status,
-                                        reason = l.LeaveReason
+                                        status = l.Status
                                     });
                                 }
                             }
 
-                            // 2. Attendance Regularization
+                            // 2. Attendance Regularization (cap to 6 to save context tokens)
                             if (string.Equals(targetCategory, "All", StringComparison.OrdinalIgnoreCase) ||
                                 string.Equals(targetCategory, "Attendance", StringComparison.OrdinalIgnoreCase))
                             {
@@ -389,7 +449,7 @@ namespace KHRMS.Controllers
                                     teamAttendance = teamAttendance.Where(a => string.Equals(a.Status, targetStatus, StringComparison.OrdinalIgnoreCase));
                                 }
 
-                                foreach (var a in teamAttendance)
+                                foreach (var a in teamAttendance.Take(6))
                                 {
                                     pendingList.Add(new
                                     {
@@ -398,13 +458,14 @@ namespace KHRMS.Controllers
                                         employeeName = a.EmployeeName ?? "Employee",
                                         requestType = a.RequestType,
                                         date = a.RequestedDate.ToString("yyyy-MM-dd"),
-                                        status = a.Status,
-                                        reason = a.Reason
+                                        status = a.Status
                                     });
                                 }
                             }
 
-                            return JsonSerializer.Serialize(pendingList, jso);
+                            var json = JsonSerializer.Serialize(pendingList, jso);
+                            toolTracker?.Add(("get_team_approval_requests", (json.Length + 3) / 4));
+                            return json;
                         }
                         catch (Exception ex)
                         {
@@ -425,14 +486,16 @@ namespace KHRMS.Controllers
                             var upcoming = holidays
                                 .Where(h => h.HolidayDate >= today)
                                 .OrderBy(h => h.HolidayDate)
-                                .Take(20)
+                                .Take(5)
                                 .Select(h => new
                                 {
                                     name = h.HolidayName,
                                     date = h.HolidayDate.ToString("yyyy-MM-dd"),
                                     day = h.HolidayDate.DayOfWeek.ToString()
                                 });
-                            return JsonSerializer.Serialize(upcoming, jso);
+                            var json = JsonSerializer.Serialize(upcoming, jso);
+                            toolTracker?.Add(("get_upcoming_holidays", (json.Length + 3) / 4));
+                            return json;
                         }
                         catch (Exception ex)
                         {
@@ -467,7 +530,9 @@ namespace KHRMS.Controllers
                                 tdsDeduction = latest.TdsDeduction,
                                 netSalary = latest.NetSalary
                             };
-                            return JsonSerializer.Serialize(result, jso);
+                            var json = JsonSerializer.Serialize(result, jso);
+                            toolTracker?.Add(("get_latest_payslip", (json.Length + 3) / 4));
+                            return json;
                         }
                         catch (Exception ex)
                         {
@@ -499,7 +564,9 @@ namespace KHRMS.Controllers
                                 monthlyTds = assignment.MonthlyTds,
                                 monthlyNetTakeHome = assignment.MonthlyNetTakeHome
                             };
-                            return JsonSerializer.Serialize(result, jso);
+                            var json = JsonSerializer.Serialize(result, jso);
+                            toolTracker?.Add(("get_salary_breakdown", (json.Length + 3) / 4));
+                            return json;
                         }
                         catch (Exception ex)
                         {
@@ -523,9 +590,11 @@ namespace KHRMS.Controllers
                                 category = p.Category,
                                 content = p.Content
                             }).ToList();
-                            return list.Count == 0
+                            var json = list.Count == 0
                                 ? "{\"info\":\"No matching policy found. The policy may not be documented yet.\"}"
                                 : JsonSerializer.Serialize(list, jso);
+                            toolTracker?.Add(("search_company_policy", (json.Length + 3) / 4));
+                            return json;
                         }
                         catch (Exception ex)
                         {

@@ -57,6 +57,38 @@ namespace KHRMS.Services
                     : DateOnly.FromDateTime(DateTime.Today);
             }
 
+            var targetDate = attendance.AttendanceDate.ToDateTime(TimeOnly.MinValue).Date;
+
+            // 1. Check if there is an approved or pending regularization request for this date
+            var activeRegularization = (await _unitOfWork.AttendanceRequests.GetAll())
+                .FirstOrDefault(r => r.EmployeeId == attendance.EmployeeId 
+                    && r.RequestedDate.Date == targetDate 
+                    && !r.IsDeleted 
+                    && string.Equals(r.RequestType, "Regularization", StringComparison.OrdinalIgnoreCase)
+                    && (string.Equals(r.Status, "Approved", StringComparison.OrdinalIgnoreCase) 
+                        || string.Equals(r.Status, "Pending", StringComparison.OrdinalIgnoreCase)));
+
+            if (activeRegularization != null)
+            {
+                string statusDesc = string.Equals(activeRegularization.Status, "Approved", StringComparison.OrdinalIgnoreCase)
+                    ? "already regularized and approved"
+                    : "currently pending regularization approval";
+                throw new InvalidOperationException($"Attendance for {targetDate:yyyy-MM-dd} is {statusDesc}. Clock-in and clock-out are disabled.");
+            }
+
+            // 2. Check if user is on approved leave on this date
+            var activeLeave = (await _unitOfWork.LeaveRequest.GetAll())
+                .FirstOrDefault(l => l.EmployeeId == attendance.EmployeeId
+                    && !l.IsDeleted
+                    && string.Equals(l.Status, "Approved", StringComparison.OrdinalIgnoreCase)
+                    && targetDate >= l.StartDate.Date
+                    && targetDate <= l.EndDate.Date);
+
+            if (activeLeave != null)
+            {
+                throw new InvalidOperationException($"Cannot clock in or out on {targetDate:yyyy-MM-dd} because you are on approved leave.");
+            }
+
             var attendancebyid = (await _unitOfWork.EmployeeAttendance.GetAll())
                 .FirstOrDefault(r => r.EmployeeId == attendance.EmployeeId && r.AttendanceDate == attendance.AttendanceDate && !r.IsDeleted);
 
