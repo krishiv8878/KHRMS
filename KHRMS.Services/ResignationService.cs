@@ -189,41 +189,97 @@ namespace KHRMS.Services
         public async Task<IEnumerable<ResignationRequestModel>> GetAllResignations()
         {
             var empid = _userContextService.GetCurrentEmployeeId();
-            var resignations = (await _unitOfWork.Resignation.GetAll()).Where(x=>x.ManagerId == empid);
-            var employees = (await _unitOfWork.Employees.GetAll()).Where(x=>x.ManagerId == empid);
+            var allEmployees = (await _unitOfWork.Employees.GetAll()).ToList();
+            var allResignations = (await _unitOfWork.Resignation.GetAll()).Where(x => !x.IsDeleted).ToList();
             var roleMappings = await _unitOfWork.EmployeeRoleMappings.GetAll();
-            var roles = (await _unitOfWork.RoleMaster.GetAll()).ToDictionary(r=>r.Id);
-            var employeeDictionary = employees.ToDictionary(emp => emp.Id);
+            var roles = (await _unitOfWork.RoleMaster.GetAll()).ToDictionary(r => r.Id);
 
+            bool isAdminOrHr = _userContextService.IsAdmin() || _userContextService.IsHR() || await _userContextService.HasPermissionAsync("RESIGNATION_MANAGE");
+            bool isManager = _userContextService.IsManager();
 
-            var result = resignations.Select(p=> new ResignationRequestModel
+            if (!isAdminOrHr && empid <= 0)
             {
-                Id = p.Id,
-                EmployeeId = p.EmployeeId,
-                Reason = p.Reason,
-                Status = p.Status,
-                ManagerId = p.ManagerId,
-                NoticePeriod = p.NoticePeriod,
-                Resignation_Date = p.Resignation_Date,
-                RoleId = roleMappings
-                    .Where(mapping => mapping.EmployeeId == p.EmployeeId && mapping.IsActive)
-                    .Select(mapping => mapping.RoleId)
-                    .Where(roleId => roles.ContainsKey(roleId))
-                    .ToList(),
-                RoleName = roleMappings
-                    .Where(mapping => mapping.EmployeeId == p.EmployeeId && mapping.IsActive)
-                    .Select(mapping => mapping.RoleId)
-                    .Where(roleId => roles.ContainsKey(roleId))
-                    .Select(roleId => roles[roleId].RoleName)
-                    .ToList(),
+                return Enumerable.Empty<ResignationRequestModel>();
+            }
 
+            IEnumerable<Resignation> scoped;
+            if (isAdminOrHr)
+            {
+                scoped = allResignations;
+            }
+            else if (isManager)
+            {
+                var reporteeIds = allEmployees.Where(e => e.ManagerId == empid).Select(e => e.Id).ToHashSet();
+                reporteeIds.Add(empid);
+
+                scoped = allResignations.Where(x => x.ManagerId == empid || reporteeIds.Contains(x.EmployeeId));
+            }
+            else
+            {
+                scoped = allResignations.Where(x => x.EmployeeId == empid);
+            }
+
+            var employeeDictionary = allEmployees.ToDictionary(emp => emp.Id);
+
+            var result = scoped.Select(p =>
+            {
+                employeeDictionary.TryGetValue(p.ManagerId, out var mgr);
+                return new ResignationRequestModel
+                {
+                    Id = p.Id,
+                    EmployeeId = p.EmployeeId,
+                    Reason = p.Reason,
+                    Status = p.Status,
+                    ManagerId = p.ManagerId,
+                    ManagerName = mgr != null ? $"{mgr.FirstName} {mgr.LastName}".Trim() : null,
+                    NoticePeriod = p.NoticePeriod,
+                    Resignation_Date = p.Resignation_Date,
+                    RoleId = roleMappings
+                        .Where(mapping => mapping.EmployeeId == p.EmployeeId && mapping.IsActive)
+                        .Select(mapping => mapping.RoleId)
+                        .Where(roleId => roles.ContainsKey(roleId))
+                        .ToList(),
+                    RoleName = roleMappings
+                        .Where(mapping => mapping.EmployeeId == p.EmployeeId && mapping.IsActive)
+                        .Select(mapping => mapping.RoleId)
+                        .Where(roleId => roles.ContainsKey(roleId))
+                        .Select(roleId => roles[roleId].RoleName)
+                        .ToList(),
+                };
             }).ToList();
-            return result;
 
+            return result;
         }
-        public async Task<Resignation> GetResignationById(int resignationId)
+
+        public async Task<Resignation?> GetResignationById(int resignationId)
         {
-            return await _unitOfWork.Resignation.GetByIdAsync(resignationId);
+            var res = await _unitOfWork.Resignation.GetByIdAsync(resignationId);
+            if (res == null || res.IsDeleted) return null;
+
+            var empid = _userContextService.GetCurrentEmployeeId();
+            bool isAdminOrHr = _userContextService.IsAdmin() || _userContextService.IsHR() || await _userContextService.HasPermissionAsync("RESIGNATION_MANAGE");
+            bool isManager = _userContextService.IsManager();
+
+            if (!isAdminOrHr)
+            {
+                if (res.EmployeeId != empid)
+                {
+                    if (isManager)
+                    {
+                        var emp = (await _unitOfWork.Employees.GetAll()).FirstOrDefault(e => e.Id == res.EmployeeId);
+                        if (emp == null || (emp.ManagerId != empid && res.ManagerId != empid))
+                        {
+                            return null;
+                        }
+                    }
+                    else
+                    {
+                        return null;
+                    }
+                }
+            }
+
+            return res;
         }
 
         public async Task<bool> UpdateResignation(Resignation resignation)
@@ -231,8 +287,16 @@ namespace KHRMS.Services
             if (resignation == null)
                 return false;
             var resgin = await _unitOfWork.Resignation.GetById(resignation.Id);
-            if (resgin == null)
+            if (resgin == null || resgin.IsDeleted)
                 return false;
+
+            var empid = _userContextService.GetCurrentEmployeeId();
+            bool isAdminOrHr = _userContextService.IsAdmin() || _userContextService.IsHR() || await _userContextService.HasPermissionAsync("RESIGNATION_MANAGE");
+
+            if (!isAdminOrHr && resgin.EmployeeId != empid)
+            {
+                throw new UnauthorizedAccessException("You are not authorized to update another employee's resignation.");
+            }
 
             resgin.Reason = resignation.Reason;
             resgin.NoticePeriod = resignation.NoticePeriod;

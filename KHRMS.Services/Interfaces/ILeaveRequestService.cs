@@ -13,11 +13,9 @@ namespace KHRMS.Services
         Task<bool> DeleteLeaveRequestType(long LeaveRequestTypeId);
         Task<bool> ApproveLeaveRequestAsync(ApproveLeaveRequest leaveRequest);
         Task<bool> CancelLeaveRequestAsync(long leaveRequestId, string? reason, long currentUserId, bool isAdminOrManager);
-        public Task<IEnumerable<LeaveRequest>> GetAllEmployeesLeaveRequest();
+        Task<IEnumerable<LeaveRequest>> GetAllEmployeesLeaveRequest();
         Task<IEnumerable<EmployeeLeaveBalanceDto>> GetEmployeeLeaveBalances(long? employeeId = null);
+        Task<HashSet<DateOnly>> GetActiveHolidayDatesAsync();
+        double CalculateWorkingLeaveDays(DateTime startDate, DateTime endDate, string? leaveMode, HashSet<DateOnly> holidayDates);
     }
 }
-
-
-
-

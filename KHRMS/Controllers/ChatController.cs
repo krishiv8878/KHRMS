@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using KHRMS.AI;
 using KHRMS.Authorization;
 using KHRMS.Core;
+using KHRMS.Infrastructure;
 using KHRMS.Services;
 using KHRMS.Services.Interfaces;
 using KHRMS.Services.Request;
@@ -24,7 +25,8 @@ namespace KHRMS.Controllers
         IPayrollService payrollService,
         IHolidayService holidayService,
         IUserContextService userContext,
-        IChatPolicyService policyService) : ControllerBase
+        IChatPolicyService policyService,
+        IUnitOfWork unitOfWork) : ControllerBase
     {
         // ──────────────────────────────────────────────────────────────────────
         // POST api/chat
@@ -40,10 +42,18 @@ namespace KHRMS.Controllers
                 return BadRequest("Invalid chat request.");
             }
 
-            // 1. Build conversation history with system prompt prepended
+            // 1. Build conversation history with dynamic context-aware system prompt
+            var empId = userContext.GetCurrentEmployeeId();
+            var roles = userContext.GetCurrentUserRoles();
+            var isPrivileged = userContext.IsAdmin() || userContext.IsHR() || userContext.IsManager();
+            var emp = empId > 0 ? await unitOfWork.Employees.GetById(empId) : null;
+            var empName = emp != null ? $"{emp.FirstName} {emp.LastName}".Trim() : (User.Identity?.Name ?? "Employee");
+
+            var systemPrompt = HrSystemPrompt.BuildPrompt(DateTime.Today, empId, empName, roles, isPrivileged);
+
             var messages = new List<ChatMessage>
             {
-                new(ChatRole.System, HrSystemPrompt.Text)
+                new(ChatRole.System, systemPrompt)
             };
 
             // Keep only recent messages (sliding window of 4) and sanitize heavy XML drafts to reduce input tokens
@@ -85,7 +95,7 @@ namespace KHRMS.Controllers
                     var (cleanReply, draft) = ExtractDraft(rawReply);
 
                     // 5. Token Profiler logging
-                    var sysPromptTokens = (HrSystemPrompt.Text.Length + 3) / 4;
+                    var sysPromptTokens = (systemPrompt.Length + 3) / 4;
                     var histTokens = recentMessages.Sum(m => (m.Content?.Length ?? 0) + 3) / 4;
                     var userQuery = request.Messages.LastOrDefault()?.Content ?? "(empty)";
                     var toolsLog = executedTools.Count > 0
@@ -98,44 +108,26 @@ namespace KHRMS.Controllers
 
                     Console.ForegroundColor = ConsoleColor.Cyan;
                     Console.WriteLine("\n======================= AI TOKEN PROFILER =======================");
-                    Console.WriteLine($"User Query:       {userQuery}");
-                    Console.WriteLine($"System Prompt:    ~{sysPromptTokens} tokens");
-                    Console.WriteLine($"History Sent:     ~{histTokens} tokens ({recentMessages.Count()} msgs)");
-                    Console.WriteLine($"Tools Executed:   {toolsLog}");
-                    Console.WriteLine("-----------------------------------------------------------------");
-                    Console.WriteLine("Gemini Reported Usage:");
-                    Console.WriteLine($"  Input Tokens:   {inputTokens}");
-                    Console.WriteLine($"  Output Tokens:  {outputTokens}");
-                    Console.WriteLine($"  Total Tokens:   {totalTokens}");
+                    Console.ResetColor();
+                    Console.WriteLine($"[QUERY]              : \"{(userQuery.Length > 80 ? userQuery.Substring(0, 77) + "..." : userQuery)}\"");
+                    Console.WriteLine($"[PROMPT TOKENS]      : ~{sysPromptTokens} tok (HR System Persona)");
+                    Console.WriteLine($"[HISTORY TOKENS]     : ~{histTokens} tok ({recentMessages.Count()} messages retained)");
+                    Console.WriteLine($"[TOOLS EXECUTED]     : {toolsLog}");
+                    Console.WriteLine($"[ACTION DETECTED]    : {(draft != null ? $"YES ({draft.ActionType} -> {draft.Summary})" : "NO")}");
+                    Console.WriteLine($"[API USAGE REPORTED] : Input: {inputTokens} | Output: {outputTokens} | Total: {totalTokens}");
+                    Console.ForegroundColor = ConsoleColor.Cyan;
                     Console.WriteLine("=================================================================\n");
                     Console.ResetColor();
-
-                    Serilog.Log.Information(
-                        "[AI Token Profiler] Query: '{Query}' | Input: {InputTokens} | Output: {OutputTokens} | Total: {TotalTokens} | Tools: {Tools}",
-                        userQuery, inputTokens, outputTokens, totalTokens, toolsLog);
-
-                    Response.Headers["X-AI-Input-Tokens"] = inputTokens.ToString();
-                    Response.Headers["X-AI-Output-Tokens"] = outputTokens.ToString();
-                    Response.Headers["X-AI-Total-Tokens"] = totalTokens.ToString();
 
                     return Ok(new KHRMS.AI.ChatResponse
                     {
                         Reply = cleanReply,
-                        Draft = draft,
-                        Usage = new KHRMS.AI.TokenUsageDto
-                        {
-                            InputTokens = inputTokens,
-                            OutputTokens = outputTokens,
-                            TotalTokens = totalTokens,
-                            SystemPromptTokens = sysPromptTokens,
-                            HistoryTokens = histTokens,
-                            ToolsExecuted = toolsLog
-                        }
+                        Draft = draft
                     });
                 }
-                catch (System.ClientModel.ClientResultException cre) when (cre.Status == 429)
+                catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.TooManyRequests)
                 {
-                    Serilog.Log.Warning("Gemini rate limit (429) encountered on attempt {Attempt}/{Max}", attempt, maxAttempts);
+                    Serilog.Log.Warning("ChatController - Gemini Rate limit hit (429) on attempt {Attempt}/{Max}", attempt, maxAttempts);
                     if (attempt == maxAttempts)
                     {
                         return Ok(new KHRMS.AI.ChatResponse
@@ -292,6 +284,16 @@ namespace KHRMS.Controllers
                 return BadRequest("Invalid attendance request data.");
             }
 
+            if (dto.RequestedDate.Date >= DateTime.Today)
+            {
+                return BadRequest(new
+                {
+                    statusCode = (int)HttpStatusCode.BadRequest,
+                    message = "Attendance regularization can only be requested for past completed workdays. You cannot regularize the current day or future dates.",
+                    data = false
+                });
+            }
+
             dto.EmployeeId = userContext.GetCurrentEmployeeId();
             dto.Status = "Pending";
             dto.IsActive = true;
@@ -333,6 +335,118 @@ namespace KHRMS.Controllers
 
             return
             [
+                // ── Validate leave request (MANDATORY BEFORE DRAFTING LEAVE) ───
+                AIFunctionFactory.Create(
+                    async ([Description("Start date of requested leave in YYYY-MM-DD format.")] string startDate,
+                           [Description("End date of requested leave in YYYY-MM-DD format.")] string endDate,
+                           [Description("Leave type ID (e.g. 1 for Casual Leave, 2 for Sick Leave).")] long? leaveTypeId,
+                           [Description("Leave mode: 'Full Day', 'First Half', or 'Second Half'. Defaults to 'Full Day'.")] string? leaveMode) =>
+                    {
+                        try
+                        {
+                            if (!DateTime.TryParse(startDate, out var parsedStart) || !DateTime.TryParse(endDate, out var parsedEnd))
+                            {
+                                return JsonSerializer.Serialize(new { isValid = false, errorReason = "Invalid date format. Please provide dates in YYYY-MM-DD format." });
+                            }
+
+                            if (parsedEnd.Date < parsedStart.Date)
+                            {
+                                return JsonSerializer.Serialize(new { isValid = false, errorReason = "End date cannot be earlier than start date." });
+                            }
+
+                            // 1. Check if requested dates fall entirely on official holidays or weekends
+                            var holidayDates = await leaveService.GetActiveHolidayDatesAsync();
+                            var allHolidays = await holidayService.GetAllHolidays();
+                            var matchedHolidays = allHolidays
+                                .Where(h => h.IsActive != false && h.IsDeleted != true &&
+                                            h.HolidayDate >= DateOnly.FromDateTime(parsedStart.Date) &&
+                                            h.HolidayDate <= DateOnly.FromDateTime(parsedEnd.Date))
+                                .Select(h => $"{h.HolidayName} ({h.HolidayDate:yyyy-MM-dd})")
+                                .ToList();
+
+                            var workingDays = leaveService.CalculateWorkingLeaveDays(parsedStart, parsedEnd, leaveMode, holidayDates);
+                            if (workingDays <= 0)
+                            {
+                                var reason = matchedHolidays.Count > 0
+                                    ? $"The requested date(s) fall on official public holiday(s): {string.Join(", ", matchedHolidays)}. Leave cannot be applied for official holidays."
+                                    : "The requested date(s) fall entirely on non-working weekend days (Saturday/Sunday). Leave cannot be applied for non-working days.";
+                                return JsonSerializer.Serialize(new { isValid = false, errorReason = reason });
+                            }
+
+                            // 2. Check for overlapping active (Approved or Pending) leaves for this employee
+                            var allLeaves = await leaveService.GetAllLeaveRequestType();
+                            var overlapping = allLeaves.FirstOrDefault(l =>
+                                (string.Equals(l.Status, "Approved", StringComparison.OrdinalIgnoreCase) ||
+                                 string.Equals(l.Status, "Pending", StringComparison.OrdinalIgnoreCase)) &&
+                                !(parsedEnd.Date < l.StartDate.Date || parsedStart.Date > l.EndDate.Date));
+
+                            if (overlapping != null)
+                            {
+                                var statusText = string.Equals(overlapping.Status, "Approved", StringComparison.OrdinalIgnoreCase) ? "an approved" : "a pending";
+                                return JsonSerializer.Serialize(new
+                                {
+                                    isValid = false,
+                                    errorReason = $"You already have {statusText} leave request (#{overlapping.Id}: {overlapping.LeaveTypeName} from {overlapping.StartDate:yyyy-MM-dd} to {overlapping.EndDate:yyyy-MM-dd}, Status: {overlapping.Status}) overlapping with the requested dates."
+                                });
+                            }
+
+                            // 3. Check leave balance quota if leaveTypeId provided
+                            if (leaveTypeId.HasValue && leaveTypeId.Value > 0)
+                            {
+                                var balances = await leaveService.GetEmployeeLeaveBalances();
+                                var matchedBalance = balances.FirstOrDefault(b => b.LeaveTypeId == leaveTypeId.Value);
+                                if (matchedBalance != null && matchedBalance.RemainingDays < workingDays)
+                                {
+                                    return JsonSerializer.Serialize(new
+                                    {
+                                        isValid = false,
+                                        errorReason = $"Insufficient leave balance for {matchedBalance.LeaveTypeName}. You have {matchedBalance.RemainingDays} day(s) remaining, but this request requires {workingDays} day(s)."
+                                    });
+                                }
+                            }
+
+                            return JsonSerializer.Serialize(new
+                            {
+                                isValid = true,
+                                workingDays = workingDays,
+                                holidayNote = matchedHolidays.Count > 0 ? $"Excludes official holiday: {string.Join(", ", matchedHolidays)}" : null
+                            });
+                        }
+                        catch (Exception ex)
+                        {
+                            return JsonSerializer.Serialize(new { isValid = false, errorReason = ex.Message });
+                        }
+                    },
+                    name: "validate_leave_request",
+                    description: "MANDATORY validation before drafting any leave. Validates if requested dates overlap with existing approved/pending leaves, fall on holidays or weekends, or exceed leave quota. Returns { isValid: bool, errorReason: string, workingDays: number }."
+                ),
+
+                // ── Validate regularization request (MANDATORY BEFORE DRAFTING REGULARIZATION) ───
+                AIFunctionFactory.Create(
+                    ([Description("The workday date to regularize in YYYY-MM-DD format.")] string requestedDate) =>
+                    {
+                        if (!DateTime.TryParse(requestedDate, out var date))
+                        {
+                            return JsonSerializer.Serialize(new { isValid = false, errorReason = "Invalid date format. Use YYYY-MM-DD." });
+                        }
+
+                        var today = DateTime.Today;
+                        if (date.Date >= today)
+                        {
+                            string dateDesc = date.Date == today ? "today (current day)" : $"a future date ({date:yyyy-MM-dd})";
+                            return JsonSerializer.Serialize(new
+                            {
+                                isValid = false,
+                                errorReason = $"Attendance regularization cannot be requested for {dateDesc}. Regularization is strictly for past completed workdays prior to today ({today:yyyy-MM-dd})."
+                            });
+                        }
+
+                        return JsonSerializer.Serialize(new { isValid = true });
+                    },
+                    name: "validate_regularization_request",
+                    description: "MANDATORY validation before drafting attendance regularization. Checks that the requested date is strictly a past completed workday before today. Returns { isValid: bool, errorReason: string }."
+                ),
+
                 // ── Leave balance ──────────────────────────────────────────────
                 AIFunctionFactory.Create(
                     async () =>
@@ -374,9 +488,10 @@ namespace KHRMS.Controllers
                             }
                             var result = leaves
                                 .OrderByDescending(l => l.StartDate)
-                                .Take(5)
+                                .Take(20)
                                 .Select(l => new
                                 {
+                                    id = l.Id,
                                     leaveTypeName = l.LeaveTypeName,
                                     startDate = l.StartDate.ToString("yyyy-MM-dd"),
                                     endDate = l.EndDate.ToString("yyyy-MM-dd"),
@@ -409,11 +524,12 @@ namespace KHRMS.Controllers
                                 return "{\"info\":\"You do not have a Manager, HR, or Admin role to view team approvals.\"}";
                             }
 
+                            // Strict filter: default to Pending, strictly return requests matching the target status
                             var targetStatus = string.IsNullOrWhiteSpace(status) ? "Pending" : status.Trim();
                             var targetCategory = string.IsNullOrWhiteSpace(category) ? "All" : category.Trim();
                             var pendingList = new List<object>();
 
-                            // 1. Team Leaves (cap to 6 to save context tokens)
+                            // 1. Team Leaves
                             if (string.Equals(targetCategory, "All", StringComparison.OrdinalIgnoreCase) ||
                                 string.Equals(targetCategory, "Leave", StringComparison.OrdinalIgnoreCase))
                             {
@@ -423,7 +539,7 @@ namespace KHRMS.Controllers
                                     teamLeaves = teamLeaves.Where(l => string.Equals(l.Status, targetStatus, StringComparison.OrdinalIgnoreCase));
                                 }
 
-                                foreach (var l in teamLeaves.Take(6))
+                                foreach (var l in teamLeaves.Take(15))
                                 {
                                     pendingList.Add(new
                                     {
@@ -439,7 +555,7 @@ namespace KHRMS.Controllers
                                 }
                             }
 
-                            // 2. Attendance Regularization (cap to 6 to save context tokens)
+                            // 2. Attendance Regularization
                             if (string.Equals(targetCategory, "All", StringComparison.OrdinalIgnoreCase) ||
                                 string.Equals(targetCategory, "Attendance", StringComparison.OrdinalIgnoreCase))
                             {
@@ -449,7 +565,7 @@ namespace KHRMS.Controllers
                                     teamAttendance = teamAttendance.Where(a => string.Equals(a.Status, targetStatus, StringComparison.OrdinalIgnoreCase));
                                 }
 
-                                foreach (var a in teamAttendance.Take(6))
+                                foreach (var a in teamAttendance.Take(15))
                                 {
                                     pendingList.Add(new
                                     {
@@ -481,19 +597,16 @@ namespace KHRMS.Controllers
                     {
                         try
                         {
-                            var today = DateOnly.FromDateTime(DateTime.Today);
-                            var holidays = await holidayService.GetAllHolidays();
-                            var upcoming = holidays
-                                .Where(h => h.HolidayDate >= today)
+                            var holidays = (await holidayService.GetAllHolidays())
+                                .Where(h => h.IsActive != false && h.IsDeleted != true)
                                 .OrderBy(h => h.HolidayDate)
-                                .Take(5)
                                 .Select(h => new
                                 {
                                     name = h.HolidayName,
                                     date = h.HolidayDate.ToString("yyyy-MM-dd"),
                                     day = h.HolidayDate.DayOfWeek.ToString()
                                 });
-                            var json = JsonSerializer.Serialize(upcoming, jso);
+                            var json = JsonSerializer.Serialize(holidays, jso);
                             toolTracker?.Add(("get_upcoming_holidays", (json.Length + 3) / 4));
                             return json;
                         }
@@ -503,7 +616,7 @@ namespace KHRMS.Controllers
                         }
                     },
                     name: "get_upcoming_holidays",
-                    description: "Returns the list of upcoming public holidays for the current year."),
+                    description: "Returns the complete list of official public holidays for the company calendar."),
 
                 // ── Latest payslip ────────────────────────────────────────────
                 AIFunctionFactory.Create(

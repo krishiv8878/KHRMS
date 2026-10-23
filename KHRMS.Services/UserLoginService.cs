@@ -204,7 +204,7 @@ namespace KHRMS.Services
                         {
                             UserName= $"{matchedEmployee.FirstName} {matchedEmployee.LastName}",
                             Email = Email,
-                            Password = Password,
+                            Password = null, // Neutralized: Never echo plaintext password back in response body
                             Token = accessToken,
                             UserId = matchedEmployee.Id,
                             RoleType = roleTypes,

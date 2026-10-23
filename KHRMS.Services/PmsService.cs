@@ -26,13 +26,49 @@ namespace KHRMS.Services
         // ================= 1. GOALS & OKRS =================
         public async Task<List<PmsGoalDto>> GetGoalsAsync(long? employeeId = null, string? period = null, string? category = null)
         {
-            
+            long currentEmpId = _userContext.GetCurrentEmployeeId();
+            bool isAdminOrHr = _userContext.IsAdmin() || _userContext.IsHR();
+            bool isManager = _userContext.IsManager();
 
-            var goals = (await _unitOfWork.PmsGoals.GetAll()).ToList();
-            if (employeeId.HasValue && employeeId.Value > 0)
+            if (!isAdminOrHr && currentEmpId <= 0)
             {
-                goals = goals.Where(g => g.EmployeeId == employeeId.Value).ToList();
+                return new List<PmsGoalDto>();
             }
+
+            var allEmployees = (await _unitOfWork.Employees.GetAll()).ToList();
+            var goals = (await _unitOfWork.PmsGoals.GetAll()).Where(g => !g.IsDeleted).ToList();
+
+            if (isAdminOrHr)
+            {
+                if (employeeId.HasValue && employeeId.Value > 0)
+                {
+                    goals = goals.Where(g => g.EmployeeId == employeeId.Value).ToList();
+                }
+            }
+            else if (isManager)
+            {
+                var reporteeIds = allEmployees.Where(e => e.ManagerId == currentEmpId).Select(e => e.Id).ToHashSet();
+                reporteeIds.Add(currentEmpId);
+
+                if (employeeId.HasValue && employeeId.Value > 0)
+                {
+                    if (!reporteeIds.Contains(employeeId.Value))
+                    {
+                        return new List<PmsGoalDto>();
+                    }
+                    goals = goals.Where(g => g.EmployeeId == employeeId.Value).ToList();
+                }
+                else
+                {
+                    goals = goals.Where(g => reporteeIds.Contains(g.EmployeeId)).ToList();
+                }
+            }
+            else
+            {
+                // Regular employee can ONLY see their own goals
+                goals = goals.Where(g => g.EmployeeId == currentEmpId).ToList();
+            }
+
             if (!string.IsNullOrEmpty(period))
             {
                 goals = goals.Where(g => g.Period.Equals(period, StringComparison.OrdinalIgnoreCase)).ToList();
@@ -42,9 +78,8 @@ namespace KHRMS.Services
                 goals = goals.Where(g => g.Category.Equals(category, StringComparison.OrdinalIgnoreCase)).ToList();
             }
 
-            var allKeyResults = (await _unitOfWork.PmsKeyResults.GetAll()).ToList();
+            var allKeyResults = (await _unitOfWork.PmsKeyResults.GetAll()).Where(k => !k.IsDeleted).ToList();
             var allCheckIns = (await _unitOfWork.PmsGoalCheckIns.GetAll()).ToList();
-            var allEmployees = (await _unitOfWork.Employees.GetAll()).ToList();
 
             var result = new List<PmsGoalDto>();
             foreach (var g in goals)
@@ -66,11 +101,35 @@ namespace KHRMS.Services
 
         public async Task<PmsGoalDto?> GetGoalByIdAsync(long id)
         {
-            
             var g = await _unitOfWork.PmsGoals.GetById(id);
-            if (g == null) return null;
+            if (g == null || g.IsDeleted) return null;
 
-            var keyResults = (await _unitOfWork.PmsKeyResults.GetAll()).Where(k => k.GoalId == id).ToList();
+            long currentEmpId = _userContext.GetCurrentEmployeeId();
+            bool isAdminOrHr = _userContext.IsAdmin() || _userContext.IsHR();
+            bool isManager = _userContext.IsManager();
+
+            if (!isAdminOrHr && currentEmpId <= 0) return null;
+
+            if (!isAdminOrHr)
+            {
+                if (g.EmployeeId != currentEmpId)
+                {
+                    if (isManager)
+                    {
+                        var reportee = await _unitOfWork.Employees.GetById(g.EmployeeId);
+                        if (reportee == null || reportee.ManagerId != currentEmpId)
+                        {
+                            return null;
+                        }
+                    }
+                    else
+                    {
+                        return null;
+                    }
+                }
+            }
+
+            var keyResults = (await _unitOfWork.PmsKeyResults.GetAll()).Where(k => k.GoalId == id && !k.IsDeleted).ToList();
             var checkIns = (await _unitOfWork.PmsGoalCheckIns.GetAll()).Where(c => c.GoalId == id).OrderByDescending(c => c.CheckInDate).ToList();
             var emp = await _unitOfWork.Employees.GetById(g.EmployeeId);
 
@@ -89,7 +148,28 @@ namespace KHRMS.Services
         {
             
             long currentUserId = _userContext.GetCurrentEmployeeId();
+            bool isAdminOrHr = _userContext.IsAdmin() || _userContext.IsHR();
+            bool isManager = _userContext.IsManager();
+
             long targetEmpId = request.EmployeeId > 0 ? request.EmployeeId : currentUserId;
+            if (!isAdminOrHr)
+            {
+                if (isManager)
+                {
+                    if (targetEmpId != currentUserId)
+                    {
+                        var reportee = await _unitOfWork.Employees.GetById(targetEmpId);
+                        if (reportee == null || reportee.ManagerId != currentUserId)
+                        {
+                            throw new UnauthorizedAccessException("Managers can only create goals for themselves or their direct reportees.");
+                        }
+                    }
+                }
+                else
+                {
+                    targetEmpId = currentUserId;
+                }
+            }
 
             var goal = new PmsGoal
             {
@@ -149,9 +229,30 @@ namespace KHRMS.Services
         {
             
             var goal = await _unitOfWork.PmsGoals.GetById(request.Id);
-            if (goal == null) throw new KeyNotFoundException($"Goal {request.Id} not found");
+            if (goal == null || goal.IsDeleted) throw new KeyNotFoundException($"Goal {request.Id} not found");
 
             long currentUserId = _userContext.GetCurrentEmployeeId();
+            bool isAdminOrHr = _userContext.IsAdmin() || _userContext.IsHR();
+            bool isManager = _userContext.IsManager();
+
+            if (!isAdminOrHr)
+            {
+                if (goal.EmployeeId != currentUserId)
+                {
+                    if (isManager)
+                    {
+                        var reportee = await _unitOfWork.Employees.GetById(goal.EmployeeId);
+                        if (reportee == null || reportee.ManagerId != currentUserId)
+                        {
+                            throw new UnauthorizedAccessException("You can only update goals for yourself or direct reportees.");
+                        }
+                    }
+                    else
+                    {
+                        throw new UnauthorizedAccessException("You can only update your own goals.");
+                    }
+                }
+            }
             goal.Title = request.Title;
             goal.Description = request.Description;
             goal.Category = request.Category;
@@ -214,7 +315,30 @@ namespace KHRMS.Services
         {
             
             var goal = await _unitOfWork.PmsGoals.GetById(id);
-            if (goal == null) return false;
+            if (goal == null || goal.IsDeleted) return false;
+
+            long currentUserId = _userContext.GetCurrentEmployeeId();
+            bool isAdminOrHr = _userContext.IsAdmin() || _userContext.IsHR();
+            bool isManager = _userContext.IsManager();
+
+            if (!isAdminOrHr)
+            {
+                if (goal.EmployeeId != currentUserId)
+                {
+                    if (isManager)
+                    {
+                        var reportee = await _unitOfWork.Employees.GetById(goal.EmployeeId);
+                        if (reportee == null || reportee.ManagerId != currentUserId)
+                        {
+                            return false;
+                        }
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                }
+            }
 
             goal.IsDeleted = true;
             goal.UpdatedDate = DateTime.UtcNow;
@@ -235,9 +359,30 @@ namespace KHRMS.Services
         {
             
             var goal = await _unitOfWork.PmsGoals.GetById(request.GoalId);
-            if (goal == null) throw new KeyNotFoundException($"Goal {request.GoalId} not found");
+            if (goal == null || goal.IsDeleted) throw new KeyNotFoundException($"Goal {request.GoalId} not found");
 
             long currentUserId = _userContext.GetCurrentEmployeeId();
+            bool isAdminOrHr = _userContext.IsAdmin() || _userContext.IsHR();
+            bool isManager = _userContext.IsManager();
+
+            if (!isAdminOrHr)
+            {
+                if (goal.EmployeeId != currentUserId)
+                {
+                    if (isManager)
+                    {
+                        var reportee = await _unitOfWork.Employees.GetById(goal.EmployeeId);
+                        if (reportee == null || reportee.ManagerId != currentUserId)
+                        {
+                            throw new UnauthorizedAccessException("You can only record check-ins for yourself or direct reportees.");
+                        }
+                    }
+                    else
+                    {
+                        throw new UnauthorizedAccessException("You can only record check-ins for your own goals.");
+                    }
+                }
+            }
 
             decimal prevVal = 0;
             if (request.KeyResultId.HasValue && request.KeyResultId.Value > 0)
@@ -395,34 +540,72 @@ namespace KHRMS.Services
 
         public async Task<List<PmsAppraisalDto>> GetAppraisalsAsync(long? cycleId = null, long? employeeId = null, long? managerId = null)
         {
-            
-            var appraisals = (await _unitOfWork.PmsAppraisals.GetAll()).ToList();
-            var cycles = (await _unitOfWork.PmsReviewCycles.GetAll()).ToList();
+            long currentEmpId = _userContext.GetCurrentEmployeeId();
+            bool isAdminOrHr = _userContext.IsAdmin() || _userContext.IsHR();
+            bool isManager = _userContext.IsManager();
+
+            if (!isAdminOrHr && currentEmpId <= 0)
+            {
+                return new List<PmsAppraisalDto>();
+            }
+
+            var appraisals = (await _unitOfWork.PmsAppraisals.GetAll()).Where(a => !a.IsDeleted).ToList();
+            var cycles = (await _unitOfWork.PmsReviewCycles.GetAll()).Where(c => !c.IsDeleted).ToList();
             var employees = (await _unitOfWork.Employees.GetAll()).ToList();
 
             if (cycleId.HasValue && cycleId.Value > 0)
             {
                 appraisals = appraisals.Where(a => a.ReviewCycleId == cycleId.Value).ToList();
             }
-            if (employeeId.HasValue && employeeId.Value > 0)
+
+            if (isAdminOrHr)
             {
-                appraisals = appraisals.Where(a => a.EmployeeId == employeeId.Value).ToList();
+                if (employeeId.HasValue && employeeId.Value > 0)
+                {
+                    appraisals = appraisals.Where(a => a.EmployeeId == employeeId.Value).ToList();
+                }
+                if (managerId.HasValue && managerId.Value > 0)
+                {
+                    appraisals = appraisals.Where(a => a.ManagerId == managerId.Value).ToList();
+                }
             }
-            if (managerId.HasValue && managerId.Value > 0)
+            else if (isManager)
             {
-                appraisals = appraisals.Where(a => a.ManagerId == managerId.Value).ToList();
+                var reporteeIds = employees.Where(e => e.ManagerId == currentEmpId).Select(e => e.Id).ToHashSet();
+                reporteeIds.Add(currentEmpId);
+
+                if (employeeId.HasValue && employeeId.Value > 0)
+                {
+                    if (!reporteeIds.Contains(employeeId.Value))
+                    {
+                        return new List<PmsAppraisalDto>();
+                    }
+                    appraisals = appraisals.Where(a => a.EmployeeId == employeeId.Value).ToList();
+                }
+                else
+                {
+                    appraisals = appraisals.Where(a => a.EmployeeId == currentEmpId || a.ManagerId == currentEmpId || reporteeIds.Contains(a.EmployeeId)).ToList();
+                }
+            }
+            else
+            {
+                // Regular employee can ONLY see their own appraisal
+                appraisals = appraisals.Where(a => a.EmployeeId == currentEmpId).ToList();
             }
 
             // If empty, auto-create appraisal for employee in active cycle
-            if (!appraisals.Any() && employeeId.HasValue && employeeId.Value > 0)
+            long targetEmpForAutoCreate = (!isAdminOrHr && !isManager) ? currentEmpId : (employeeId.HasValue && employeeId.Value > 0 ? employeeId.Value : currentEmpId);
+            if (!appraisals.Any() && targetEmpForAutoCreate > 0)
             {
                 var activeCycle = cycles.FirstOrDefault(c => c.Status == "Active") ?? cycles.FirstOrDefault();
-                if (activeCycle != null)
+                if (activeCycle != null && (cycleId == null || cycleId.Value == activeCycle.Id))
                 {
+                    var empObj = employees.FirstOrDefault(e => e.Id == targetEmpForAutoCreate);
                     var newApp = new PmsAppraisal
                     {
                         ReviewCycleId = activeCycle.Id,
-                        EmployeeId = employeeId.Value,
+                        EmployeeId = targetEmpForAutoCreate,
+                        ManagerId = empObj?.ManagerId ?? (empObj?.CreatedBy > 0 ? empObj.CreatedBy : null),
                         Status = "Self Review Pending",
                         CreatedDate = DateTime.UtcNow,
                         UpdatedDate = DateTime.UtcNow,
@@ -458,9 +641,35 @@ namespace KHRMS.Services
 
         public async Task<PmsAppraisalDto?> GetAppraisalByIdAsync(long id)
         {
-            
             var a = await _unitOfWork.PmsAppraisals.GetById(id);
-            if (a == null) return null;
+            if (a == null || a.IsDeleted) return null;
+
+            long currentEmpId = _userContext.GetCurrentEmployeeId();
+            bool isAdminOrHr = _userContext.IsAdmin() || _userContext.IsHR();
+            bool isManager = _userContext.IsManager();
+
+            if (!isAdminOrHr && currentEmpId <= 0) return null;
+
+            if (!isAdminOrHr)
+            {
+                if (a.EmployeeId != currentEmpId)
+                {
+                    if (isManager)
+                    {
+                        var reporteeEmp = await _unitOfWork.Employees.GetById(a.EmployeeId);
+                        bool isDirectReportee = reporteeEmp != null && reporteeEmp.ManagerId == currentEmpId;
+                        bool isAssignedManager = a.ManagerId.HasValue && a.ManagerId.Value == currentEmpId;
+                        if (!isDirectReportee && !isAssignedManager)
+                        {
+                            return null;
+                        }
+                    }
+                    else
+                    {
+                        return null;
+                    }
+                }
+            }
 
             var cycle = await _unitOfWork.PmsReviewCycles.GetById(a.ReviewCycleId);
             var emp = await _unitOfWork.Employees.GetById(a.EmployeeId);
@@ -482,7 +691,15 @@ namespace KHRMS.Services
         {
             
             var a = await _unitOfWork.PmsAppraisals.GetById(request.AppraisalId);
-            if (a == null) throw new KeyNotFoundException($"Appraisal {request.AppraisalId} not found");
+            if (a == null || a.IsDeleted) throw new KeyNotFoundException($"Appraisal {request.AppraisalId} not found");
+
+            long currentUserId = _userContext.GetCurrentEmployeeId();
+            bool isAdminOrHr = _userContext.IsAdmin() || _userContext.IsHR();
+
+            if (!isAdminOrHr && a.EmployeeId != currentUserId)
+            {
+                throw new UnauthorizedAccessException("You can only submit self-appraisal for yourself.");
+            }
 
             a.SelfRating = request.SelfRating;
             a.SelfComments = request.SelfComments;
@@ -504,9 +721,29 @@ namespace KHRMS.Services
         {
             
             var a = await _unitOfWork.PmsAppraisals.GetById(request.AppraisalId);
-            if (a == null) throw new KeyNotFoundException($"Appraisal {request.AppraisalId} not found");
+            if (a == null || a.IsDeleted) throw new KeyNotFoundException($"Appraisal {request.AppraisalId} not found");
 
             long currentUserId = _userContext.GetCurrentEmployeeId();
+            bool isAdminOrHr = _userContext.IsAdmin() || _userContext.IsHR();
+            bool isManager = _userContext.IsManager();
+
+            if (!isAdminOrHr)
+            {
+                if (!isManager)
+                {
+                    throw new UnauthorizedAccessException("Only managers or HR/Admin can submit manager evaluations.");
+                }
+
+                var emp = await _unitOfWork.Employees.GetById(a.EmployeeId);
+                bool isDirectReportee = emp != null && emp.ManagerId == currentUserId;
+                bool isAssignedManager = a.ManagerId.HasValue && a.ManagerId.Value == currentUserId;
+
+                if (!isDirectReportee && !isAssignedManager)
+                {
+                    throw new UnauthorizedAccessException("You can only submit evaluations for your direct reportees.");
+                }
+            }
+
             a.ManagerId = currentUserId;
             a.ManagerRating = request.ManagerRating;
             a.ManagerComments = request.ManagerComments;
@@ -545,8 +782,15 @@ namespace KHRMS.Services
         // ================= 3. CONTINUOUS FEEDBACK & PRAISE =================
         public async Task<List<PmsFeedbackDto>> GetFeedbackAsync(long? employeeId = null, string? feedbackType = null)
         {
-            
-            var feedbacks = (await _unitOfWork.PmsFeedbacks.GetAll()).OrderByDescending(f => f.CreatedDate).ToList();
+            long currentEmpId = _userContext.GetCurrentEmployeeId();
+            bool isAdminOrHr = _userContext.IsAdmin() || _userContext.IsHR();
+
+            var feedbacks = (await _unitOfWork.PmsFeedbacks.GetAll()).Where(f => !f.IsDeleted).OrderByDescending(f => f.CreatedDate).ToList();
+
+            // Scope feedbacks:
+            // Private feedback (IsPrivate == true) is strictly restricted to Admin/HR, sender, or recipient.
+            feedbacks = feedbacks.Where(f => !f.IsPrivate || isAdminOrHr || (currentEmpId > 0 && (f.ToEmployeeId == currentEmpId || f.FromEmployeeId == currentEmpId))).ToList();
+
             if (employeeId.HasValue && employeeId.Value > 0)
             {
                 feedbacks = feedbacks.Where(f => f.ToEmployeeId == employeeId.Value || f.FromEmployeeId == employeeId.Value).ToList();
@@ -615,15 +859,40 @@ namespace KHRMS.Services
         // ================= 4. 1-ON-1 MEETINGS =================
         public async Task<List<PmsOneOnOneDto>> GetOneOnOnesAsync(long? managerId = null, long? employeeId = null)
         {
-            
-            var meetings = (await _unitOfWork.PmsOneOnOnes.GetAll()).OrderByDescending(m => m.ScheduledDate).ToList();
-            if (managerId.HasValue && managerId.Value > 0)
+            long currentEmpId = _userContext.GetCurrentEmployeeId();
+            bool isAdminOrHr = _userContext.IsAdmin() || _userContext.IsHR();
+
+            if (!isAdminOrHr && currentEmpId <= 0)
             {
-                meetings = meetings.Where(m => m.ManagerId == managerId.Value).ToList();
+                return new List<PmsOneOnOneDto>();
             }
-            if (employeeId.HasValue && employeeId.Value > 0)
+
+            var meetings = (await _unitOfWork.PmsOneOnOnes.GetAll()).Where(m => !m.IsDeleted).OrderByDescending(m => m.ScheduledDate).ToList();
+
+            if (isAdminOrHr)
             {
-                meetings = meetings.Where(m => m.EmployeeId == employeeId.Value).ToList();
+                if (managerId.HasValue && managerId.Value > 0)
+                {
+                    meetings = meetings.Where(m => m.ManagerId == managerId.Value).ToList();
+                }
+                if (employeeId.HasValue && employeeId.Value > 0)
+                {
+                    meetings = meetings.Where(m => m.EmployeeId == employeeId.Value).ToList();
+                }
+            }
+            else
+            {
+                // Non-Admin/HR users can ONLY see 1-on-1s where they are a participant (as manager or employee)
+                meetings = meetings.Where(m => m.ManagerId == currentEmpId || m.EmployeeId == currentEmpId).ToList();
+
+                if (managerId.HasValue && managerId.Value > 0)
+                {
+                    meetings = meetings.Where(m => m.ManagerId == managerId.Value).ToList();
+                }
+                if (employeeId.HasValue && employeeId.Value > 0)
+                {
+                    meetings = meetings.Where(m => m.EmployeeId == employeeId.Value).ToList();
+                }
             }
 
             var employees = (await _unitOfWork.Employees.GetAll()).ToList();
@@ -647,8 +916,14 @@ namespace KHRMS.Services
 
         public async Task<PmsOneOnOneDto> SaveOneOnOneAsync(PmsOneOnOneRequest request)
         {
-            
             long currentUserId = _userContext.GetCurrentEmployeeId();
+            bool isAdminOrHr = _userContext.IsAdmin() || _userContext.IsHR();
+            bool isManager = _userContext.IsManager();
+
+            if (!isAdminOrHr && !isManager)
+            {
+                throw new UnauthorizedAccessException("Only managers and HR/Admin can schedule or update 1-on-1 meetings.");
+            }
 
             PmsOneOnOne meeting;
             if (request.Id.HasValue && request.Id.Value > 0)
@@ -700,14 +975,49 @@ namespace KHRMS.Services
         // ================= 5. PERFORMANCE IMPROVEMENT PLANS (PIP) =================
         public async Task<List<PmsPipDto>> GetPipsAsync(long? employeeId = null)
         {
-            
-            var pips = (await _unitOfWork.PmsPips.GetAll()).OrderByDescending(p => p.StartDate).ToList();
-            if (employeeId.HasValue && employeeId.Value > 0)
+            long currentEmpId = _userContext.GetCurrentEmployeeId();
+            bool isAdminOrHr = _userContext.IsAdmin() || _userContext.IsHR();
+            bool isManager = _userContext.IsManager();
+
+            if (!isAdminOrHr && currentEmpId <= 0)
             {
-                pips = pips.Where(p => p.EmployeeId == employeeId.Value).ToList();
+                return new List<PmsPipDto>();
             }
 
+            var pips = (await _unitOfWork.PmsPips.GetAll()).Where(p => !p.IsDeleted).OrderByDescending(p => p.StartDate).ToList();
             var employees = (await _unitOfWork.Employees.GetAll()).ToList();
+
+            if (isAdminOrHr)
+            {
+                if (employeeId.HasValue && employeeId.Value > 0)
+                {
+                    pips = pips.Where(p => p.EmployeeId == employeeId.Value).ToList();
+                }
+            }
+            else if (isManager)
+            {
+                var reporteeIds = employees.Where(e => e.ManagerId == currentEmpId).Select(e => e.Id).ToHashSet();
+                reporteeIds.Add(currentEmpId);
+
+                if (employeeId.HasValue && employeeId.Value > 0)
+                {
+                    if (!reporteeIds.Contains(employeeId.Value))
+                    {
+                        return new List<PmsPipDto>();
+                    }
+                    pips = pips.Where(p => p.EmployeeId == employeeId.Value).ToList();
+                }
+                else
+                {
+                    pips = pips.Where(p => p.ManagerId == currentEmpId || reporteeIds.Contains(p.EmployeeId)).ToList();
+                }
+            }
+            else
+            {
+                // Regular employee can ONLY see their own PIP
+                pips = pips.Where(p => p.EmployeeId == currentEmpId).ToList();
+            }
+
             var result = new List<PmsPipDto>();
             foreach (var p in pips)
             {
@@ -729,13 +1039,32 @@ namespace KHRMS.Services
 
         public async Task<PmsPipDto> SavePipAsync(PmsPipRequest request)
         {
-            
             long currentUserId = _userContext.GetCurrentEmployeeId();
+            bool isAdminOrHr = _userContext.IsAdmin() || _userContext.IsHR();
+            bool isManager = _userContext.IsManager();
+
+            if (!isAdminOrHr && !isManager)
+            {
+                throw new UnauthorizedAccessException("Only managers and HR/Admin can create or update a PIP.");
+            }
+
+            if (!isAdminOrHr)
+            {
+                var targetEmployee = await _unitOfWork.Employees.GetById(request.EmployeeId);
+                if (targetEmployee == null || targetEmployee.ManagerId != currentUserId)
+                {
+                    throw new UnauthorizedAccessException("Managers can only manage PIPs for their direct reportees.");
+                }
+            }
 
             PmsPip pip;
             if (request.Id.HasValue && request.Id.Value > 0)
             {
                 pip = await _unitOfWork.PmsPips.GetById(request.Id.Value) ?? throw new KeyNotFoundException($"PIP {request.Id} not found");
+                if (!isAdminOrHr && pip.ManagerId != currentUserId)
+                {
+                    throw new UnauthorizedAccessException("You are not authorized to update this PIP.");
+                }
                 pip.Reason = request.Reason;
                 pip.DurationDays = request.DurationDays;
                 pip.StartDate = request.StartDate;

@@ -101,7 +101,6 @@ namespace KHRMS.Services
             var allExistingLeaves = await _unitOfWork.LeaveRequest.GetAll();
             var overlappingLeave = allExistingLeaves.FirstOrDefault(lr =>
                 lr.EmployeeId == employeeId &&
-                lr.IsActive == true &&
                 lr.IsDeleted != true &&
                 (string.Equals(lr.Status, "Approved", StringComparison.OrdinalIgnoreCase) ||
                  string.Equals(lr.Status, "Pending", StringComparison.OrdinalIgnoreCase)) &&
@@ -119,8 +118,8 @@ namespace KHRMS.Services
                 StartDate = leaveRequest.StartDate,
                 EndDate = leaveRequest.EndDate,
                 CreatedDate = DateTime.Now,
-                IsActive = leaveRequest.IsActive,
-                IsDeleted = leaveRequest.IsDeleted,
+                IsActive = true,
+                IsDeleted = false,
                 LeaveReason = leaveRequest.LeaveReason,
                 LeaveMode = leaveRequest.LeaveMode,
                 LeaveTypeId = leaveRequest.LeaveTypeId,
@@ -239,8 +238,8 @@ namespace KHRMS.Services
                          join leaveType in leavetypes on request.LeaveTypeId equals leaveType.Id
                          join emp in employees on request.EmployeeId equals emp.Id into empGroup
                          from emp in empGroup.DefaultIfEmpty()
-                         where request.EmployeeId == employeeId && request.IsActive == true
-                                 && request.IsDeleted != true
+                         where request.EmployeeId == employeeId && request.IsDeleted != true 
+                               && (request.IsActive != false || request.IsActive == null)
                          select new LeaveReqestModel 
                          {
                              Id = request.Id,
@@ -299,6 +298,12 @@ namespace KHRMS.Services
             var leaveRequest = await _unitOfWork.LeaveRequest.GetById(LeaveRequestTypeId);
             if (leaveRequest != null)
             {
+                // Approved leaves for past dates or days that have already passed cannot be deleted
+                if (string.Equals(leaveRequest.Status, "Approved", StringComparison.OrdinalIgnoreCase) && leaveRequest.StartDate.Date < DateTime.Today)
+                {
+                    throw new InvalidOperationException("Approved leaves for previous days or dates that have already passed cannot be deleted.");
+                }
+
                 leaveRequest.IsDeleted = true;
                 leaveRequest.IsActive = false;
 
@@ -385,8 +390,8 @@ namespace KHRMS.Services
                     Category = "Leave",
                     Type = isApprovedDecision ? "approval" : "alert",
                     Icon = isApprovedDecision ? "check_circle" : "cancel",
-                    IconBg = isApprovedDecision ? "#f0fdf4" : "#fef2f2",
-                    IconColor = isApprovedDecision ? "#16a34a" : "#dc2626",
+                    IconBg = "#f0fdf4",
+                    IconColor = "#16a34a",
                     Route = "/index/leaveRequest",
                     IsRead = false,
                     CreatedDate = DateTime.UtcNow,
@@ -416,6 +421,25 @@ namespace KHRMS.Services
                 Log.Warning("User {UserId} unauthorized to cancel leave request {LeaveId} owned by employee {OwnerId}",
                     currentUserId, leaveRequestId, leaveRequest.EmployeeId);
                 return false;
+            }
+
+            // Already cancelled or rejected
+            if (string.Equals(leaveRequest.Status, "Cancelled", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("This leave request is already cancelled.");
+            }
+            if (string.Equals(leaveRequest.Status, "Rejected", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Rejected leave requests cannot be cancelled.");
+            }
+
+            // Approved leaves for past dates or days that have already passed cannot be cancelled
+            if (string.Equals(leaveRequest.Status, "Approved", StringComparison.OrdinalIgnoreCase))
+            {
+                if (leaveRequest.StartDate.Date < DateTime.Today)
+                {
+                    throw new InvalidOperationException("Approved leaves for previous days or dates that have already passed cannot be cancelled.");
+                }
             }
 
             leaveRequest.Status = "Cancelled";
@@ -473,10 +497,10 @@ namespace KHRMS.Services
                 var query = from lr in leaveRequestsList
                             join leaveType in leaveTypesList on lr.LeaveTypeId equals leaveType.Id
                             join emp in employeesList on lr.EmployeeId equals emp.Id
-                            where lr.IsActive == true && lr.IsDeleted != true
+                            where lr.IsDeleted != true && (lr.IsActive != false || lr.IsActive == null)
                             select new { lr, leaveType, emp };
 
-                // If not Admin or HR, restrict to reportees of this manager
+                // If not Admin or HR, restrict to reportees of this manager or self
                 if (!isAdminOrHr)
                 {
                     query = query.Where(x => x.emp.ManagerId == currentUserId || x.lr.EmployeeId == currentUserId);
@@ -525,7 +549,7 @@ namespace KHRMS.Services
             var empId = targetEmployeeId ?? _userContext.GetCurrentEmployeeId();
             var leaveTypes = (await _unitOfWork.LeaveType.GetAll()).Where(t => t.IsActive == true && t.IsDeleted != true).ToList();
             var leaveRequests = (await _unitOfWork.LeaveRequest.GetAll())
-                                .Where(lr => lr.EmployeeId == empId && lr.IsActive == true && lr.IsDeleted != true)
+                                .Where(lr => lr.EmployeeId == empId && lr.IsDeleted != true && (lr.IsActive != false || lr.IsActive == null))
                                 .ToList();
             var holidayDates = await GetActiveHolidayDatesAsync();
 

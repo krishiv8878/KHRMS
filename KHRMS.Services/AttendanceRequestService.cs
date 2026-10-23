@@ -35,12 +35,32 @@ namespace KHRMS.Services
         {
             long currentEmpId = _userContextService.GetCurrentEmployeeId();
             bool isAdminOrHr = _userContextService.IsAdmin() || _userContextService.IsHR();
+            bool isManager = _userContextService.IsManager();
+
+            if (!isAdminOrHr && currentEmpId <= 0)
+            {
+                return Enumerable.Empty<AttendanceRequestUpdateDTO>();
+            }
+
             var attendance = await _unitOfWork.AttendanceRequests.GetAll();
             var employees = await _unitOfWork.Employees.GetAll();
 
-            var filteredAttendance = (isAdminOrHr || currentEmpId == 0)
-                ? attendance 
-                : attendance.Where(x => x.ManagerId == currentEmpId || x.EmployeeId == currentEmpId || x.RequestedBy == currentEmpId);
+            IEnumerable<AttendanceRequest> filteredAttendance;
+            if (isAdminOrHr)
+            {
+                filteredAttendance = attendance.Where(x => !x.IsDeleted);
+            }
+            else if (isManager)
+            {
+                // Manager sees direct reportees + requests routed to them + self
+                filteredAttendance = attendance.Where(x => !x.IsDeleted && 
+                    (x.ManagerId == currentEmpId || x.EmployeeId == currentEmpId || x.RequestedBy == currentEmpId || employees.Any(e => e.Id == x.EmployeeId && e.ManagerId == currentEmpId)));
+            }
+            else
+            {
+                // Regular Employee sees ONLY their own attendance requests
+                filteredAttendance = attendance.Where(x => !x.IsDeleted && (x.EmployeeId == currentEmpId || x.RequestedBy == currentEmpId));
+            }
 
             var attendanceDtos = (from a in filteredAttendance
                                   join e in employees on a.EmployeeId equals e.Id into empGroup
@@ -76,8 +96,34 @@ namespace KHRMS.Services
 
         public async Task<AttendanceRequest> GetByIdAsync(long id)
         {
-            var attendanceRequests = await _unitOfWork.AttendanceRequests.GetById(id);
-            return attendanceRequests;
+            var attendanceRequest = await _unitOfWork.AttendanceRequests.GetById(id);
+            if (attendanceRequest == null || attendanceRequest.IsDeleted) return null;
+
+            long currentEmpId = _userContextService.GetCurrentEmployeeId();
+            bool isAdminOrHr = _userContextService.IsAdmin() || _userContextService.IsHR();
+            bool isManager = _userContextService.IsManager();
+
+            if (!isAdminOrHr && currentEmpId > 0)
+            {
+                if (isManager)
+                {
+                    var employee = await _unitOfWork.Employees.GetById(attendanceRequest.EmployeeId);
+                    bool isReportee = employee != null && employee.ManagerId == currentEmpId;
+                    if (attendanceRequest.EmployeeId != currentEmpId && attendanceRequest.ManagerId != currentEmpId && !isReportee)
+                    {
+                        return null;
+                    }
+                }
+                else
+                {
+                    if (attendanceRequest.EmployeeId != currentEmpId && attendanceRequest.RequestedBy != currentEmpId)
+                    {
+                        return null;
+                    }
+                }
+            }
+
+            return attendanceRequest;
         }
 
         public async Task AddAsync(AttendanceRequestDTO attendanceRequest, ClaimsPrincipal user)
@@ -132,8 +178,7 @@ namespace KHRMS.Services
             }
 
             // Attendance regularization is strictly for past completed workdays
-            string requestType = attendanceRequest.RequestType ?? "Regularization";
-            if (string.Equals(requestType, "Regularization", StringComparison.OrdinalIgnoreCase) && attendanceRequest.RequestedDate.Date >= DateTime.Today)
+            if (attendanceRequest.RequestedDate.Date >= DateTime.Today)
             {
                 throw new InvalidOperationException("Attendance regularization can only be requested for past completed workdays. You cannot regularize the current day or future dates.");
             }
@@ -141,6 +186,33 @@ namespace KHRMS.Services
             if (employee.DateOfJoining.HasValue && attendanceRequest.RequestedDate.Date < employee.DateOfJoining.Value.Date)
             {
                 throw new InvalidOperationException($"Cannot submit attendance regularization for {attendanceRequest.RequestedDate:yyyy-MM-dd} prior to your official joining date ({employee.DateOfJoining.Value:yyyy-MM-dd}).");
+            }
+
+            // Validation: Company Holiday check
+            var reqDateOnly = DateOnly.FromDateTime(attendanceRequest.RequestedDate.Date);
+            var holiday = (await _unitOfWork.Holidays.GetAll())
+                .FirstOrDefault(h => !h.IsDeleted && h.HolidayDate == reqDateOnly);
+            if (holiday != null)
+            {
+                string holidayName = !string.IsNullOrWhiteSpace(holiday.HolidayName) ? holiday.HolidayName : "Holiday";
+                throw new InvalidOperationException($"Cannot submit attendance regularization for {attendanceRequest.RequestedDate:yyyy-MM-dd} as it is a designated company holiday ({holidayName}).");
+            }
+
+            // Validation: Active (Approved or Pending) Leave check
+            var reqDate = attendanceRequest.RequestedDate.Date;
+            var activeLeave = (await _unitOfWork.LeaveRequest.GetAll())
+                .FirstOrDefault(l => l.EmployeeId == employee.Id
+                    && !l.IsDeleted
+                    && (string.Equals(l.Status, "Approved", StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(l.Status, "Pending", StringComparison.OrdinalIgnoreCase))
+                    && reqDate >= l.StartDate.Date
+                    && reqDate <= l.EndDate.Date);
+            if (activeLeave != null)
+            {
+                string statusDesc = string.Equals(activeLeave.Status, "Approved", StringComparison.OrdinalIgnoreCase)
+                    ? "an approved"
+                    : "a pending";
+                throw new InvalidOperationException($"Cannot submit attendance regularization for {attendanceRequest.RequestedDate:yyyy-MM-dd} because you have {statusDesc} leave request for this date.");
             }
 
             var request = new AttendanceRequest
@@ -208,6 +280,36 @@ namespace KHRMS.Services
                 ? currentEmpId
                 : ((attendanceRequest.LastActionBy.HasValue && attendanceRequest.LastActionBy.Value > 0) ? attendanceRequest.LastActionBy.Value : request.ManagerId);
             long actionById = attendanceRequest.ActionBy ?? fallbackId;
+
+            // Strict validation: Regularization cannot be approved for current day, future dates, holidays, or approved leave
+            if (string.Equals(attendanceRequest.Status, "Approved", StringComparison.OrdinalIgnoreCase))
+            {
+                if (request.RequestedDate.Date >= DateTime.Today)
+                {
+                    throw new InvalidOperationException("Attendance regularization cannot be approved for current or future dates.");
+                }
+
+                var reqDateOnly = DateOnly.FromDateTime(request.RequestedDate.Date);
+                var holiday = (await _unitOfWork.Holidays.GetAll())
+                    .FirstOrDefault(h => !h.IsDeleted && h.HolidayDate == reqDateOnly);
+                if (holiday != null)
+                {
+                    string holidayName = !string.IsNullOrWhiteSpace(holiday.HolidayName) ? holiday.HolidayName : "Holiday";
+                    throw new InvalidOperationException($"Cannot approve attendance regularization for {request.RequestedDate:yyyy-MM-dd} as it is a designated company holiday ({holidayName}).");
+                }
+
+                var reqDate = request.RequestedDate.Date;
+                var approvedLeave = (await _unitOfWork.LeaveRequest.GetAll())
+                    .FirstOrDefault(l => l.EmployeeId == request.EmployeeId
+                        && !l.IsDeleted
+                        && string.Equals(l.Status, "Approved", StringComparison.OrdinalIgnoreCase)
+                        && reqDate >= l.StartDate.Date
+                        && reqDate <= l.EndDate.Date);
+                if (approvedLeave != null)
+                {
+                    throw new InvalidOperationException($"Cannot approve attendance regularization for {request.RequestedDate:yyyy-MM-dd} because the employee is on approved leave on this date.");
+                }
+            }
 
             request.Reason = attendanceRequest.Reason ?? request.Reason;
             request.Status = attendanceRequest.Status;
@@ -515,8 +617,3 @@ namespace KHRMS.Services
         }
     }
 }
-
-
-
-
-

@@ -74,6 +74,8 @@ namespace KHRMS.Core
         IJobInterviewRepository JobInterviews { get; }
         IJobOfferRepository JobOffers { get; }
 
+        IEmployeeDailyWorkModeRepository EmployeeDailyWorkModes { get; }
+
         int Save();
     }
 }

@@ -50,6 +50,10 @@ namespace KHRMS.Infrastructure
             // Explicitly ignore IsDeleted on Email if Emails table does not have IsDeleted column
             modelBuilder.Entity<Email>().Ignore(e => e.IsDeleted);
 
+            modelBuilder.Entity<EmployeeDailyWorkMode>()
+                .HasIndex(e => new { e.EmployeeId, e.WorkDate })
+                .IsUnique();
+
             // Global Query Filter: Automatically exclude soft-deleted records across all KHRMSBase entities
             foreach (var entityType in modelBuilder.Model.GetEntityTypes().ToList())
             {
@@ -134,5 +138,8 @@ namespace KHRMS.Infrastructure
         public DbSet<JobRequisition> JobRequisitions { get; set; }
         public DbSet<JobInterview> JobInterviews { get; set; }
         public DbSet<JobOffer> JobOffers { get; set; }
+
+        // Work Mode & Environment
+        public DbSet<EmployeeDailyWorkMode> EmployeeDailyWorkModes { get; set; }
     }
 }

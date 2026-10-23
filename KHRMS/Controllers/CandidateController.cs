@@ -88,6 +88,13 @@ namespace KHRMS
                     }
                     return false;
                 }).ToList();
+
+                // Mask sensitive compensation data for technical interviewers and non-HR/Admin users
+                foreach (var c in candidates)
+                {
+                    c.CurrentSalary = null;
+                    c.ExpectedSalary = null;
+                }
             }
 
             Log.Information("Candidate records found successfully.");

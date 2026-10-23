@@ -48,6 +48,7 @@ namespace KHRMS.Infrastructure
             services.AddScoped<IPermissionMasterRepository, PermissionMasterRepository>();
             services.AddScoped<IRolePermissionMappingRepository, RolePermissionMappingRepository>();
             services.AddScoped<IUserPermissionMappingRepository, UserPermissionMappingRepository>();
+            services.AddScoped<IEmployeeDailyWorkModeRepository, EmployeeDailyWorkModeRepository>();
             return services;
         }
     }

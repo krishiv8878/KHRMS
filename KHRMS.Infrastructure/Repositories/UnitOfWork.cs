@@ -85,6 +85,8 @@ namespace KHRMS.Infrastructure
         public IJobInterviewRepository JobInterviews { get; }
         public IJobOfferRepository JobOffers { get; }
 
+        public IEmployeeDailyWorkModeRepository EmployeeDailyWorkModes { get; }
+
         public UnitOfWork(KHRMSContextClass dbContext,
                             ICandidateRepository candidateRepository,
                             ISkillRepository skillRepository,
@@ -179,6 +181,8 @@ namespace KHRMS.Infrastructure
             JobRequisitions = new JobRequisitionRepository(_dbContext);
             JobInterviews = new JobInterviewRepository(_dbContext);
             JobOffers = new JobOfferRepository(_dbContext);
+
+            EmployeeDailyWorkModes = new EmployeeDailyWorkModeRepository(_dbContext);
         }
 
         public int Save()

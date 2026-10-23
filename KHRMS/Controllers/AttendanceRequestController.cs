@@ -142,14 +142,37 @@ namespace KHRMS.Controllers
                 });
             }
 
-            await _attendanceRequestService.UpdateAsync(attendanceRequest);
-            Log.Information("AttendanceRequest updated successfully.");
-            return Ok(new ApiResponse<bool>
+            try
             {
-                StatusCode = (int)HttpStatusCode.OK,
-                Message = ApiMessageConstant.AttendanceRequestUpdated,
-                Data = true
-            });
+                await _attendanceRequestService.UpdateAsync(attendanceRequest);
+                Log.Information("AttendanceRequest updated successfully.");
+                return Ok(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.OK,
+                    Message = ApiMessageConstant.AttendanceRequestUpdated,
+                    Data = true
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+                Log.Warning("Validation failed for UpdateAttendanceRequest: {Message}", ex.Message);
+                return BadRequest(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = ex.Message,
+                    Data = false
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error while updating AttendanceRequest.");
+                return StatusCode((int)HttpStatusCode.InternalServerError, new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.InternalServerError,
+                    Message = ex.Message,
+                    Data = false
+                });
+            }
         }
 
 
@@ -244,5 +267,4 @@ namespace KHRMS.Controllers
             }
         }
     }
-
 }

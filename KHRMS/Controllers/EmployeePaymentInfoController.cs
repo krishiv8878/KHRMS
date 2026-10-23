@@ -141,6 +141,24 @@ namespace KHRMS
                 });
             }
 
+            var isPrivileged = User.IsInRole("Admin") || User.IsInRole("System Admin") || User.IsInRole("HR") || User.IsInRole("HR Operations");
+            long currentEmpId = 0;
+            var claimVal = User.FindFirst("UserId")?.Value;
+            if (!string.IsNullOrEmpty(claimVal) && long.TryParse(claimVal, out long parsedClaimId))
+            {
+                currentEmpId = parsedClaimId;
+            }
+
+            if (!isPrivileged && currentEmpId > 0 && entity.EmployeeId != currentEmpId)
+            {
+                return StatusCode((int)HttpStatusCode.Forbidden, new ApiResponse<EmployeePaymentInfo>
+                {
+                    StatusCode = (int)HttpStatusCode.Forbidden,
+                    Message = "Access Denied: You do not have permission to view another employee's banking details.",
+                    Data = null
+                });
+            }
+
             Log.Information("EmployeePaymentInfoController - Record found for ID: {Id}", id);
             return Ok(new ApiResponse<EmployeePaymentInfo>
             {
