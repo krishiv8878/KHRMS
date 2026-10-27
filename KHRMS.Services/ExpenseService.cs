@@ -4,6 +4,10 @@ using KHRMS.Infrastructure;
 using KHRMS.Services.Interfaces;
 using KHRMS.Services.Request;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
+using Microsoft.Extensions.Configuration;
+using KHRMS.Services.Workflow.Interfaces;
+using KHRMS.Services.Workflow.Models;
 
 namespace KHRMS.Services
 {
@@ -12,14 +16,23 @@ namespace KHRMS.Services
         private readonly IUnitOfWork _unitOfWork;
         private readonly KHRMSContextClass _dbContext;
         private readonly IUserContextService _userContext;
+        private readonly IWorkflowEngineService? _workflowEngine;
+        private readonly IConfiguration? _configuration;
         private static bool _tablesVerified = false;
         private static readonly object _tableInitLock = new();
 
-        public ExpenseService(IUnitOfWork unitOfWork, KHRMSContextClass dbContext, IUserContextService userContext)
+        public ExpenseService(
+            IUnitOfWork unitOfWork,
+            KHRMSContextClass dbContext,
+            IUserContextService userContext,
+            IWorkflowEngineService? workflowEngine = null,
+            IConfiguration? configuration = null)
         {
             _unitOfWork = unitOfWork;
             _dbContext = dbContext;
             _userContext = userContext;
+            _workflowEngine = workflowEngine;
+            _configuration = configuration;
         }
 
 
@@ -119,6 +132,48 @@ namespace KHRMS.Services
                     });
                 }
 
+                string? pendingWith = null;
+                bool canApprove = false;
+                bool canOverride = false;
+                bool canReassign = false;
+                long currentEmpId = _userContext.GetCurrentEmployeeId();
+                bool canCancel = (r.EmployeeId == currentEmpId) && (r.Status == "Submitted" || r.Status == "Draft");
+
+                if (r.WorkflowInstanceId.HasValue && r.WorkflowInstanceId.Value > 0)
+                {
+                    var wfInstance = _unitOfWork.WorkflowInstances.GetById(r.WorkflowInstanceId.Value).GetAwaiter().GetResult();
+                    if (wfInstance != null)
+                    {
+                        var curStep = _unitOfWork.WorkflowInstanceSteps.GetAll().GetAwaiter().GetResult()
+                            .FirstOrDefault(s => s.WorkflowInstanceId == wfInstance.Id && s.StepOrder == wfInstance.CurrentStepOrder && s.Status == "Pending");
+                        if (curStep != null)
+                        {
+                            var appIds = new List<long>();
+                            try { appIds = JsonSerializer.Deserialize<List<long>>(curStep.EligibleApproverIdsJson) ?? new List<long>(); } catch { }
+                            var allEmps = _unitOfWork.Employees.GetAll().GetAwaiter().GetResult().ToDictionary(e => e.Id, e => $"{e.FirstName} {e.LastName}".Trim());
+                            pendingWith = string.Join(", ", appIds.Select(id => allEmps.TryGetValue(id, out var n) ? n : $"Emp #{id}"));
+                            canApprove = (r.Status == "Submitted" || wfInstance.Status == "Pending") && appIds.Contains(currentEmpId);
+                            bool canOverrideGlobal = _userContext.HasPermissionAsync("REQUEST_OVERRIDE").GetAwaiter().GetResult();
+                            bool canReassignGlobal = _userContext.HasPermissionAsync("REQUEST_REASSIGN").GetAwaiter().GetResult();
+                            canOverride = (r.Status == "Submitted" || wfInstance.Status == "Pending") && canOverrideGlobal && !appIds.Contains(currentEmpId);
+                            canReassign = (r.Status == "Submitted" || wfInstance.Status == "Pending") && canReassignGlobal;
+                        }
+                    }
+                }
+                else if (r.Status == "Submitted")
+                {
+                    bool isAdminOrHR = _userContext.IsAdmin() || _userContext.IsHR();
+                    canApprove = isAdminOrHR || r.ManagerId == currentEmpId;
+                    pendingWith = mgr != null ? $"{mgr.FirstName} {mgr.LastName}".Trim() : null;
+                }
+
+                r.WorkflowInstanceId = r.WorkflowInstanceId;
+                r.PendingWith = pendingWith;
+                r.CanApprove = canApprove;
+                r.CanOverride = canOverride;
+                r.CanReassign = canReassign;
+                r.CanCancel = canCancel;
+
                 result.Add(new ExpenseReportDetailDto
                 {
                     Report = r,
@@ -128,7 +183,13 @@ namespace KHRMS.Services
                     DepartmentName = emp?.Branch ?? "General",
                     DesignationName = desig?.DesignationName ?? emp?.Designation ?? string.Empty,
                     ProjectName = proj?.ProjectName,
-                    ManagerName = mgr != null ? $"{mgr.FirstName} {mgr.LastName}".Trim() : null
+                    ManagerName = mgr != null ? $"{mgr.FirstName} {mgr.LastName}".Trim() : null,
+                    WorkflowInstanceId = r.WorkflowInstanceId,
+                    PendingWith = pendingWith,
+                    CanApprove = canApprove,
+                    CanOverride = canOverride,
+                    CanReassign = canReassign,
+                    CanCancel = canCancel
                 });
             }
 
@@ -351,6 +412,35 @@ namespace KHRMS.Services
             _unitOfWork.ExpenseReports.Update(report);
             _unitOfWork.Save();
 
+            // Configurable Approval Workflow integration
+            if (_workflowEngine != null && _configuration != null && _configuration.GetValue<bool>("WorkflowEngine:Modules:Expense"))
+            {
+                try
+                {
+                    var context = new WorkflowContext
+                    {
+                        RequesterId = report.EmployeeId,
+                        RequestType = "Expense",
+                        Location = emp?.Branch,
+                        ProjectId = report.ProjectId,
+                        Attributes = new Dictionary<string, object?>
+                        {
+                            { "TotalClaimedAmount", report.TotalClaimedAmount },
+                            { "Title", report.Title }
+                        }
+                    };
+
+                    var instance = await _workflowEngine.StartWorkflowAsync("Expense", report.Id, report.EmployeeId, context);
+                    report.WorkflowInstanceId = instance.Id;
+                    _unitOfWork.ExpenseReports.Update(report);
+                    _unitOfWork.Save();
+                }
+                catch (WorkflowResolutionException ex)
+                {
+                    throw new InvalidOperationException(ex.Message);
+                }
+            }
+
             return (await GetReportByIdAsync(id))!;
         }
 
@@ -365,6 +455,23 @@ namespace KHRMS.Services
 
             long currentEmpId = _userContext.GetCurrentEmployeeId();
             long reviewerId = currentEmpId > 0 ? currentEmpId : 1;
+
+            // Route through central Workflow Engine if managed by workflow
+            if (report.WorkflowInstanceId.HasValue && report.WorkflowInstanceId.Value > 0 && _workflowEngine != null)
+            {
+                var action = string.Equals(request.Action, "Reject", StringComparison.OrdinalIgnoreCase) ? "Reject" : "Approve";
+                var actionResult = await _workflowEngine.ActOnStepAsync(
+                    report.WorkflowInstanceId.Value,
+                    reviewerId,
+                    new WorkflowActionRequest { Action = action, Reason = request.Remarks });
+
+                if (!actionResult.Success)
+                {
+                    throw new InvalidOperationException(actionResult.Message);
+                }
+
+                return (await GetReportByIdAsync(report.Id))!;
+            }
 
             if (request.Action == "ManagerApprove")
             {

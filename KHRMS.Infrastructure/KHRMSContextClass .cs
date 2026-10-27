@@ -54,6 +54,55 @@ namespace KHRMS.Infrastructure
                 .HasIndex(e => new { e.EmployeeId, e.WorkDate })
                 .IsUnique();
 
+            // Workflow relationships and concurrency configurations
+            modelBuilder.Entity<WorkflowDelegation>()
+                .HasOne(d => d.FromEmployee)
+                .WithMany()
+                .HasForeignKey(d => d.FromEmployeeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<WorkflowDelegation>()
+                .HasOne(d => d.ToEmployee)
+                .WithMany()
+                .HasForeignKey(d => d.ToEmployeeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<WorkflowInstance>()
+                .HasOne(i => i.RequesterEmployee)
+                .WithMany()
+                .HasForeignKey(i => i.RequesterEmployeeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<WorkflowInstance>()
+                .HasOne(i => i.WorkflowDefinition)
+                .WithMany(d => d.Instances)
+                .HasForeignKey(i => i.WorkflowDefinitionId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<WorkflowInstanceStep>()
+                .HasOne(s => s.ActionByEmployee)
+                .WithMany()
+                .HasForeignKey(s => s.ActionByEmployeeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<WorkflowInstanceStep>()
+                .HasOne(s => s.WorkflowInstance)
+                .WithMany(i => i.InstanceSteps)
+                .HasForeignKey(s => s.WorkflowInstanceId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<WorkflowAuditLog>()
+                .HasOne(a => a.PerformedByEmployee)
+                .WithMany()
+                .HasForeignKey(a => a.PerformedByEmployeeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<WorkflowAuditLog>()
+                .HasOne(a => a.WorkflowInstance)
+                .WithMany(i => i.AuditLogs)
+                .HasForeignKey(a => a.WorkflowInstanceId)
+                .OnDelete(DeleteBehavior.Cascade);
+
             // Global Query Filter: Automatically exclude soft-deleted records across all KHRMSBase entities
             foreach (var entityType in modelBuilder.Model.GetEntityTypes().ToList())
             {
@@ -141,5 +190,14 @@ namespace KHRMS.Infrastructure
 
         // Work Mode & Environment
         public DbSet<EmployeeDailyWorkMode> EmployeeDailyWorkModes { get; set; }
+
+        // Configurable Approval Workflow System
+        public DbSet<WorkflowDefinition> WorkflowDefinitions { get; set; }
+        public DbSet<WorkflowStep> WorkflowSteps { get; set; }
+        public DbSet<WorkflowRoutingRule> WorkflowRoutingRules { get; set; }
+        public DbSet<WorkflowInstance> WorkflowInstances { get; set; }
+        public DbSet<WorkflowInstanceStep> WorkflowInstanceSteps { get; set; }
+        public DbSet<WorkflowDelegation> WorkflowDelegations { get; set; }
+        public DbSet<WorkflowAuditLog> WorkflowAuditLogs { get; set; }
     }
 }

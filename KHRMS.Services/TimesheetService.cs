@@ -3,16 +3,30 @@ using KHRMS.Core.Models;
 using KHRMS.Services.Interfaces;
 using KHRMS.Services.Request;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
+using Microsoft.Extensions.Configuration;
+using KHRMS.Services.Workflow.Interfaces;
+using KHRMS.Services.Workflow.Models;
 
 namespace KHRMS.Services
 {
     public class TimesheetService : ITimesheetService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IWorkflowEngineService? _workflowEngine;
+        private readonly IConfiguration? _configuration;
+        private readonly IUserContextService? _userContextService;
 
-        public TimesheetService(IUnitOfWork unitOfWork)
+        public TimesheetService(
+            IUnitOfWork unitOfWork,
+            IWorkflowEngineService? workflowEngine = null,
+            IConfiguration? configuration = null,
+            IUserContextService? userContextService = null)
         {
             _unitOfWork = unitOfWork;
+            _workflowEngine = workflowEngine;
+            _configuration = configuration;
+            _userContextService = userContextService;
         }
 
         public async Task<TimesheetViewDTO> GetPeriodTimesheetAsync(long employeeId, DateTime startDate, DateTime endDate, long? timesheetId = null)
@@ -34,21 +48,21 @@ namespace KHRMS.Services
             Timesheet? timesheet = null;
             if (timesheetId.HasValue && timesheetId.Value > 0)
             {
-                timesheet = await _unitOfWork.Timesheets.Query()
-                    .FirstOrDefaultAsync(t => !t.IsDeleted && t.Id == timesheetId.Value);
+                timesheet = await _unitOfWork.Timesheets.GetById(timesheetId.Value);
+                if (timesheet != null && timesheet.IsDeleted) timesheet = null;
             }
             if (timesheet == null)
             {
-                timesheet = await _unitOfWork.Timesheets.Query()
+                timesheet = (await _unitOfWork.Timesheets.GetAll())
                     .Where(t => !t.IsDeleted && t.EmployeeId == employeeId && t.StartDate.Date == start && t.EndDate.Date == end)
                     .OrderByDescending(t => t.Id)
-                    .FirstOrDefaultAsync();
+                    .FirstOrDefault();
             }
 
             // Find all Entries for this employee in date range
-            var allEntries = await _unitOfWork.TimesheetEntries.Query()
+            var allEntries = (await _unitOfWork.TimesheetEntries.GetAll())
                 .Where(e => e.EmployeeId == employeeId && ((e.EntryDate.Date >= start && e.EntryDate.Date <= end) || (timesheet != null && e.TimesheetId == timesheet.Id)))
-                .ToListAsync();
+                .ToList();
 
             List<TimesheetEntry> entries;
             if (timesheet != null && (timesheetId.HasValue || timesheet.Status == "Approved" || timesheet.Status == "Submitted"))
@@ -150,20 +164,20 @@ namespace KHRMS.Services
             var projectDict = allProjects.ToDictionary(p => p.Id, p => p.ProjectName ?? "Project");
 
             // Attendance records in range
-            var attendanceList = await _unitOfWork.EmployeeAttendance.Query()
+            var attendanceList = (await _unitOfWork.EmployeeAttendance.GetAll())
                 .Where(a => !a.IsDeleted && a.EmployeeId == employeeId)
-                .ToListAsync();
+                .ToList();
 
             // Attendance requests (regularizations) in range
-            var empAttRequests = await _unitOfWork.AttendanceRequests.Query()
+            var empAttRequests = (await _unitOfWork.AttendanceRequests.GetAll())
                 .Where(r => !r.IsDeleted && r.EmployeeId == employeeId)
                 .OrderByDescending(r => r.Id)
-                .ToListAsync();
+                .ToList();
 
             // Holidays
-            var holidaysList = await _unitOfWork.Holidays.Query()
+            var holidaysList = (await _unitOfWork.Holidays.GetAll())
                 .Where(h => !h.IsDeleted && h.IsActive)
-                .ToListAsync();
+                .ToList();
 
             // Approved Leaves
             var allLeaves = await _unitOfWork.LeaveRequest.GetAll();
@@ -258,6 +272,42 @@ namespace KHRMS.Services
                     : calculatedHours);
             var totalAttendanceHours = days.Sum(d => d.AttendanceHours);
 
+            string? pendingWith = null;
+            bool canApprove = false;
+            bool canOverride = false;
+            bool canReassign = false;
+            long currentEmpId = _userContextService?.GetCurrentEmployeeId() ?? 0;
+            bool canCancel = (employeeId == currentEmpId) && (timesheet != null && (timesheet.Status == "Submitted" || timesheet.Status == "Pending"));
+
+            if (timesheet?.WorkflowInstanceId.HasValue == true && timesheet.WorkflowInstanceId.Value > 0)
+            {
+                var wfInstance = await _unitOfWork.WorkflowInstances.GetById(timesheet.WorkflowInstanceId.Value);
+                if (wfInstance != null)
+                {
+                    var curStep = (await _unitOfWork.WorkflowInstanceSteps.GetAll())
+                        .FirstOrDefault(s => s.WorkflowInstanceId == wfInstance.Id && s.StepOrder == wfInstance.CurrentStepOrder && s.Status == "Pending");
+
+                    if (curStep != null)
+                    {
+                        var appIds = new List<long>();
+                        try { appIds = JsonSerializer.Deserialize<List<long>>(curStep.EligibleApproverIdsJson) ?? new List<long>(); } catch { }
+                        var allEmps = (await _unitOfWork.Employees.GetAll()).ToDictionary(e => e.Id, e => $"{e.FirstName} {e.LastName}".Trim());
+                        pendingWith = string.Join(", ", appIds.Select(id => allEmps.TryGetValue(id, out var n) ? n : $"Emp #{id}"));
+                        canApprove = (timesheet.Status == "Submitted" || wfInstance.Status == "Pending") && appIds.Contains(currentEmpId);
+                        bool canOverrideGlobal = _userContextService != null && await _userContextService.HasPermissionAsync("REQUEST_OVERRIDE");
+                        bool canReassignGlobal = _userContextService != null && await _userContextService.HasPermissionAsync("REQUEST_REASSIGN");
+                        canOverride = (timesheet.Status == "Submitted" || wfInstance.Status == "Pending") && canOverrideGlobal && !appIds.Contains(currentEmpId);
+                        canReassign = (timesheet.Status == "Submitted" || wfInstance.Status == "Pending") && canReassignGlobal;
+                    }
+                }
+            }
+            else if (timesheet != null && (timesheet.Status == "Submitted" || timesheet.Status == "Pending"))
+            {
+                bool isAdminOrHR = _userContextService != null && (_userContextService.IsAdmin() || _userContextService.IsHR());
+                canApprove = isAdminOrHR || timesheet.ManagerId == currentEmpId;
+                pendingWith = managerName;
+            }
+
             return new TimesheetViewDTO
             {
                 TimesheetId = timesheet?.Id,
@@ -273,6 +323,12 @@ namespace KHRMS.Services
                 ManagerId = managerId,
                 ManagerName = managerName,
                 RejectionReason = timesheet?.RejectionReason,
+                WorkflowInstanceId = timesheet?.WorkflowInstanceId,
+                PendingWith = pendingWith,
+                CanApprove = canApprove,
+                CanOverride = canOverride,
+                CanReassign = canReassign,
+                CanCancel = canCancel,
                 Days = days
             };
         }
@@ -595,6 +651,36 @@ namespace KHRMS.Services
             }
             _unitOfWork.Save();
 
+            // Configurable Approval Workflow integration
+            if (_workflowEngine != null && _configuration != null && _configuration.GetValue<bool>("WorkflowEngine:Modules:Timesheet"))
+            {
+                try
+                {
+                    var context = new WorkflowContext
+                    {
+                        RequesterId = employeeId,
+                        RequestType = "Timesheet",
+                        Location = employee?.Branch,
+                        Attributes = new Dictionary<string, object?>
+                        {
+                            { "TotalHours", timesheet.TotalHours },
+                            { "PeriodType", timesheet.PeriodType },
+                            { "StartDate", timesheet.StartDate.ToString("yyyy-MM-dd") },
+                            { "EndDate", timesheet.EndDate.ToString("yyyy-MM-dd") }
+                        }
+                    };
+
+                    var instance = await _workflowEngine.StartWorkflowAsync("Timesheet", timesheet.Id, employeeId, context);
+                    timesheet.WorkflowInstanceId = instance.Id;
+                    _unitOfWork.Timesheets.Update(timesheet);
+                    _unitOfWork.Save();
+                }
+                catch (WorkflowResolutionException ex)
+                {
+                    throw new InvalidOperationException(ex.Message);
+                }
+            }
+
             try
             {
                 var empName = employee != null ? $"{employee.FirstName} {employee.LastName}".Trim() : $"Employee #{employeeId}";
@@ -651,6 +737,23 @@ namespace KHRMS.Services
             if (timesheet == null || timesheet.IsDeleted) return false;
 
             var isApproved = dto.Status.Equals("Approved", StringComparison.OrdinalIgnoreCase);
+
+            // Route through central Workflow Engine if managed by workflow
+            if (timesheet.WorkflowInstanceId.HasValue && timesheet.WorkflowInstanceId.Value > 0 && _workflowEngine != null)
+            {
+                var action = isApproved ? "Approve" : "Reject";
+                var actionResult = await _workflowEngine.ActOnStepAsync(
+                    timesheet.WorkflowInstanceId.Value,
+                    managerId,
+                    new WorkflowActionRequest { Action = action, Reason = dto.RejectionReason });
+
+                if (!actionResult.Success)
+                {
+                    throw new InvalidOperationException(actionResult.Message);
+                }
+
+                return true;
+            }
             timesheet.Status = isApproved ? "Approved" : "Rejected";
             timesheet.ActionBy = managerId;
             timesheet.ActionDate = DateTime.UtcNow;

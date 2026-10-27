@@ -23,6 +23,12 @@ namespace KHRMS.Services.Request
         public DateTime? ActionDate { get; set; }
         public string? RejectionReason { get; set; }
         public double TotalDays { get; set; }
+        public long? WorkflowInstanceId { get; set; }
+        public string? PendingWith { get; set; }
+        public bool CanApprove { get; set; }
+        public bool CanOverride { get; set; }
+        public bool CanReassign { get; set; }
+        public bool CanCancel { get; set; }
     }
 
     public class EmployeeLeaveBalanceDto

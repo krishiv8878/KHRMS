@@ -1,7 +1,6 @@
 using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
 
-
 namespace KHRMS.Core
 {
     public class AttendanceRequest : KHRMSBase
@@ -47,5 +46,21 @@ namespace KHRMS.Core
         [Required(ErrorMessage = "Manager Id is required")]
         public long ManagerId { get; set; }
 
+        public long? WorkflowInstanceId { get; set; }
+
+        [NotMapped]
+        public string? PendingWith { get; set; }
+
+        [NotMapped]
+        public bool CanApprove { get; set; }
+
+        [NotMapped]
+        public bool CanOverride { get; set; }
+
+        [NotMapped]
+        public bool CanReassign { get; set; }
+
+        [NotMapped]
+        public bool CanCancel { get; set; }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using KHRMS.Core;
 using KHRMS.Services;
+using KHRMS.Services.Interfaces;
 using KHRMS.Services.Request;
 using Moq;
 using System;
@@ -13,11 +14,13 @@ namespace KHRMS.UnitTest.ControllerTests
     public class EmployeeControllerTest
     {
         private readonly Mock<IEmployeeService> _mock;
+        private readonly Mock<IUserContextService> _mock2;
         private readonly EmployeeController _controller;
         public EmployeeControllerTest()
         {
             _mock  = new Mock<IEmployeeService>();
-            _controller = new EmployeeController(_mock.Object);
+            _mock2 = new Mock<IUserContextService>();
+            _controller = new EmployeeController(_mock.Object, _mock2.Object);
         }
 
         [Fact]

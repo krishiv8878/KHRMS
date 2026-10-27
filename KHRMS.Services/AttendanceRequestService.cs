@@ -5,6 +5,10 @@ using KHRMS.Services.Request;
 using MimeKit.Cryptography;
 using System.Linq;
 using System.Security.Claims;
+using System.Text.Json;
+using Microsoft.Extensions.Configuration;
+using KHRMS.Services.Workflow.Interfaces;
+using KHRMS.Services.Workflow.Models;
 
 
 namespace KHRMS.Services
@@ -17,18 +21,25 @@ namespace KHRMS.Services
         private readonly ISendEmailService _emailService;
         private readonly IAttendanceLogService _attendanceLogService;
 
+        private readonly IWorkflowEngineService? _workflowEngine;
+        private readonly IConfiguration? _configuration;
+
         public AttendanceRequestService(
             IUnitOfWork unitOfWork, 
             IEmployeeAttendanceService employeeAttendanceService, 
             IUserContextService userContextService, 
             ISendEmailService emailService,
-            IAttendanceLogService attendanceLogService)
+            IAttendanceLogService attendanceLogService,
+            IWorkflowEngineService? workflowEngine = null,
+            IConfiguration? configuration = null)
         {
             _unitOfWork = unitOfWork;
             _userContextService = userContextService;
             _employeeAttendanceService = employeeAttendanceService;
             _emailService = emailService;
             _attendanceLogService = attendanceLogService;
+            _workflowEngine = workflowEngine;
+            _configuration = configuration;
         }
 
         public async Task<IEnumerable<AttendanceRequestUpdateDTO>> GetAllAsync()
@@ -62,34 +73,91 @@ namespace KHRMS.Services
                 filteredAttendance = attendance.Where(x => !x.IsDeleted && (x.EmployeeId == currentEmpId || x.RequestedBy == currentEmpId));
             }
 
-            var attendanceDtos = (from a in filteredAttendance
-                                  join e in employees on a.EmployeeId equals e.Id into empGroup
-                                  from e in empGroup.DefaultIfEmpty()
-                                  select new AttendanceRequestUpdateDTO
-                                  {
-                                      Id = a.Id,
-                                      EmployeeId = a.EmployeeId,
-                                      EmployeeName = e != null ? $"{e.FirstName} {e.LastName}".Trim() : "Employee",
-                                      RequestType = a.RequestType ?? "Regularization",
-                                      RequestedDate = a.RequestedDate,
-                                      RequestedBy = a.RequestedBy,
-                                      Reason = a.Reason,
-                                      Status = a.Status ?? "Pending",
-                                      LastActionBy = a.LastActionBy ?? 0,
-                                      ActionBy = a.ActionBy ?? a.LastActionBy,
-                                      ActionDate = a.ActionDate,
-                                      RejectionReason = a.RejectionReason,
-                                      clockIn = a.ClockInTime,
-                                      clockOut = a.ClockOutTime ?? DateTime.MinValue,
-                                      ManagerId = a.ManagerId,
-                                      CreatedBy = a.CreatedBy,
-                                      CreatedDate = a.CreatedDate,
-                                      UpdatedBy = a.UpdatedBy,
-                                      UpdatedDate = a.UpdatedDate,
-                                      IsActive = a.IsActive,
-                                      IsDeleted = a.IsDeleted
-                                  })
-                                 .ToList();
+            var wfInstanceIds = filteredAttendance
+                .Where(a => a.WorkflowInstanceId.HasValue && a.WorkflowInstanceId.Value > 0)
+                .Select(a => a.WorkflowInstanceId!.Value)
+                .Distinct()
+                .ToList();
+
+            var wfInstances = wfInstanceIds.Any()
+                ? (await _unitOfWork.WorkflowInstances.GetAll()).Where(i => wfInstanceIds.Contains(i.Id)).ToDictionary(i => i.Id)
+                : new Dictionary<long, WorkflowInstance>();
+
+            var wfSteps = wfInstanceIds.Any()
+                ? (await _unitOfWork.WorkflowInstanceSteps.GetAll()).Where(s => wfInstanceIds.Contains(s.WorkflowInstanceId)).ToList()
+                : new List<WorkflowInstanceStep>();
+
+            var empLookup = employees.ToDictionary(e => e.Id, e => $"{e.FirstName} {e.LastName}".Trim());
+
+            bool canOverrideGlobal = await _userContextService.HasPermissionAsync("REQUEST_OVERRIDE");
+            bool canReassignGlobal = await _userContextService.HasPermissionAsync("REQUEST_REASSIGN");
+
+            var attendanceList = filteredAttendance.ToList();
+            var attendanceDtos = new List<AttendanceRequestUpdateDTO>();
+
+            foreach (var a in attendanceList)
+            {
+                empLookup.TryGetValue(a.EmployeeId, out var empName);
+                string? pendingWith = null;
+                bool canApprove = false;
+                bool canOverride = false;
+                bool canReassign = false;
+                bool canCancel = (a.EmployeeId == currentEmpId || a.RequestedBy == currentEmpId) && string.Equals(a.Status, "Pending", StringComparison.OrdinalIgnoreCase);
+
+                if (a.WorkflowInstanceId.HasValue && wfInstances.TryGetValue(a.WorkflowInstanceId.Value, out var inst))
+                {
+                    var curStep = wfSteps.FirstOrDefault(s => s.WorkflowInstanceId == inst.Id && s.StepOrder == inst.CurrentStepOrder && s.Status == "Pending");
+                    if (curStep != null)
+                    {
+                        var appIds = new List<long>();
+                        try { appIds = JsonSerializer.Deserialize<List<long>>(curStep.EligibleApproverIdsJson) ?? new List<long>(); } catch { }
+                        pendingWith = string.Join(", ", appIds.Select(id => empLookup.TryGetValue(id, out var n) ? n : $"Emp #{id}"));
+                        canApprove = string.Equals(inst.Status, "Pending", StringComparison.OrdinalIgnoreCase) && appIds.Contains(currentEmpId);
+                        canOverride = string.Equals(inst.Status, "Pending", StringComparison.OrdinalIgnoreCase) && canOverrideGlobal && !appIds.Contains(currentEmpId);
+                        canReassign = string.Equals(inst.Status, "Pending", StringComparison.OrdinalIgnoreCase) && canReassignGlobal;
+                    }
+                }
+                else if (string.Equals(a.Status, "Pending", StringComparison.OrdinalIgnoreCase))
+                {
+                    canApprove = a.ManagerId == currentEmpId;
+                    canOverride = canOverrideGlobal && a.ManagerId != currentEmpId;
+                    if (empLookup.TryGetValue(a.ManagerId, out var mName))
+                    {
+                        pendingWith = mName;
+                    }
+                }
+
+                attendanceDtos.Add(new AttendanceRequestUpdateDTO
+                {
+                    Id = a.Id,
+                    EmployeeId = a.EmployeeId,
+                    EmployeeName = empName ?? "Employee",
+                    RequestType = a.RequestType ?? "Regularization",
+                    RequestedDate = a.RequestedDate,
+                    RequestedBy = a.RequestedBy,
+                    Reason = a.Reason,
+                    Status = a.Status ?? "Pending",
+                    LastActionBy = a.LastActionBy ?? 0,
+                    ActionBy = a.ActionBy ?? a.LastActionBy,
+                    ActionDate = a.ActionDate,
+                    RejectionReason = a.RejectionReason,
+                    clockIn = a.ClockInTime,
+                    clockOut = a.ClockOutTime ?? DateTime.MinValue,
+                    ManagerId = a.ManagerId,
+                    WorkflowInstanceId = a.WorkflowInstanceId,
+                    PendingWith = pendingWith,
+                    CanApprove = canApprove,
+                    CanOverride = canOverride,
+                    CanReassign = canReassign,
+                    CanCancel = canCancel,
+                    CreatedBy = a.CreatedBy,
+                    CreatedDate = a.CreatedDate,
+                    UpdatedBy = a.UpdatedBy,
+                    UpdatedDate = a.UpdatedDate,
+                    IsActive = a.IsActive,
+                    IsDeleted = a.IsDeleted
+                });
+            }
 
             return attendanceDtos;
         }
@@ -239,6 +307,34 @@ namespace KHRMS.Services
             await _unitOfWork.AttendanceRequests.Add(request);
             _unitOfWork.Save();
 
+            // Configurable Approval Workflow integration
+            if (_workflowEngine != null && _configuration != null && _configuration.GetValue<bool>("WorkflowEngine:Modules:AttendanceRegularization"))
+            {
+                try
+                {
+                    var context = new WorkflowContext
+                    {
+                        RequesterId = employee.Id,
+                        RequestType = "AttendanceRegularization",
+                        Location = employee.Branch,
+                        Attributes = new Dictionary<string, object?>
+                        {
+                            { "RequestedDate", request.RequestedDate.ToString("yyyy-MM-dd") },
+                            { "Reason", request.Reason ?? "" }
+                        }
+                    };
+
+                    var instance = await _workflowEngine.StartWorkflowAsync("AttendanceRegularization", request.Id, employee.Id, context);
+                    request.WorkflowInstanceId = instance.Id;
+                    _unitOfWork.AttendanceRequests.Update(request);
+                    _unitOfWork.Save();
+                }
+                catch (WorkflowResolutionException ex)
+                {
+                    throw new InvalidOperationException(ex.Message);
+                }
+            }
+
             try
             {
                 var empFullName = $"{employee.FirstName} {employee.LastName}".Trim();
@@ -279,7 +375,34 @@ namespace KHRMS.Services
             long fallbackId = currentEmpId > 0
                 ? currentEmpId
                 : ((attendanceRequest.LastActionBy.HasValue && attendanceRequest.LastActionBy.Value > 0) ? attendanceRequest.LastActionBy.Value : request.ManagerId);
-            long actionById = attendanceRequest.ActionBy ?? fallbackId;
+            long actionById = currentEmpId > 0 ? currentEmpId : (attendanceRequest.ActionBy ?? fallbackId);
+
+            // Route through central Workflow Engine if managed by workflow
+            if (request.WorkflowInstanceId.HasValue && request.WorkflowInstanceId.Value > 0 && _workflowEngine != null)
+            {
+                var isApproved = string.Equals(attendanceRequest.Status, "Approved", StringComparison.OrdinalIgnoreCase);
+                var action = isApproved ? "Approve" : "Reject";
+                var actionResult = await _workflowEngine.ActOnStepAsync(
+                    request.WorkflowInstanceId.Value,
+                    actionById,
+                    new WorkflowActionRequest { Action = action, Reason = attendanceRequest.RejectionReason });
+
+                if (!actionResult.Success)
+                {
+                    throw new InvalidOperationException(actionResult.Message);
+                }
+
+                return;
+            }
+
+            // Strict authorization check for legacy path:
+            // Only the assigned reporting manager or an authorized administrator with override permission can act
+            bool isDirectManager = request.ManagerId == actionById;
+            bool canOverride = await _userContextService.HasPermissionAsync("REQUEST_OVERRIDE");
+            if (!isDirectManager && !canOverride)
+            {
+                throw new UnauthorizedAccessException("Only the assigned reporting manager or an authorized administrator can take action on this attendance request.");
+            }
 
             // Strict validation: Regularization cannot be approved for current day, future dates, holidays, or approved leave
             if (string.Equals(attendanceRequest.Status, "Approved", StringComparison.OrdinalIgnoreCase))

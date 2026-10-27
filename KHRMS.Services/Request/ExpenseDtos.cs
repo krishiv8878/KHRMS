@@ -104,6 +104,12 @@ namespace KHRMS.Services.Request
         public string DesignationName { get; set; } = string.Empty;
         public string? ProjectName { get; set; }
         public string? ManagerName { get; set; }
+        public long? WorkflowInstanceId { get; set; }
+        public string? PendingWith { get; set; }
+        public bool CanApprove { get; set; }
+        public bool CanOverride { get; set; }
+        public bool CanReassign { get; set; }
+        public bool CanCancel { get; set; }
     }
 
     public class ExpenseAdvanceDto

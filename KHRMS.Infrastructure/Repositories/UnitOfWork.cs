@@ -87,6 +87,15 @@ namespace KHRMS.Infrastructure
 
         public IEmployeeDailyWorkModeRepository EmployeeDailyWorkModes { get; }
 
+        // Configurable Approval Workflow System Repositories
+        public IWorkflowDefinitionRepository WorkflowDefinitions { get; }
+        public IWorkflowStepRepository WorkflowSteps { get; }
+        public IWorkflowRoutingRuleRepository WorkflowRoutingRules { get; }
+        public IWorkflowInstanceRepository WorkflowInstances { get; }
+        public IWorkflowInstanceStepRepository WorkflowInstanceSteps { get; }
+        public IWorkflowDelegationRepository WorkflowDelegations { get; }
+        public IWorkflowAuditLogRepository WorkflowAuditLogs { get; }
+
         public UnitOfWork(KHRMSContextClass dbContext,
                             ICandidateRepository candidateRepository,
                             ISkillRepository skillRepository,
@@ -183,6 +192,15 @@ namespace KHRMS.Infrastructure
             JobOffers = new JobOfferRepository(_dbContext);
 
             EmployeeDailyWorkModes = new EmployeeDailyWorkModeRepository(_dbContext);
+
+            // Workflow Repositories
+            WorkflowDefinitions = new WorkflowDefinitionRepository(_dbContext);
+            WorkflowSteps = new WorkflowStepRepository(_dbContext);
+            WorkflowRoutingRules = new WorkflowRoutingRuleRepository(_dbContext);
+            WorkflowInstances = new WorkflowInstanceRepository(_dbContext);
+            WorkflowInstanceSteps = new WorkflowInstanceStepRepository(_dbContext);
+            WorkflowDelegations = new WorkflowDelegationRepository(_dbContext);
+            WorkflowAuditLogs = new WorkflowAuditLogRepository(_dbContext);
         }
 
         public int Save()

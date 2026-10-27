@@ -1,5 +1,9 @@
 
 using KHRMS.Services;
+using KHRMS.Services.Workflow.Interfaces;
+using KHRMS.Services.Workflow.Services;
+using KHRMS.Services.Workflow.Rules;
+using KHRMS.Services.Workflow.Conditions;
 using KHRMS.Infrastructure;
 using KHRMS.Services.Interfaces;
 using KHRMS.AI;
@@ -63,6 +67,21 @@ builder.Services.AddScoped<IPmsService, PmsService>();
 builder.Services.AddScoped<IExpenseService, ExpenseService>();
 builder.Services.AddScoped<IRecruitmentService, RecruitmentService>();
 builder.Services.AddScoped<IEmployeeDailyWorkModeService, EmployeeDailyWorkModeService>();
+
+// Configurable Approval Workflow System
+builder.Services.AddScoped<IConditionEvaluator, ConditionEvaluator>();
+builder.Services.AddScoped<IApproverRule, ReportingManagerRule>();
+builder.Services.AddScoped<IApproverRule, SkipLevelManagerRule>();
+builder.Services.AddScoped<IApproverRule, DepartmentHeadRule>();
+builder.Services.AddScoped<IApproverRule, RoleInLocationRule>();
+builder.Services.AddScoped<IApproverRule, ProjectOwnerRule>();
+builder.Services.AddScoped<IApproverRule, SpecificPersonRule>();
+builder.Services.AddScoped<IApproverRule, GroupQueueRule>();
+builder.Services.AddScoped<IApproverResolver, ApproverResolver>();
+builder.Services.AddScoped<IWorkflowEngineService, WorkflowEngineService>();
+builder.Services.AddScoped<IWorkflowDelegationService, WorkflowDelegationService>();
+builder.Services.AddScoped<IWorkflowAdminService, WorkflowAdminService>();
+builder.Services.AddHostedService<WorkflowEscalationBackgroundService>();
 builder.Services.AddMemoryCache();
 
 // Add context-aware services

@@ -37,5 +37,12 @@ namespace KHRMS.Services.Request
 
         public DateTime? clockOut { get; set; }
         public long? ManagerId { get; set; }
+
+        public long? WorkflowInstanceId { get; set; }
+        public string? PendingWith { get; set; }
+        public bool CanApprove { get; set; }
+        public bool CanOverride { get; set; }
+        public bool CanReassign { get; set; }
+        public bool CanCancel { get; set; }
     }
 }

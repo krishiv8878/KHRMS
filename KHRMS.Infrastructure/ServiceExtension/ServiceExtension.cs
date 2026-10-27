@@ -49,6 +49,16 @@ namespace KHRMS.Infrastructure
             services.AddScoped<IRolePermissionMappingRepository, RolePermissionMappingRepository>();
             services.AddScoped<IUserPermissionMappingRepository, UserPermissionMappingRepository>();
             services.AddScoped<IEmployeeDailyWorkModeRepository, EmployeeDailyWorkModeRepository>();
+
+            // Configurable Approval Workflow System Repositories
+            services.AddScoped<IWorkflowDefinitionRepository, WorkflowDefinitionRepository>();
+            services.AddScoped<IWorkflowStepRepository, WorkflowStepRepository>();
+            services.AddScoped<IWorkflowRoutingRuleRepository, WorkflowRoutingRuleRepository>();
+            services.AddScoped<IWorkflowInstanceRepository, WorkflowInstanceRepository>();
+            services.AddScoped<IWorkflowInstanceStepRepository, WorkflowInstanceStepRepository>();
+            services.AddScoped<IWorkflowDelegationRepository, WorkflowDelegationRepository>();
+            services.AddScoped<IWorkflowAuditLogRepository, WorkflowAuditLogRepository>();
+
             return services;
         }
     }

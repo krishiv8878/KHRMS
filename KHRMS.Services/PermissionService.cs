@@ -235,7 +235,12 @@ namespace KHRMS.Services
                     new() { PermissionCode = "DESIGNATION_MANAGE", ModuleName = "System Operations", DisplayName = "Manage Designations", Description = "Create, update, or delete job designations", SortOrder = 73, IsActive = true },
                     new() { PermissionCode = "SKILL_MANAGE", ModuleName = "System Operations", DisplayName = "Manage Skills Library", Description = "Create and manage skill categories and proficiency levels", SortOrder = 74, IsActive = true },
                     new() { PermissionCode = "PROJECT_MANAGE", ModuleName = "System Operations", DisplayName = "Manage Projects", Description = "Create and manage project master records", SortOrder = 75, IsActive = true },
-                    new() { PermissionCode = "RESIGNATION_MANAGE", ModuleName = "Workforce", DisplayName = "Manage Resignations & FnF", Description = "Process employee resignation requests and full & final settlements", SortOrder = 44, IsActive = true }
+                    new() { PermissionCode = "RESIGNATION_MANAGE", ModuleName = "Workforce", DisplayName = "Manage Resignations & FnF", Description = "Process employee resignation requests and full & final settlements", SortOrder = 44, IsActive = true },
+
+                    // Approval Workflow Permissions
+                    new() { PermissionCode = "WORKFLOW_CONFIGURE", ModuleName = "System Operations", DisplayName = "Configure Approval Workflows", Description = "Configure workflow definitions, steps, and routing matrix", SortOrder = 110, IsActive = true },
+                    new() { PermissionCode = "REQUEST_OVERRIDE", ModuleName = "System Operations", DisplayName = "Override Approval Decisions", Description = "Administrative authority to approve or reject requests outside the standard approver chain", SortOrder = 111, IsActive = true },
+                    new() { PermissionCode = "REQUEST_REASSIGN", ModuleName = "System Operations", DisplayName = "Reassign Pending Approvals", Description = "Authority to reassign pending workflow approval steps to other eligible approvers", SortOrder = 112, IsActive = true }
                 };
 
                 var missingPerms = defaultPerms.Where(p => !existingCodes.Contains(p.PermissionCode)).ToList();
