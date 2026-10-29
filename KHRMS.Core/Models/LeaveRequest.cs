@@ -1,10 +1,8 @@
-
 using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
 
 namespace KHRMS.Core
 {
-
     public class LeaveRequest : KHRMSBase
     {
         [Key]
@@ -31,7 +29,23 @@ namespace KHRMS.Core
         public DateTime? ActionDate { get; set; }
 
         public string? RejectionReason { get; set; }
+        public long? WorkflowInstanceId { get; set; }
         [NotMapped]
         public double TotalDays { get; set; }
+
+        [NotMapped]
+        public string? PendingWith { get; set; }
+
+        [NotMapped]
+        public bool CanApprove { get; set; }
+
+        [NotMapped]
+        public bool CanOverride { get; set; }
+
+        [NotMapped]
+        public bool CanReassign { get; set; }
+
+        [NotMapped]
+        public bool CanCancel { get; set; }
     }
 }

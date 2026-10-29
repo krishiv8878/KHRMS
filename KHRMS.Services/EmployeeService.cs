@@ -379,6 +379,35 @@ namespace KHRMS.Services
             return employeesWithRoles;
         }
 
+        public async Task<IEnumerable<EmployeeLookupDto>> GetEmployeesLookupAsync()
+        {
+            var employees = await _unitOfWork.Employees.GetAll();
+            var designations = (await _unitOfWork.Designations.GetAll())
+                .ToDictionary(d => d.Id, d => d.DesignationName);
+
+            var lookupList = employees
+                .Where(e => !e.IsDeleted && e.IsActive)
+                .Select(e => new EmployeeLookupDto
+                {
+                    Id = e.Id,
+                    FirstName = e.FirstName ?? "",
+                    LastName = e.LastName ?? "",
+                    Designation = (e.DesignationId.HasValue && designations.TryGetValue(e.DesignationId.Value, out var desName))
+                        ? desName
+                        : e.Designation,
+                    DesignationId = e.DesignationId,
+                    ProfileImage = e.ProfileImage,
+                    EmailAddress = e.EmailAddress,
+                    Department = e.Branch,
+                    ManagerId = e.ManagerId,
+                    IsActive = e.IsActive
+                })
+                .OrderBy(e => e.FirstName)
+                .ToList();
+
+            return lookupList;
+        }
+
         public async Task<Employee> GetEmployeeById(int employeeId)
         {
             if (employeeId > 0)

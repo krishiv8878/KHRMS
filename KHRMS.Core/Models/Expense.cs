@@ -89,6 +89,23 @@ namespace KHRMS.Core.Models
         public string? PaymentMode { get; set; } // Payroll, DirectBank, Cash
 
         public long? PayRunId { get; set; }
+
+        public long? WorkflowInstanceId { get; set; }
+
+        [NotMapped]
+        public string? PendingWith { get; set; }
+
+        [NotMapped]
+        public bool CanApprove { get; set; }
+
+        [NotMapped]
+        public bool CanOverride { get; set; }
+
+        [NotMapped]
+        public bool CanReassign { get; set; }
+
+        [NotMapped]
+        public bool CanCancel { get; set; }
     }
 
     [Table("ExpenseItems")]

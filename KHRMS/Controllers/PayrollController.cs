@@ -86,7 +86,20 @@ namespace KHRMS.Controllers
         [HttpGet("salary-assignment/{employeeId?}")]
         public async Task<IActionResult> GetSalaryAssignment(long? employeeId)
         {
-            long targetId = employeeId ?? _userContext.GetCurrentEmployeeId();
+            long currentEmpId = _userContext.GetCurrentEmployeeId();
+            bool isPrivileged = _userContext.IsAdmin() || _userContext.IsHR() || await _userContext.HasPermissionAsync("PAYROLL_VIEW_ALL");
+            long targetId = employeeId.HasValue && employeeId.Value > 0 ? employeeId.Value : currentEmpId;
+
+            if (!isPrivileged && targetId != currentEmpId)
+            {
+                return StatusCode((int)HttpStatusCode.Forbidden, new ApiResponse<EmployeeSalaryAssignment?>
+                {
+                    StatusCode = (int)HttpStatusCode.Forbidden,
+                    Message = "Access Denied: You do not have permission to view another employee's salary structure.",
+                    Data = null
+                });
+            }
+
             var assignment = await _payrollService.GetEmployeeSalaryAssignmentAsync(targetId);
             return Ok(new ApiResponse<EmployeeSalaryAssignment?>
             {
@@ -242,7 +255,20 @@ namespace KHRMS.Controllers
         [RequirePermission("PAYROLL_VIEW_SELF")]
         public async Task<IActionResult> GetPayslips(long? employeeId)
         {
-            long targetId = employeeId ?? _userContext.GetCurrentEmployeeId();
+            long currentEmpId = _userContext.GetCurrentEmployeeId();
+            bool isPrivileged = _userContext.IsAdmin() || _userContext.IsHR() || await _userContext.HasPermissionAsync("PAYROLL_VIEW_ALL");
+            long targetId = employeeId.HasValue && employeeId.Value > 0 ? employeeId.Value : currentEmpId;
+
+            if (!isPrivileged && targetId != currentEmpId)
+            {
+                return StatusCode((int)HttpStatusCode.Forbidden, new ApiResponse<IEnumerable<PayslipDto>>
+                {
+                    StatusCode = (int)HttpStatusCode.Forbidden,
+                    Message = "Access Denied: You do not have permission to view another employee's payslips.",
+                    Data = null
+                });
+            }
+
             var payslips = await _payrollService.GetEmployeePayslipsAsync(targetId);
             return Ok(new ApiResponse<IEnumerable<PayslipDto>>
             {
@@ -256,6 +282,16 @@ namespace KHRMS.Controllers
         [RequirePermission("PAYROLL_VIEW_SELF")]
         public async Task<IActionResult> ViewPayslipHtml(long id)
         {
+            var dto = await _payrollService.GetPayslipByIdAsync(id);
+            if (dto == null) return NotFound(new ApiResponse<object> { StatusCode = 404, Message = "Payslip not found" });
+
+            long currentEmpId = _userContext.GetCurrentEmployeeId();
+            bool isPrivileged = _userContext.IsAdmin() || _userContext.IsHR() || await _userContext.HasPermissionAsync("PAYROLL_VIEW_ALL");
+            if (!isPrivileged && dto.EmployeeId != currentEmpId)
+            {
+                return StatusCode((int)HttpStatusCode.Forbidden, "Access Denied: You do not have permission to view this payslip.");
+            }
+
             var html = await _payrollService.GeneratePayslipHtmlAsync(id);
             return Content(html, "text/html");
         }
@@ -266,6 +302,18 @@ namespace KHRMS.Controllers
         {
             var dto = await _payrollService.GetPayslipByIdAsync(id);
             if (dto == null) return NotFound(new ApiResponse<object> { StatusCode = 404, Message = "Payslip not found" });
+
+            long currentEmpId = _userContext.GetCurrentEmployeeId();
+            bool isPrivileged = _userContext.IsAdmin() || _userContext.IsHR() || await _userContext.HasPermissionAsync("PAYROLL_VIEW_ALL");
+            if (!isPrivileged && dto.EmployeeId != currentEmpId)
+            {
+                return StatusCode((int)HttpStatusCode.Forbidden, new ApiResponse<PayslipDto>
+                {
+                    StatusCode = (int)HttpStatusCode.Forbidden,
+                    Message = "Access Denied: You do not have permission to view this payslip.",
+                    Data = null
+                });
+            }
 
             return Ok(new ApiResponse<PayslipDto>
             {
@@ -283,7 +331,20 @@ namespace KHRMS.Controllers
         [RequirePermission("PAYROLL_VIEW_SELF")]
         public async Task<IActionResult> GetReimbursements(long? employeeId)
         {
-            long targetId = employeeId ?? _userContext.GetCurrentEmployeeId();
+            long currentEmpId = _userContext.GetCurrentEmployeeId();
+            bool isPrivileged = _userContext.IsAdmin() || _userContext.IsHR() || await _userContext.HasPermissionAsync("PAYROLL_VIEW_ALL");
+            long targetId = employeeId.HasValue && employeeId.Value > 0 ? employeeId.Value : currentEmpId;
+
+            if (!isPrivileged && targetId != currentEmpId)
+            {
+                return StatusCode((int)HttpStatusCode.Forbidden, new ApiResponse<IEnumerable<ReimbursementClaim>>
+                {
+                    StatusCode = (int)HttpStatusCode.Forbidden,
+                    Message = "Access Denied: You do not have permission to view another employee's reimbursements.",
+                    Data = null
+                });
+            }
+
             var claims = await _payrollService.GetEmployeeReimbursementsAsync(targetId);
             return Ok(new ApiResponse<IEnumerable<ReimbursementClaim>>
             {
@@ -311,6 +372,14 @@ namespace KHRMS.Controllers
         public async Task<IActionResult> SubmitReimbursement([FromBody] ReimbursementClaimRequest request)
         {
             if (request == null || request.Amount <= 0) return BadRequest("Valid claim amount required");
+
+            long currentEmpId = _userContext.GetCurrentEmployeeId();
+            bool isPrivileged = _userContext.IsAdmin() || _userContext.IsHR();
+            if (!isPrivileged && currentEmpId > 0)
+            {
+                request.EmployeeId = currentEmpId;
+            }
+
             var result = await _payrollService.SubmitReimbursementClaimAsync(request);
             return Ok(new ApiResponse<ReimbursementClaim>
             {
@@ -355,6 +424,19 @@ namespace KHRMS.Controllers
         [HttpGet("fnf/{employeeId}")]
         public async Task<IActionResult> GetFnF(long employeeId)
         {
+            long currentEmpId = _userContext.GetCurrentEmployeeId();
+            bool isPrivileged = _userContext.IsAdmin() || _userContext.IsHR() || await _userContext.HasPermissionAsync("PAYROLL_VIEW_ALL");
+
+            if (!isPrivileged && employeeId != currentEmpId)
+            {
+                return StatusCode((int)HttpStatusCode.Forbidden, new ApiResponse<FullAndFinalSettlement?>
+                {
+                    StatusCode = (int)HttpStatusCode.Forbidden,
+                    Message = "Access Denied: You do not have permission to view another employee's FnF settlement.",
+                    Data = null
+                });
+            }
+
             var fnf = await _payrollService.GetFnFSettlementByEmployeeIdAsync(employeeId);
             return Ok(new ApiResponse<FullAndFinalSettlement?>
             {

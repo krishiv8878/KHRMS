@@ -1,6 +1,7 @@
 ﻿using KHRMS.Core;
 using KHRMS.Infrastructure;
 using KHRMS.Services;
+using KHRMS.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 
@@ -9,11 +10,13 @@ namespace KHRMS.UnitTest.ControllerTests
     public class EmployeeAttendanceControllerTest
     {
         private readonly Mock<IEmployeeAttendanceService> _mock;
+        private readonly Mock<IUserContextService> _mock2;
         private readonly EmployeeAttendanceController _controller;
         public EmployeeAttendanceControllerTest()
         {
             _mock = new Mock<IEmployeeAttendanceService>();
-            _controller = new EmployeeAttendanceController(_mock.Object);
+            _mock2 = new Mock<IUserContextService>();
+            _controller = new EmployeeAttendanceController(_mock.Object, _mock2.Object);
         }
 
         [Fact]

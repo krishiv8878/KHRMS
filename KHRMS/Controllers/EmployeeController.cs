@@ -1,3 +1,4 @@
+using KHRMS.Services.Interfaces;
 using KHRMS.Authorization;
 using KHRMS.Core;
 using KHRMS.Infrastructure;
@@ -14,9 +15,30 @@ namespace KHRMS
     [Authorize]
     [Route("api/[controller]")]
     [ApiController]
-    public class EmployeeController(IEmployeeService employeeService) : ControllerBase
+    public class EmployeeController(IEmployeeService employeeService, IUserContextService userContextService) : ControllerBase
     {
         public readonly IEmployeeService _employeeService = employeeService;
+        private readonly IUserContextService _userContext = userContextService;
+
+
+        /// <summary>
+        /// Lightweight employee lookup list (Id, FullName, Designation, Email, ProfileImage) for dropdowns, filters, and pickers.
+        /// Excludes sensitive PII (addresses, educational percentages, passport numbers, emergency contacts, banking).
+        /// </summary>
+        [HttpGet("GetEmployeesLookup")]
+        [RequirePermission("EMPLOYEE_VIEW_DIRECTORY")]
+        public async Task<IActionResult> GetEmployeesLookup()
+        {
+            Log.Information("EmployeeController - GetEmployeesLookup called.");
+
+            var employees = await _employeeService.GetEmployeesLookupAsync();
+            return Ok(new ApiResponse<IEnumerable<EmployeeLookupDto>>
+            {
+                StatusCode = (int)HttpStatusCode.OK,
+                Message = ApiMessageConstant.EmployeeFound,
+                Data = employees
+            });
+        }
 
 
         /// <summary>
@@ -39,6 +61,31 @@ namespace KHRMS
                     Message = ApiMessageConstant.NoEmployeeFound,
                     Data = null
                 });
+            }
+
+            var canManage = await _userContext.HasPermissionAsync("EMPLOYEE_MANAGE") || _userContext.IsAdmin() || _userContext.IsHR();
+            var currentEmpId = _userContext.GetCurrentEmployeeId();
+
+            if (!canManage)
+            {
+                foreach (var emp in employees)
+                {
+                    if (emp.Id != currentEmpId)
+                    {
+                        emp.Responsibilities = null;
+                        emp.PassportNumber = null;
+                        emp.PassportScanCopy = null;
+                        emp.PassportIssueDate = null;
+                        emp.PassportExpiryDate = null;
+                        emp.PermanentAddress = null;
+                        emp.PrimaryContactPhone = null;
+                        emp.PrimaryContactEmail = null;
+                        emp.PrimaryContactAddress = null;
+                        emp.SecondaryContactPhone = null;
+                        emp.SecondaryContactEmail = null;
+                        emp.SecondaryContactAddress = null;
+                    }
+                }
             }
 
             Log.Information("EmployeeController - {Count} employees found.", employees.Count());
@@ -66,6 +113,10 @@ namespace KHRMS
                 {
                     targetId = parsedClaimId;
                 }
+                else
+                {
+                    targetId = (int)_userContext.GetCurrentEmployeeId();
+                }
             }
 
             if (targetId <= 0)
@@ -87,6 +138,25 @@ namespace KHRMS
                     Message = ApiMessageConstant.NoEmployeeFound,
                     Data = null
                 });
+            }
+
+            var canManage = await _userContext.HasPermissionAsync("EMPLOYEE_MANAGE") || _userContext.IsAdmin() || _userContext.IsHR();
+            var currentEmpId = _userContext.GetCurrentEmployeeId();
+
+            if (!canManage && targetId != currentEmpId)
+            {
+                employee.Responsibilities = null;
+                employee.PassportNumber = null;
+                employee.PassportScanCopy = null;
+                employee.PassportIssueDate = null;
+                employee.PassportExpiryDate = null;
+                employee.PermanentAddress = null;
+                employee.PrimaryContactPhone = null;
+                employee.PrimaryContactEmail = null;
+                employee.PrimaryContactAddress = null;
+                employee.SecondaryContactPhone = null;
+                employee.SecondaryContactEmail = null;
+                employee.SecondaryContactAddress = null;
             }
 
             return Ok(new ApiResponse<Employee>

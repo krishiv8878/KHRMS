@@ -5,6 +5,10 @@ using KHRMS.Services.Request;
 using MimeKit.Cryptography;
 using System.Linq;
 using System.Security.Claims;
+using System.Text.Json;
+using Microsoft.Extensions.Configuration;
+using KHRMS.Services.Workflow.Interfaces;
+using KHRMS.Services.Workflow.Models;
 
 
 namespace KHRMS.Services
@@ -17,67 +21,177 @@ namespace KHRMS.Services
         private readonly ISendEmailService _emailService;
         private readonly IAttendanceLogService _attendanceLogService;
 
+        private readonly IWorkflowEngineService? _workflowEngine;
+        private readonly IConfiguration? _configuration;
+
         public AttendanceRequestService(
             IUnitOfWork unitOfWork, 
             IEmployeeAttendanceService employeeAttendanceService, 
             IUserContextService userContextService, 
             ISendEmailService emailService,
-            IAttendanceLogService attendanceLogService)
+            IAttendanceLogService attendanceLogService,
+            IWorkflowEngineService? workflowEngine = null,
+            IConfiguration? configuration = null)
         {
             _unitOfWork = unitOfWork;
             _userContextService = userContextService;
             _employeeAttendanceService = employeeAttendanceService;
             _emailService = emailService;
             _attendanceLogService = attendanceLogService;
+            _workflowEngine = workflowEngine;
+            _configuration = configuration;
         }
 
         public async Task<IEnumerable<AttendanceRequestUpdateDTO>> GetAllAsync()
         {
             long currentEmpId = _userContextService.GetCurrentEmployeeId();
             bool isAdminOrHr = _userContextService.IsAdmin() || _userContextService.IsHR();
+            bool isManager = _userContextService.IsManager();
+
+            if (!isAdminOrHr && currentEmpId <= 0)
+            {
+                return Enumerable.Empty<AttendanceRequestUpdateDTO>();
+            }
+
             var attendance = await _unitOfWork.AttendanceRequests.GetAll();
             var employees = await _unitOfWork.Employees.GetAll();
 
-            var filteredAttendance = (isAdminOrHr || currentEmpId == 0)
-                ? attendance 
-                : attendance.Where(x => x.ManagerId == currentEmpId || x.EmployeeId == currentEmpId || x.RequestedBy == currentEmpId);
+            IEnumerable<AttendanceRequest> filteredAttendance;
+            if (isAdminOrHr)
+            {
+                filteredAttendance = attendance.Where(x => !x.IsDeleted);
+            }
+            else if (isManager)
+            {
+                // Manager sees direct reportees + requests routed to them + self
+                filteredAttendance = attendance.Where(x => !x.IsDeleted && 
+                    (x.ManagerId == currentEmpId || x.EmployeeId == currentEmpId || x.RequestedBy == currentEmpId || employees.Any(e => e.Id == x.EmployeeId && e.ManagerId == currentEmpId)));
+            }
+            else
+            {
+                // Regular Employee sees ONLY their own attendance requests
+                filteredAttendance = attendance.Where(x => !x.IsDeleted && (x.EmployeeId == currentEmpId || x.RequestedBy == currentEmpId));
+            }
 
-            var attendanceDtos = (from a in filteredAttendance
-                                  join e in employees on a.EmployeeId equals e.Id into empGroup
-                                  from e in empGroup.DefaultIfEmpty()
-                                  select new AttendanceRequestUpdateDTO
-                                  {
-                                      Id = a.Id,
-                                      EmployeeId = a.EmployeeId,
-                                      EmployeeName = e != null ? $"{e.FirstName} {e.LastName}".Trim() : "Employee",
-                                      RequestType = a.RequestType ?? "Regularization",
-                                      RequestedDate = a.RequestedDate,
-                                      RequestedBy = a.RequestedBy,
-                                      Reason = a.Reason,
-                                      Status = a.Status ?? "Pending",
-                                      LastActionBy = a.LastActionBy ?? 0,
-                                      ActionBy = a.ActionBy ?? a.LastActionBy,
-                                      ActionDate = a.ActionDate,
-                                      RejectionReason = a.RejectionReason,
-                                      clockIn = a.ClockInTime,
-                                      clockOut = a.ClockOutTime ?? DateTime.MinValue,
-                                      ManagerId = a.ManagerId,
-                                      CreatedBy = a.CreatedBy,
-                                      CreatedDate = a.CreatedDate,
-                                      UpdatedBy = a.UpdatedBy,
-                                      UpdatedDate = a.UpdatedDate,
-                                      IsActive = a.IsActive,
-                                      IsDeleted = a.IsDeleted
-                                  })
-                                 .ToList();
+            var wfInstanceIds = filteredAttendance
+                .Where(a => a.WorkflowInstanceId.HasValue && a.WorkflowInstanceId.Value > 0)
+                .Select(a => a.WorkflowInstanceId!.Value)
+                .Distinct()
+                .ToList();
+
+            var wfInstances = wfInstanceIds.Any()
+                ? (await _unitOfWork.WorkflowInstances.GetAll()).Where(i => wfInstanceIds.Contains(i.Id)).ToDictionary(i => i.Id)
+                : new Dictionary<long, WorkflowInstance>();
+
+            var wfSteps = wfInstanceIds.Any()
+                ? (await _unitOfWork.WorkflowInstanceSteps.GetAll()).Where(s => wfInstanceIds.Contains(s.WorkflowInstanceId)).ToList()
+                : new List<WorkflowInstanceStep>();
+
+            var empLookup = employees.ToDictionary(e => e.Id, e => $"{e.FirstName} {e.LastName}".Trim());
+
+            bool canOverrideGlobal = await _userContextService.HasPermissionAsync("REQUEST_OVERRIDE");
+            bool canReassignGlobal = await _userContextService.HasPermissionAsync("REQUEST_REASSIGN");
+
+            var attendanceList = filteredAttendance.ToList();
+            var attendanceDtos = new List<AttendanceRequestUpdateDTO>();
+
+            foreach (var a in attendanceList)
+            {
+                empLookup.TryGetValue(a.EmployeeId, out var empName);
+                string? pendingWith = null;
+                bool canApprove = false;
+                bool canOverride = false;
+                bool canReassign = false;
+                bool canCancel = (a.EmployeeId == currentEmpId || a.RequestedBy == currentEmpId) && string.Equals(a.Status, "Pending", StringComparison.OrdinalIgnoreCase);
+
+                if (a.WorkflowInstanceId.HasValue && wfInstances.TryGetValue(a.WorkflowInstanceId.Value, out var inst))
+                {
+                    var curStep = wfSteps.FirstOrDefault(s => s.WorkflowInstanceId == inst.Id && s.StepOrder == inst.CurrentStepOrder && s.Status == "Pending");
+                    if (curStep != null)
+                    {
+                        var appIds = new List<long>();
+                        try { appIds = JsonSerializer.Deserialize<List<long>>(curStep.EligibleApproverIdsJson) ?? new List<long>(); } catch { }
+                        pendingWith = string.Join(", ", appIds.Select(id => empLookup.TryGetValue(id, out var n) ? n : $"Emp #{id}"));
+                        canApprove = string.Equals(inst.Status, "Pending", StringComparison.OrdinalIgnoreCase) && appIds.Contains(currentEmpId);
+                        canOverride = string.Equals(inst.Status, "Pending", StringComparison.OrdinalIgnoreCase) && canOverrideGlobal && !appIds.Contains(currentEmpId);
+                        canReassign = string.Equals(inst.Status, "Pending", StringComparison.OrdinalIgnoreCase) && canReassignGlobal;
+                    }
+                }
+                else if (string.Equals(a.Status, "Pending", StringComparison.OrdinalIgnoreCase))
+                {
+                    canApprove = a.ManagerId == currentEmpId;
+                    canOverride = canOverrideGlobal && a.ManagerId != currentEmpId;
+                    if (empLookup.TryGetValue(a.ManagerId, out var mName))
+                    {
+                        pendingWith = mName;
+                    }
+                }
+
+                attendanceDtos.Add(new AttendanceRequestUpdateDTO
+                {
+                    Id = a.Id,
+                    EmployeeId = a.EmployeeId,
+                    EmployeeName = empName ?? "Employee",
+                    RequestType = a.RequestType ?? "Regularization",
+                    RequestedDate = a.RequestedDate,
+                    RequestedBy = a.RequestedBy,
+                    Reason = a.Reason,
+                    Status = a.Status ?? "Pending",
+                    LastActionBy = a.LastActionBy ?? 0,
+                    ActionBy = a.ActionBy ?? a.LastActionBy,
+                    ActionDate = a.ActionDate,
+                    RejectionReason = a.RejectionReason,
+                    clockIn = a.ClockInTime,
+                    clockOut = a.ClockOutTime ?? DateTime.MinValue,
+                    ManagerId = a.ManagerId,
+                    WorkflowInstanceId = a.WorkflowInstanceId,
+                    PendingWith = pendingWith,
+                    CanApprove = canApprove,
+                    CanOverride = canOverride,
+                    CanReassign = canReassign,
+                    CanCancel = canCancel,
+                    CreatedBy = a.CreatedBy,
+                    CreatedDate = a.CreatedDate,
+                    UpdatedBy = a.UpdatedBy,
+                    UpdatedDate = a.UpdatedDate,
+                    IsActive = a.IsActive,
+                    IsDeleted = a.IsDeleted
+                });
+            }
 
             return attendanceDtos;
         }
 
         public async Task<AttendanceRequest> GetByIdAsync(long id)
         {
-            var attendanceRequests = await _unitOfWork.AttendanceRequests.GetById(id);
-            return attendanceRequests;
+            var attendanceRequest = await _unitOfWork.AttendanceRequests.GetById(id);
+            if (attendanceRequest == null || attendanceRequest.IsDeleted) return null;
+
+            long currentEmpId = _userContextService.GetCurrentEmployeeId();
+            bool isAdminOrHr = _userContextService.IsAdmin() || _userContextService.IsHR();
+            bool isManager = _userContextService.IsManager();
+
+            if (!isAdminOrHr && currentEmpId > 0)
+            {
+                if (isManager)
+                {
+                    var employee = await _unitOfWork.Employees.GetById(attendanceRequest.EmployeeId);
+                    bool isReportee = employee != null && employee.ManagerId == currentEmpId;
+                    if (attendanceRequest.EmployeeId != currentEmpId && attendanceRequest.ManagerId != currentEmpId && !isReportee)
+                    {
+                        return null;
+                    }
+                }
+                else
+                {
+                    if (attendanceRequest.EmployeeId != currentEmpId && attendanceRequest.RequestedBy != currentEmpId)
+                    {
+                        return null;
+                    }
+                }
+            }
+
+            return attendanceRequest;
         }
 
         public async Task AddAsync(AttendanceRequestDTO attendanceRequest, ClaimsPrincipal user)
@@ -131,9 +245,42 @@ namespace KHRMS.Services
                 throw new InvalidOperationException($"A regularization request for {attendanceRequest.RequestedDate:yyyy-MM-dd} is {statusDesc}. You can only submit a new request if the previous one was rejected.");
             }
 
+            // Attendance regularization is strictly for past completed workdays
+            if (attendanceRequest.RequestedDate.Date >= DateTime.Today)
+            {
+                throw new InvalidOperationException("Attendance regularization can only be requested for past completed workdays. You cannot regularize the current day or future dates.");
+            }
+
             if (employee.DateOfJoining.HasValue && attendanceRequest.RequestedDate.Date < employee.DateOfJoining.Value.Date)
             {
                 throw new InvalidOperationException($"Cannot submit attendance regularization for {attendanceRequest.RequestedDate:yyyy-MM-dd} prior to your official joining date ({employee.DateOfJoining.Value:yyyy-MM-dd}).");
+            }
+
+            // Validation: Company Holiday check
+            var reqDateOnly = DateOnly.FromDateTime(attendanceRequest.RequestedDate.Date);
+            var holiday = (await _unitOfWork.Holidays.GetAll())
+                .FirstOrDefault(h => !h.IsDeleted && h.HolidayDate == reqDateOnly);
+            if (holiday != null)
+            {
+                string holidayName = !string.IsNullOrWhiteSpace(holiday.HolidayName) ? holiday.HolidayName : "Holiday";
+                throw new InvalidOperationException($"Cannot submit attendance regularization for {attendanceRequest.RequestedDate:yyyy-MM-dd} as it is a designated company holiday ({holidayName}).");
+            }
+
+            // Validation: Active (Approved or Pending) Leave check
+            var reqDate = attendanceRequest.RequestedDate.Date;
+            var activeLeave = (await _unitOfWork.LeaveRequest.GetAll())
+                .FirstOrDefault(l => l.EmployeeId == employee.Id
+                    && !l.IsDeleted
+                    && (string.Equals(l.Status, "Approved", StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(l.Status, "Pending", StringComparison.OrdinalIgnoreCase))
+                    && reqDate >= l.StartDate.Date
+                    && reqDate <= l.EndDate.Date);
+            if (activeLeave != null)
+            {
+                string statusDesc = string.Equals(activeLeave.Status, "Approved", StringComparison.OrdinalIgnoreCase)
+                    ? "an approved"
+                    : "a pending";
+                throw new InvalidOperationException($"Cannot submit attendance regularization for {attendanceRequest.RequestedDate:yyyy-MM-dd} because you have {statusDesc} leave request for this date.");
             }
 
             var request = new AttendanceRequest
@@ -159,6 +306,34 @@ namespace KHRMS.Services
 
             await _unitOfWork.AttendanceRequests.Add(request);
             _unitOfWork.Save();
+
+            // Configurable Approval Workflow integration
+            if (_workflowEngine != null && _configuration != null && _configuration.GetValue<bool>("WorkflowEngine:Modules:AttendanceRegularization"))
+            {
+                try
+                {
+                    var context = new WorkflowContext
+                    {
+                        RequesterId = employee.Id,
+                        RequestType = "AttendanceRegularization",
+                        Location = employee.Branch,
+                        Attributes = new Dictionary<string, object?>
+                        {
+                            { "RequestedDate", request.RequestedDate.ToString("yyyy-MM-dd") },
+                            { "Reason", request.Reason ?? "" }
+                        }
+                    };
+
+                    var instance = await _workflowEngine.StartWorkflowAsync("AttendanceRegularization", request.Id, employee.Id, context);
+                    request.WorkflowInstanceId = instance.Id;
+                    _unitOfWork.AttendanceRequests.Update(request);
+                    _unitOfWork.Save();
+                }
+                catch (WorkflowResolutionException ex)
+                {
+                    throw new InvalidOperationException(ex.Message);
+                }
+            }
 
             try
             {
@@ -200,7 +375,64 @@ namespace KHRMS.Services
             long fallbackId = currentEmpId > 0
                 ? currentEmpId
                 : ((attendanceRequest.LastActionBy.HasValue && attendanceRequest.LastActionBy.Value > 0) ? attendanceRequest.LastActionBy.Value : request.ManagerId);
-            long actionById = attendanceRequest.ActionBy ?? fallbackId;
+            long actionById = currentEmpId > 0 ? currentEmpId : (attendanceRequest.ActionBy ?? fallbackId);
+
+            // Route through central Workflow Engine if managed by workflow
+            if (request.WorkflowInstanceId.HasValue && request.WorkflowInstanceId.Value > 0 && _workflowEngine != null)
+            {
+                var isApproved = string.Equals(attendanceRequest.Status, "Approved", StringComparison.OrdinalIgnoreCase);
+                var action = isApproved ? "Approve" : "Reject";
+                var actionResult = await _workflowEngine.ActOnStepAsync(
+                    request.WorkflowInstanceId.Value,
+                    actionById,
+                    new WorkflowActionRequest { Action = action, Reason = attendanceRequest.RejectionReason });
+
+                if (!actionResult.Success)
+                {
+                    throw new InvalidOperationException(actionResult.Message);
+                }
+
+                return;
+            }
+
+            // Strict authorization check for legacy path:
+            // Only the assigned reporting manager or an authorized administrator with override permission can act
+            bool isDirectManager = request.ManagerId == actionById;
+            bool canOverride = await _userContextService.HasPermissionAsync("REQUEST_OVERRIDE");
+            if (!isDirectManager && !canOverride)
+            {
+                throw new UnauthorizedAccessException("Only the assigned reporting manager or an authorized administrator can take action on this attendance request.");
+            }
+
+            // Strict validation: Regularization cannot be approved for current day, future dates, holidays, or approved leave
+            if (string.Equals(attendanceRequest.Status, "Approved", StringComparison.OrdinalIgnoreCase))
+            {
+                if (request.RequestedDate.Date >= DateTime.Today)
+                {
+                    throw new InvalidOperationException("Attendance regularization cannot be approved for current or future dates.");
+                }
+
+                var reqDateOnly = DateOnly.FromDateTime(request.RequestedDate.Date);
+                var holiday = (await _unitOfWork.Holidays.GetAll())
+                    .FirstOrDefault(h => !h.IsDeleted && h.HolidayDate == reqDateOnly);
+                if (holiday != null)
+                {
+                    string holidayName = !string.IsNullOrWhiteSpace(holiday.HolidayName) ? holiday.HolidayName : "Holiday";
+                    throw new InvalidOperationException($"Cannot approve attendance regularization for {request.RequestedDate:yyyy-MM-dd} as it is a designated company holiday ({holidayName}).");
+                }
+
+                var reqDate = request.RequestedDate.Date;
+                var approvedLeave = (await _unitOfWork.LeaveRequest.GetAll())
+                    .FirstOrDefault(l => l.EmployeeId == request.EmployeeId
+                        && !l.IsDeleted
+                        && string.Equals(l.Status, "Approved", StringComparison.OrdinalIgnoreCase)
+                        && reqDate >= l.StartDate.Date
+                        && reqDate <= l.EndDate.Date);
+                if (approvedLeave != null)
+                {
+                    throw new InvalidOperationException($"Cannot approve attendance regularization for {request.RequestedDate:yyyy-MM-dd} because the employee is on approved leave on this date.");
+                }
+            }
 
             request.Reason = attendanceRequest.Reason ?? request.Reason;
             request.Status = attendanceRequest.Status;
@@ -372,10 +604,139 @@ namespace KHRMS.Services
             await _unitOfWork.AttendanceRequests.DeleteAsync(id);
             _unitOfWork.Save();
         }
+
+        public async Task<bool> SetDailyWorkModeAsync(DailyWorkModeDTO dto, ClaimsPrincipal user)
+        {
+            if (dto == null) throw new ArgumentNullException(nameof(dto));
+
+            long currentEmpId = _userContextService.GetCurrentEmployeeId();
+            if (currentEmpId == 0 && user != null)
+            {
+                var idStr = user.FindFirst("UserId")?.Value 
+                    ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+                    ?? user.FindFirst("id")?.Value;
+                if (long.TryParse(idStr, out var parsedId))
+                {
+                    currentEmpId = parsedId;
+                }
+            }
+
+            long targetEmpId = dto.EmployeeId > 0 ? dto.EmployeeId : currentEmpId;
+            if (targetEmpId <= 0)
+                throw new InvalidOperationException("Invalid employee ID specified for work mode.");
+
+            var employee = await _unitOfWork.Employees.GetById(targetEmpId);
+            if (employee == null)
+                throw new InvalidOperationException($"Employee with ID {targetEmpId} not found.");
+
+            // Normalize workMode input
+            string rawMode = (dto.WorkMode ?? string.Empty).Trim();
+            string normalizedRequestType;
+            string normalizedCode;
+
+            if (rawMode.Equals("WFH", StringComparison.OrdinalIgnoreCase) || 
+                rawMode.IndexOf("Home", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                normalizedRequestType = "Work From Home";
+                normalizedCode = "WFH";
+            }
+            else if (rawMode.Equals("OD", StringComparison.OrdinalIgnoreCase) || 
+                     rawMode.IndexOf("Duty", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                normalizedRequestType = "On-Duty";
+                normalizedCode = "OD";
+            }
+            else
+            {
+                normalizedRequestType = "Office";
+                normalizedCode = "WFO";
+            }
+
+            DateTime targetDate = dto.Date.Date;
+            DateOnly workDate = DateOnly.FromDateTime(targetDate);
+
+            // Upsert into EmployeeDailyWorkModes table
+            var existingRecord = await _unitOfWork.EmployeeDailyWorkModes.GetByEmployeeAndDateAsync(targetEmpId, workDate);
+            if (existingRecord != null)
+            {
+                existingRecord.WorkMode = normalizedCode;
+                existingRecord.SelectedBy = targetEmpId == currentEmpId ? "Employee" : "Manager";
+                if (!string.IsNullOrWhiteSpace(dto.Reason))
+                {
+                    existingRecord.Notes = dto.Reason;
+                }
+                existingRecord.UpdatedBy = (int)(currentEmpId > 0 ? currentEmpId : targetEmpId);
+                existingRecord.UpdatedDate = DateTime.Now;
+                _unitOfWork.EmployeeDailyWorkModes.Update(existingRecord);
+            }
+            else
+            {
+                var newRecord = new EmployeeDailyWorkMode
+                {
+                    EmployeeId = targetEmpId,
+                    WorkDate = workDate,
+                    WorkMode = normalizedCode,
+                    SelectedBy = targetEmpId == currentEmpId ? "Employee" : "Manager",
+                    Notes = dto.Reason,
+                    CreatedBy = (int)(currentEmpId > 0 ? currentEmpId : targetEmpId),
+                    CreatedDate = DateTime.Now,
+                    IsActive = true,
+                    IsDeleted = false
+                };
+
+                await _unitOfWork.EmployeeDailyWorkModes.Add(newRecord);
+            }
+
+            _unitOfWork.Save();
+            return true;
+        }
+
+        public async Task<IEnumerable<EmployeeWorkModeDTO>> GetDailyWorkModesAsync(DateTime? startDate = null, DateTime? endDate = null, long? employeeId = null)
+        {
+            DateTime startDt = startDate?.Date ?? DateTime.Today.AddDays(-60);
+            DateTime endDt = endDate?.Date ?? DateTime.Today.AddDays(30);
+            DateOnly start = DateOnly.FromDateTime(startDt);
+            DateOnly end = DateOnly.FromDateTime(endDt);
+
+            IEnumerable<EmployeeDailyWorkMode> modes;
+            if (employeeId.HasValue && employeeId.Value > 0)
+            {
+                modes = await _unitOfWork.EmployeeDailyWorkModes.GetByEmployeeAndDateRangeAsync(employeeId.Value, start, end);
+            }
+            else
+            {
+                modes = await _unitOfWork.EmployeeDailyWorkModes.GetAllForDateRangeAsync(start, end);
+            }
+
+            var employees = await _unitOfWork.Employees.GetAll();
+            var empDict = employees.ToDictionary(e => e.Id, e => $"{e.FirstName} {e.LastName}".Trim());
+
+            var result = new List<EmployeeWorkModeDTO>();
+            foreach (var m in modes.OrderByDescending(x => x.WorkDate))
+            {
+                empDict.TryGetValue(m.EmployeeId, out var empName);
+
+                string reqType = m.WorkMode switch
+                {
+                    "WFH" => "Work From Home",
+                    "OD" => "On-Duty",
+                    _ => "Office"
+                };
+
+                result.Add(new EmployeeWorkModeDTO
+                {
+                    EmployeeId = m.EmployeeId,
+                    EmployeeName = empName ?? $"Employee #{m.EmployeeId}",
+                    Date = m.WorkDate.ToString("yyyy-MM-dd"),
+                    WorkMode = m.WorkMode,
+                    RequestType = reqType,
+                    IsApproved = true,
+                    Status = "Approved",
+                    Reason = m.Notes
+                });
+            }
+
+            return result;
+        }
     }
 }
-
-
-
-
-

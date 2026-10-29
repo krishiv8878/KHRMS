@@ -46,6 +46,12 @@ namespace KHRMS.Services.Request
         public long? ManagerId { get; set; }
         public string? ManagerName { get; set; }
         public string? RejectionReason { get; set; }
+        public long? WorkflowInstanceId { get; set; }
+        public string? PendingWith { get; set; }
+        public bool CanApprove { get; set; }
+        public bool CanOverride { get; set; }
+        public bool CanReassign { get; set; }
+        public bool CanCancel { get; set; }
         public List<TimesheetDayViewDTO> Days { get; set; } = new();
     }
 }

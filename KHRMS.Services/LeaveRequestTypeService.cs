@@ -3,9 +3,13 @@ using KHRMS.Core.Models;
 using KHRMS.Infrastructure;
 using KHRMS.Services.Interfaces;
 using KHRMS.Services.Request;
+using KHRMS.Services.Workflow.Interfaces;
+using KHRMS.Services.Workflow.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Serilog;
+using System.Text.Json;
 
 namespace KHRMS.Services
 {
@@ -15,16 +19,23 @@ namespace KHRMS.Services
         private readonly ISendEmailService _sendEmailService;
         private readonly IUserContextService _userContext;
         public readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IWorkflowEngineService _workflowEngine;
+        private readonly IConfiguration _configuration;
+
         public LeaveRequestTypeService(
-      IUnitOfWork unitOfWork,
-      ISendEmailService emailRepository,
-      IUserContextService userContextService,IHttpContextAccessor httpContextAccessor)
+            IUnitOfWork unitOfWork,
+            ISendEmailService emailRepository,
+            IUserContextService userContextService,
+            IHttpContextAccessor httpContextAccessor,
+            IWorkflowEngineService workflowEngine,
+            IConfiguration configuration)
         {
             _unitOfWork = unitOfWork;
             _sendEmailService = emailRepository;
             _userContext = userContextService;
             _httpContextAccessor = httpContextAccessor;
-
+            _workflowEngine = workflowEngine;
+            _configuration = configuration;
         }
 
         public async Task<HashSet<DateOnly>> GetActiveHolidayDatesAsync()
@@ -85,14 +96,41 @@ namespace KHRMS.Services
                 employeeId = leaveRequest.EmployeeId > 0 ? leaveRequest.EmployeeId : 1;
             }
 
+            if (leaveRequest.EndDate.Date < leaveRequest.StartDate.Date)
+            {
+                throw new InvalidOperationException("End date cannot be earlier than start date.");
+            }
+
+            var holidayDates = await GetActiveHolidayDatesAsync();
+            var workingDays = CalculateWorkingLeaveDays(leaveRequest.StartDate, leaveRequest.EndDate, leaveRequest.LeaveMode, holidayDates);
+            if (workingDays <= 0)
+            {
+                throw new InvalidOperationException("The requested dates fall entirely on official holidays or weekends. Leave cannot be applied for non-working days.");
+            }
+
+            // Check for overlapping active requests (Approved or Pending) for the same employee
+            var allExistingLeaves = await _unitOfWork.LeaveRequest.GetAll();                                                                                            
+            var overlappingLeave = allExistingLeaves.FirstOrDefault(lr =>
+                lr.EmployeeId == employeeId &&
+                lr.IsDeleted != true &&
+                (string.Equals(lr.Status, "Approved", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(lr.Status, "Pending", StringComparison.OrdinalIgnoreCase)) &&
+                !(leaveRequest.EndDate.Date < lr.StartDate.Date || leaveRequest.StartDate.Date > lr.EndDate.Date));
+
+            if (overlappingLeave != null)
+            {
+                string statusDesc = string.Equals(overlappingLeave.Status, "Approved", StringComparison.OrdinalIgnoreCase) ? "an approved" : "a pending";
+                throw new InvalidOperationException($"You already have {statusDesc} leave request (#{overlappingLeave.Id}: {overlappingLeave.StartDate:yyyy-MM-dd} to {overlappingLeave.EndDate:yyyy-MM-dd}) overlapping with the selected dates.");
+            }
+
             var leaverequest = new LeaveRequest
             {
                 EmployeeId = employeeId,
                 StartDate = leaveRequest.StartDate,
                 EndDate = leaveRequest.EndDate,
                 CreatedDate = DateTime.Now,
-                IsActive = leaveRequest.IsActive,
-                IsDeleted = leaveRequest.IsDeleted,
+                IsActive = true,
+                IsDeleted = false,
                 LeaveReason = leaveRequest.LeaveReason,
                 LeaveMode = leaveRequest.LeaveMode,
                 LeaveTypeId = leaveRequest.LeaveTypeId,
@@ -100,6 +138,51 @@ namespace KHRMS.Services
             };
 
             await _unitOfWork.LeaveRequest.Add(leaverequest);
+            _unitOfWork.Save();
+
+            // Configurable Approval Workflow Engine Integration (toggleable per module)
+            bool isWorkflowEnabled = _configuration?.GetValue<bool>("WorkflowEngine:Modules:Leave", false) ?? false;
+            if (isWorkflowEnabled && _workflowEngine != null)
+            {
+                try
+                {
+                    var emp = await _unitOfWork.Employees.GetById(employeeId);
+                    var desig = emp?.DesignationId.HasValue == true ? await _unitOfWork.Designations.GetById(emp.DesignationId.Value) : null;
+                    var lt = await _unitOfWork.LeaveType.GetById(leaveRequest.LeaveTypeId);
+
+                    var context = new WorkflowContext
+                    {
+                        RequesterId = employeeId,
+                        RequestType = "Leave",
+                        Department = desig?.DepartmentCategory,
+                        Location = emp?.Branch,
+                        Attributes = new Dictionary<string, object>
+                        {
+                            { "Days", workingDays },
+                            { "LeaveType", lt?.Type ?? "Leave" },
+                            { "LeaveMode", leaveRequest.LeaveMode ?? "Full Day" },
+                            { "StartDate", leaveRequest.StartDate.ToString("yyyy-MM-dd") },
+                            { "EndDate", leaveRequest.EndDate.ToString("yyyy-MM-dd") },
+                            { "LeaveReason", leaveRequest.LeaveReason ?? "" }
+                        }
+                    };
+
+                    var instance = await _workflowEngine.StartWorkflowAsync("Leave", leaverequest.Id, employeeId, context);
+                    leaverequest.WorkflowInstanceId = instance.Id;
+                    _unitOfWork.LeaveRequest.Update(leaverequest);
+                    _unitOfWork.Save();
+
+                    // Fix B: Dispatch template email to first-step approvers
+                    await DispatchWorkflowSubmissionEmailsAsync(instance.Id, emp, leaverequest, workingDays, leaveRequest.LeaveReason);
+
+                    return true;
+                }
+                catch (WorkflowResolutionException ex)
+                {
+                    Log.Error(ex, "Failed to resolve workflow approvers for Leave request #{Id}", leaverequest.Id);
+                    throw new InvalidOperationException(ex.Message);
+                }
+            }
 
             var employee = await _unitOfWork.Employees.GetById(employeeId);
             if (employee == null)
@@ -121,9 +204,6 @@ namespace KHRMS.Services
             }
 
             _unitOfWork.Save();
-
-            var holidayDates = await GetActiveHolidayDatesAsync();
-            var workingDays = CalculateWorkingLeaveDays(leaverequest.StartDate, leaverequest.EndDate, leaverequest.LeaveMode, holidayDates);
 
             // Format dates for email
             string formattedStartDate = GetFormattedDate(leaverequest.StartDate);
@@ -210,29 +290,63 @@ namespace KHRMS.Services
             var employees = (await _unitOfWork.Employees.GetAll());
             var holidayDates = await GetActiveHolidayDatesAsync();
 
-            var result = from request in requests
-                         join leaveType in leavetypes on request.LeaveTypeId equals leaveType.Id
-                         join emp in employees on request.EmployeeId equals emp.Id into empGroup
-                         from emp in empGroup.DefaultIfEmpty()
-                         where request.EmployeeId == employeeId && request.IsActive == true
-                                 && request.IsDeleted != true
-                         select new LeaveReqestModel 
-                         {
-                             Id = request.Id,
-                             EmployeeId = request.EmployeeId,
-                             EmployeeName = emp != null ? $"{emp.FirstName} {emp.LastName}".Trim() : null,
-                             StartDate = request.StartDate,
-                             EndDate = request.EndDate,
-                             LeaveMode = request.LeaveMode,
-                             LeaveReason = request.LeaveReason,
-                             LeaveTypeName = leaveType.Type,
-                             LeaveTypeId = leaveType.Id,
-                             Status = request.Status,
-                             ActionBy = request.ActionBy,
-                             ActionDate = request.ActionDate,
-                             RejectionReason = request.RejectionReason,
-                             TotalDays = CalculateWorkingLeaveDays(request.StartDate, request.EndDate, request.LeaveMode, holidayDates)
-                         };
+            var wfSteps = (await _unitOfWork.WorkflowInstanceSteps.GetAll())
+                .Where(s => s.IsActive && !s.IsDeleted && s.Status == "Pending")
+                .ToDictionary(s => s.WorkflowInstanceId);
+            var empLookup = employees.ToDictionary(e => e.Id, e => $"{e.FirstName} {e.LastName}".Trim());
+
+            var rawList = (from request in requests
+                          join leaveType in leavetypes on request.LeaveTypeId equals leaveType.Id
+                          join emp in employees on request.EmployeeId equals emp.Id into empGroup
+                          from emp in empGroup.DefaultIfEmpty()
+                          where request.EmployeeId == employeeId && request.IsDeleted != true 
+                                && (request.IsActive != false || request.IsActive == null)
+                          select new { request, leaveType, emp }).ToList();
+
+            var result = rawList.Select(x =>
+            {
+                string? pendingWith = null;
+                if (x.request.WorkflowInstanceId.HasValue && wfSteps.TryGetValue(x.request.WorkflowInstanceId.Value, out var curStep))
+                {
+                    try
+                    {
+                        var appIds = JsonSerializer.Deserialize<List<long>>(curStep.EligibleApproverIdsJson) ?? new List<long>();
+                        pendingWith = string.Join(", ", appIds.Select(id => empLookup.TryGetValue(id, out var n) ? n : $"Emp #{id}"));
+                    }
+                    catch { }
+                }
+                else if (string.Equals(x.request.Status, "Pending", StringComparison.OrdinalIgnoreCase) && x.emp != null && x.emp.ManagerId.HasValue)
+                {
+                    if (empLookup.TryGetValue(x.emp.ManagerId.Value, out var mName))
+                    {
+                        pendingWith = mName;
+                    }
+                }
+
+                return new LeaveReqestModel 
+                {
+                    Id = x.request.Id,
+                    EmployeeId = x.request.EmployeeId,
+                    EmployeeName = x.emp != null ? $"{x.emp.FirstName} {x.emp.LastName}".Trim() : null,
+                    StartDate = x.request.StartDate,
+                    EndDate = x.request.EndDate,
+                    LeaveMode = x.request.LeaveMode,
+                    LeaveReason = x.request.LeaveReason,
+                    LeaveTypeName = x.leaveType.Type,
+                    LeaveTypeId = x.leaveType.Id,
+                    Status = x.request.Status,
+                    ActionBy = x.request.ActionBy,
+                    ActionDate = x.request.ActionDate,
+                    RejectionReason = x.request.RejectionReason,
+                    WorkflowInstanceId = x.request.WorkflowInstanceId,
+                    PendingWith = pendingWith,
+                    CanCancel = string.Equals(x.request.Status, "Pending", StringComparison.OrdinalIgnoreCase),
+                    CanApprove = false,
+                    CanOverride = false,
+                    CanReassign = false,
+                    TotalDays = CalculateWorkingLeaveDays(x.request.StartDate, x.request.EndDate, x.request.LeaveMode, holidayDates)
+                };
+            }).ToList();
 
             return result;
         }
@@ -274,6 +388,12 @@ namespace KHRMS.Services
             var leaveRequest = await _unitOfWork.LeaveRequest.GetById(LeaveRequestTypeId);
             if (leaveRequest != null)
             {
+                // Approved leaves for past dates or days that have already passed cannot be deleted
+                if (string.Equals(leaveRequest.Status, "Approved", StringComparison.OrdinalIgnoreCase) && leaveRequest.StartDate.Date < DateTime.Today)
+                {
+                    throw new InvalidOperationException("Approved leaves for previous days or dates that have already passed cannot be deleted.");
+                }
+
                 leaveRequest.IsDeleted = true;
                 leaveRequest.IsActive = false;
 
@@ -298,6 +418,31 @@ namespace KHRMS.Services
             var manager = await _unitOfWork.Employees.GetById(managerId);
 
             var isApprovedDecision = string.Equals(leaveRequest.Status, "Approved", StringComparison.OrdinalIgnoreCase);
+
+            // If this request is managed by the Workflow Engine, route through the central engine
+            if (leaveRequest1.WorkflowInstanceId.HasValue && leaveRequest1.WorkflowInstanceId.Value > 0 && _workflowEngine != null)
+            {
+                var action = isApprovedDecision ? "Approve" : "Reject";
+                var actionResult = await _workflowEngine.ActOnStepAsync(
+                    leaveRequest1.WorkflowInstanceId.Value,
+                    managerId,
+                    new WorkflowActionRequest { Action = action, Reason = leaveRequest.RejectionReason });
+
+                if (!actionResult.Success)
+                {
+                    Log.Warning("Workflow action rejected for Leave #{Id}: {Message} ({StatusCode})",
+                        leaveRequest1.Id, actionResult.Message, actionResult.StatusCode);
+                    throw new InvalidOperationException(actionResult.Message);
+                }
+
+                // Fix B: If workflow completed or rejected, send template email to employee
+                if (actionResult.IsWorkflowCompleted && employee != null && !string.IsNullOrEmpty(employee.EmailAddress))
+                {
+                    await DispatchWorkflowDecisionEmailAsync(leaveRequest1, employee, manager, isApprovedDecision, leaveRequest.RejectionReason);
+                }
+
+                return true;
+            }
 
             leaveRequest1.Status = isApprovedDecision ? "Approved" : "Rejected";
             leaveRequest1.ActionBy = managerId;
@@ -360,8 +505,8 @@ namespace KHRMS.Services
                     Category = "Leave",
                     Type = isApprovedDecision ? "approval" : "alert",
                     Icon = isApprovedDecision ? "check_circle" : "cancel",
-                    IconBg = isApprovedDecision ? "#f0fdf4" : "#fef2f2",
-                    IconColor = isApprovedDecision ? "#16a34a" : "#dc2626",
+                    IconBg = "#f0fdf4",
+                    IconColor = "#16a34a",
                     Route = "/index/leaveRequest",
                     IsRead = false,
                     CreatedDate = DateTime.UtcNow,
@@ -391,6 +536,31 @@ namespace KHRMS.Services
                 Log.Warning("User {UserId} unauthorized to cancel leave request {LeaveId} owned by employee {OwnerId}",
                     currentUserId, leaveRequestId, leaveRequest.EmployeeId);
                 return false;
+            }
+
+            // If managed by the Workflow Engine, route cancellation through the engine
+            if (leaveRequest.WorkflowInstanceId.HasValue && leaveRequest.WorkflowInstanceId.Value > 0 && _workflowEngine != null)
+            {
+                return await _workflowEngine.CancelWorkflowAsync(leaveRequest.WorkflowInstanceId.Value, currentUserId, reason ?? "Cancelled by Employee");
+            }
+
+            // Already cancelled or rejected
+            if (string.Equals(leaveRequest.Status, "Cancelled", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("This leave request is already cancelled.");
+            }
+            if (string.Equals(leaveRequest.Status, "Rejected", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Rejected leave requests cannot be cancelled.");
+            }
+
+            // Approved leaves for past dates or days that have already passed cannot be cancelled
+            if (string.Equals(leaveRequest.Status, "Approved", StringComparison.OrdinalIgnoreCase))
+            {
+                if (leaveRequest.StartDate.Date < DateTime.Today)
+                {
+                    throw new InvalidOperationException("Approved leaves for previous days or dates that have already passed cannot be cancelled.");
+                }
             }
 
             leaveRequest.Status = "Cancelled";
@@ -445,46 +615,114 @@ namespace KHRMS.Services
                 var employeesList = await _unitOfWork.Employees.GetAll();
                 var holidayDates = await GetActiveHolidayDatesAsync();
 
+                var wfInstances = (await _unitOfWork.WorkflowInstances.GetAll())
+                    .Where(i => i.IsActive && !i.IsDeleted && string.Equals(i.RequestType, "Leave", StringComparison.OrdinalIgnoreCase))
+                    .ToDictionary(i => i.Id);
+                var wfSteps = (await _unitOfWork.WorkflowInstanceSteps.GetAll())
+                    .Where(s => s.IsActive && !s.IsDeleted && s.Status == "Pending")
+                    .ToDictionary(s => s.WorkflowInstanceId);
+                var empLookup = employeesList.ToDictionary(e => e.Id, e => $"{e.FirstName} {e.LastName}".Trim());
+
+                // Fix A: Identify workflow instances where the current user is an active eligible approver
+                var eligibleInstanceIds = new HashSet<long>();
+                foreach (var step in wfSteps.Values)
+                {
+                    try
+                    {
+                        var appIds = JsonSerializer.Deserialize<List<long>>(step.EligibleApproverIdsJson) ?? new List<long>();
+                        if (appIds.Contains(currentUserId))
+                        {
+                            eligibleInstanceIds.Add(step.WorkflowInstanceId);
+                        }
+                    }
+                    catch { }
+                }
+
                 var query = from lr in leaveRequestsList
                             join leaveType in leaveTypesList on lr.LeaveTypeId equals leaveType.Id
                             join emp in employeesList on lr.EmployeeId equals emp.Id
-                            where lr.IsActive == true && lr.IsDeleted != true
+                            where lr.IsDeleted != true && (lr.IsActive != false || lr.IsActive == null)
                             select new { lr, leaveType, emp };
 
-                // If not Admin or HR, restrict to reportees of this manager
+                // If not Admin or HR, restrict to reportees of this manager, self, OR requests pending approval by current user
                 if (!isAdminOrHr)
                 {
-                    query = query.Where(x => x.emp.ManagerId == currentUserId || x.lr.EmployeeId == currentUserId);
+                    query = query.Where(x => 
+                        x.emp.ManagerId == currentUserId || 
+                        x.lr.EmployeeId == currentUserId ||
+                        (x.lr.WorkflowInstanceId.HasValue && eligibleInstanceIds.Contains(x.lr.WorkflowInstanceId.Value)));
                 }
 
-                var leaveRequests = query.Select(x => new LeaveRequest
+                bool canOverrideGlobal = await _userContext.HasPermissionAsync("REQUEST_OVERRIDE");
+                bool canReassignGlobal = await _userContext.HasPermissionAsync("REQUEST_REASSIGN");
+
+                var leaveRequests = query.ToList().Select(x =>
                 {
-                    Id = x.lr.Id,
-                    StartDate = x.lr.StartDate,
-                    EndDate = x.lr.EndDate,
-                    LeaveMode = x.lr.LeaveMode,
-                    LeaveReason = x.lr.LeaveReason,
-                    LeaveTypeId = x.lr.LeaveTypeId,
-                    Status = x.lr.Status,
-                    ActionBy = x.lr.ActionBy,
-                    ActionDate = x.lr.ActionDate,
-                    RejectionReason = x.lr.RejectionReason,
-                    TotalDays = CalculateWorkingLeaveDays(x.lr.StartDate, x.lr.EndDate, x.lr.LeaveMode, holidayDates),
-                    EmployeeId = x.emp.Id,
-                    Employee = new Employee
+                    bool canApprove = false;
+                    bool canOverride = false;
+                    bool canReassign = false;
+                    bool canCancel = (x.lr.EmployeeId == currentUserId || isAdminOrHr) && string.Equals(x.lr.Status, "Pending", StringComparison.OrdinalIgnoreCase);
+                    string? pendingWith = null;
+
+                    if (x.lr.WorkflowInstanceId.HasValue && wfInstances.TryGetValue(x.lr.WorkflowInstanceId.Value, out var inst))
                     {
-                        FirstName = x.emp.FirstName,
-                        LastName = x.emp.LastName,
-                        EmailAddress = x.emp.EmailAddress,
-                        ProfileImage = x.emp.ProfileImage,
-                        EmployeeCode = x.emp.EmployeeCode
-                    },
-                    LeaveType = new LeaveType
-                    {
-                        Type = x.leaveType.Type,
-                        Description = x.leaveType.Description,
-                        Id = x.leaveType.Id,
+                        if (wfSteps.TryGetValue(inst.Id, out var curStep))
+                        {
+                            var appIds = new List<long>();
+                            try { appIds = JsonSerializer.Deserialize<List<long>>(curStep.EligibleApproverIdsJson) ?? new List<long>(); } catch { }
+                            pendingWith = string.Join(", ", appIds.Select(id => empLookup.TryGetValue(id, out var n) ? n : $"Emp #{id}"));
+                            canApprove = string.Equals(inst.Status, "Pending", StringComparison.OrdinalIgnoreCase) && appIds.Contains(currentUserId);
+                            canOverride = string.Equals(inst.Status, "Pending", StringComparison.OrdinalIgnoreCase) && canOverrideGlobal && !appIds.Contains(currentUserId);
+                            canReassign = string.Equals(inst.Status, "Pending", StringComparison.OrdinalIgnoreCase) && canReassignGlobal;
+                        }
                     }
+                    else if (string.Equals(x.lr.Status, "Pending", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Legacy fallback
+                        canApprove = isAdminOrHr || x.emp.ManagerId == currentUserId;
+                        canOverride = false;
+                        canReassign = false;
+                        if (x.emp.ManagerId.HasValue && empLookup.TryGetValue(x.emp.ManagerId.Value, out var mName))
+                        {
+                            pendingWith = mName;
+                        }
+                    }
+
+                    return new LeaveRequest
+                    {
+                        Id = x.lr.Id,
+                        StartDate = x.lr.StartDate,
+                        EndDate = x.lr.EndDate,
+                        LeaveMode = x.lr.LeaveMode,
+                        LeaveReason = x.lr.LeaveReason,
+                        LeaveTypeId = x.lr.LeaveTypeId,
+                        Status = x.lr.Status,
+                        ActionBy = x.lr.ActionBy,
+                        ActionDate = x.lr.ActionDate,
+                        RejectionReason = x.lr.RejectionReason,
+                        WorkflowInstanceId = x.lr.WorkflowInstanceId,
+                        TotalDays = CalculateWorkingLeaveDays(x.lr.StartDate, x.lr.EndDate, x.lr.LeaveMode, holidayDates),
+                        EmployeeId = x.emp.Id,
+                        PendingWith = pendingWith,
+                        CanApprove = canApprove,
+                        CanOverride = canOverride,
+                        CanReassign = canReassign,
+                        CanCancel = canCancel,
+                        Employee = new Employee
+                        {
+                            FirstName = x.emp.FirstName,
+                            LastName = x.emp.LastName,
+                            EmailAddress = x.emp.EmailAddress,
+                            ProfileImage = x.emp.ProfileImage,
+                            EmployeeCode = x.emp.EmployeeCode
+                        },
+                        LeaveType = new LeaveType
+                        {
+                            Type = x.leaveType.Type,
+                            Description = x.leaveType.Description,
+                            Id = x.leaveType.Id,
+                        }
+                    };
                 });
 
                 return leaveRequests.ToList();
@@ -500,7 +738,7 @@ namespace KHRMS.Services
             var empId = targetEmployeeId ?? _userContext.GetCurrentEmployeeId();
             var leaveTypes = (await _unitOfWork.LeaveType.GetAll()).Where(t => t.IsActive == true && t.IsDeleted != true).ToList();
             var leaveRequests = (await _unitOfWork.LeaveRequest.GetAll())
-                                .Where(lr => lr.EmployeeId == empId && lr.IsActive == true && lr.IsDeleted != true)
+                                .Where(lr => lr.EmployeeId == empId && lr.IsDeleted != true && (lr.IsActive != false || lr.IsActive == null))
                                 .ToList();
             var holidayDates = await GetActiveHolidayDatesAsync();
 
@@ -564,5 +802,87 @@ namespace KHRMS.Services
         }
 
       
+        private async Task DispatchWorkflowSubmissionEmailsAsync(long instanceId, Employee? requester, LeaveRequest leaveRequest, double workingDays, string? reason)
+        {
+            try
+            {
+                var steps = (await _unitOfWork.WorkflowInstanceSteps.GetAll())
+                    .Where(s => s.WorkflowInstanceId == instanceId && s.Status == "Pending" && s.IsActive && !s.IsDeleted)
+                    .ToList();
+
+                var allEmps = (await _unitOfWork.Employees.GetAll()).ToDictionary(e => e.Id);
+                var employeeName = requester != null ? $"{requester.FirstName} {requester.LastName}".Trim() : $"Employee #{leaveRequest.EmployeeId}";
+                string formattedStartDate = GetFormattedDate(leaveRequest.StartDate);
+                string formattedEndDate = GetFormattedDate(leaveRequest.EndDate);
+                string daysSuffix = workingDays == 1 ? "Day" : "Days";
+
+                foreach (var step in steps)
+                {
+                    var appIds = JsonSerializer.Deserialize<List<long>>(step.EligibleApproverIdsJson) ?? new List<long>();
+                    foreach (var appId in appIds)
+                    {
+                        if (allEmps.TryGetValue(appId, out var approverEmp) && !string.IsNullOrEmpty(approverEmp.EmailAddress))
+                        {
+                            var approverName = $"{approverEmp.FirstName} {approverEmp.LastName}".Trim();
+                            var dict = new Dictionary<string, string>
+                            {
+                                { "ManagerName", approverName },
+                                { "StartDate", formattedStartDate },
+                                { "EndDate", formattedEndDate },
+                                { "Duration", $"{workingDays} Working {daysSuffix}" },
+                                { "LeaveType", "LeaveRequest" },
+                                { "EmployeeName", employeeName },
+                                { "ManagerEmail", approverEmp.EmailAddress },
+                                { "LeaveDescription", reason ?? string.Empty }
+                            };
+                            var subject = $"Leave Request from {employeeName} ({workingDays} Working {daysSuffix})";
+                            await _sendEmailService.SendTemplateEmailAsync(approverEmp.EmailAddress, subject, dict, "LeaveRequest");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning("Could not send workflow leave notification email: {Message}", ex.Message);
+            }
+        }
+
+        private async Task DispatchWorkflowDecisionEmailAsync(LeaveRequest leaveRequest, Employee employee, Employee? manager, bool isApprovedDecision, string? rejectionReason)
+        {
+            try
+            {
+                var holidayDates = await GetActiveHolidayDatesAsync();
+                var workingDays = CalculateWorkingLeaveDays(leaveRequest.StartDate, leaveRequest.EndDate, leaveRequest.LeaveMode, holidayDates);
+                string daysSuffix = workingDays == 1 ? "Day" : "Days";
+                var managerName = manager != null ? $"{manager.FirstName} {manager.LastName}".Trim() : "Approver";
+                var managerEmail = manager?.EmailAddress ?? string.Empty;
+
+                var dict = new Dictionary<string, string>
+                {
+                    { "ManagerName", managerName },
+                    { "StartDate", GetFormattedDate(leaveRequest.StartDate) },
+                    { "EndDate", GetFormattedDate(leaveRequest.EndDate) },
+                    { "Duration", $"{workingDays} Working {daysSuffix}" },
+                    { "LeaveReason", isApprovedDecision ? "Approval Request" : (rejectionReason ?? "Request Rejected") },
+                    { "EmployeeName", $"{employee.FirstName} {employee.LastName}".Trim() },
+                    { "ManagerEmail", managerEmail }
+                };
+
+                if (isApprovedDecision)
+                {
+                    string subject = $"Your Leave Request ({workingDays} {daysSuffix}) Has Been Approved";
+                    await _sendEmailService.SendTemplateEmailAsync(employee.EmailAddress, subject, dict, "ApprovalRequest");
+                }
+                else
+                {
+                    string subject = $"Your Leave Request Has Been Rejected";
+                    await _sendEmailService.SendTemplateEmailAsync(employee.EmailAddress, subject, dict, "RejectRequest");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning("Could not send leave decision email: {Message}", ex.Message);
+            }
+        }
     }
 }

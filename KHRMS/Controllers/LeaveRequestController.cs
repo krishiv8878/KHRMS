@@ -128,25 +128,38 @@ namespace KHRMS
                 return BadRequest("Invalid data.");
             }
 
-            var result = await _leaveRequestTypeService.AddLeaveRequestType(leaveRequest);
-            if (result)
+            try
             {
-                Log.Information("LeaveRequestController - Leave request added successfully.");
-                return Ok(new ApiResponse<bool>
+                var result = await _leaveRequestTypeService.AddLeaveRequestType(leaveRequest);
+                if (result)
                 {
-                    StatusCode = (int)HttpStatusCode.OK,
-                    Message = ApiMessageConstant.LeaveRequestTypeAdded,
-                    Data = true
+                    Log.Information("LeaveRequestController - Leave request added successfully.");
+                    return Ok(new ApiResponse<bool>
+                    {
+                        StatusCode = (int)HttpStatusCode.OK,
+                        Message = ApiMessageConstant.LeaveRequestTypeAdded,
+                        Data = true
+                    });
+                }
+
+                Log.Warning("LeaveRequestController - Failed to add leave request.");
+                return BadRequest(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = ApiMessageConstant.LeaveRequestTypeNotAdded,
+                    Data = false
                 });
             }
-
-            Log.Warning("LeaveRequestController - Failed to add leave request.");
-            return BadRequest(new ApiResponse<bool>
+            catch (InvalidOperationException ex)
             {
-                StatusCode = (int)HttpStatusCode.BadRequest,
-                Message = ApiMessageConstant.LeaveRequestTypeNotAdded,
-                Data = false
-            });
+                Log.Warning("LeaveRequestController - Validation failed: {Message}", ex.Message);
+                return BadRequest(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = ex.Message,
+                    Data = false
+                });
+            }
         }
 
 
@@ -189,25 +202,48 @@ namespace KHRMS
         {
             Log.Information("LeaveRequestController - DeleteLeaveRequest called for ID: {Id}", id);
 
-            var result = await _leaveRequestTypeService.DeleteLeaveRequestType(id);
-            if (result)
+            try
             {
-                Log.Information("LeaveRequestController - Leave request deleted for ID: {Id}", id);
-                return Ok(new ApiResponse<bool>
+                var result = await _leaveRequestTypeService.DeleteLeaveRequestType(id);
+                if (result)
                 {
-                    StatusCode = (int)HttpStatusCode.OK,
-                    Message = ApiMessageConstant.LeaveRequestDeleted,
-                    Data = true
+                    Log.Information("LeaveRequestController - Leave request deleted for ID: {Id}", id);
+                    return Ok(new ApiResponse<bool>
+                    {
+                        StatusCode = (int)HttpStatusCode.OK,
+                        Message = ApiMessageConstant.LeaveRequestDeleted,
+                        Data = true
+                    });
+                }
+
+                Log.Warning("LeaveRequestController - Failed to delete leave request for ID: {Id}", id);
+                return BadRequest(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = ApiMessageConstant.LeaveRequestNotDeleted,
+                    Data = false
                 });
             }
-
-            Log.Warning("LeaveRequestController - Failed to delete leave request for ID: {Id}", id);
-            return BadRequest(new ApiResponse<bool>
+            catch (InvalidOperationException ex)
             {
-                StatusCode = (int)HttpStatusCode.BadRequest,
-                Message = ApiMessageConstant.LeaveRequestNotDeleted,
-                Data = false
-            });
+                Log.Warning("LeaveRequestController - Blocked deleting leave request {Id}: {Message}", id, ex.Message);
+                return BadRequest(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = ex.Message,
+                    Data = false
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "LeaveRequestController - Error deleting leave request {Id}", id);
+                return StatusCode(500, new ApiResponse<string>
+                {
+                    StatusCode = 500,
+                    Message = "Internal server error while deleting leave request.",
+                    Data = null
+                });
+            }
         }
 
 
@@ -300,6 +336,16 @@ namespace KHRMS
                     Data = true
                 });
             }
+            catch (InvalidOperationException ex)
+            {
+                Log.Warning("LeaveRequestController - Blocked cancelling leave request {Id}: {Message}", dto.LeaveRequestId, ex.Message);
+                return BadRequest(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = ex.Message,
+                    Data = false
+                });
+            }
             catch (Exception ex)
             {
                 Log.Error(ex, "Error cancelling leave request ID: {Id}", dto.LeaveRequestId);
@@ -344,6 +390,3 @@ namespace KHRMS
         public string? Reason { get; set; }
     }
 }
-
-
-

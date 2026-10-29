@@ -142,14 +142,37 @@ namespace KHRMS.Controllers
                 });
             }
 
-            await _attendanceRequestService.UpdateAsync(attendanceRequest);
-            Log.Information("AttendanceRequest updated successfully.");
-            return Ok(new ApiResponse<bool>
+            try
             {
-                StatusCode = (int)HttpStatusCode.OK,
-                Message = ApiMessageConstant.AttendanceRequestUpdated,
-                Data = true
-            });
+                await _attendanceRequestService.UpdateAsync(attendanceRequest);
+                Log.Information("AttendanceRequest updated successfully.");
+                return Ok(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.OK,
+                    Message = ApiMessageConstant.AttendanceRequestUpdated,
+                    Data = true
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+                Log.Warning("Validation failed for UpdateAttendanceRequest: {Message}", ex.Message);
+                return BadRequest(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = ex.Message,
+                    Data = false
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error while updating AttendanceRequest.");
+                return StatusCode((int)HttpStatusCode.InternalServerError, new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.InternalServerError,
+                    Message = ex.Message,
+                    Data = false
+                });
+            }
         }
 
 
@@ -169,6 +192,79 @@ namespace KHRMS.Controllers
                 Data = true
             });
         }
-    }
 
+        [HttpPost("SetDailyWorkMode")]
+        public async Task<IActionResult> SetDailyWorkMode([FromBody] DailyWorkModeDTO dto)
+        {
+            Log.Information("SetDailyWorkMode API called for Employee {EmpId}, Date {Date}, WorkMode {Mode}.", dto?.EmployeeId, dto?.Date, dto?.WorkMode);
+
+            if (dto == null)
+            {
+                return BadRequest(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = "Invalid daily work mode data.",
+                    Data = false
+                });
+            }
+
+            try
+            {
+                var result = await _attendanceRequestService.SetDailyWorkModeAsync(dto, User);
+                return Ok(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.OK,
+                    Message = "Daily work mode successfully recorded.",
+                    Data = result
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+                Log.Warning("Validation failed for SetDailyWorkMode: {Message}", ex.Message);
+                return BadRequest(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = ex.Message,
+                    Data = false
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error while setting daily work mode.");
+                return StatusCode((int)HttpStatusCode.InternalServerError, new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.InternalServerError,
+                    Message = ex.Message,
+                    Data = false
+                });
+            }
+        }
+
+        [HttpGet("GetDailyWorkModes")]
+        public async Task<IActionResult> GetDailyWorkModes([FromQuery] DateTime? startDate, [FromQuery] DateTime? endDate, [FromQuery] long? employeeId)
+        {
+            Log.Information("GetDailyWorkModes API called for range {Start} to {End}, EmpId: {EmpId}.", startDate, endDate, employeeId);
+
+            try
+            {
+                var workModes = await _attendanceRequestService.GetDailyWorkModesAsync(startDate, endDate, employeeId);
+                return Ok(new ApiResponse<IEnumerable<EmployeeWorkModeDTO>>
+                {
+                    StatusCode = (int)HttpStatusCode.OK,
+                    Message = "Daily work modes retrieved successfully.",
+                    Data = workModes
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error while retrieving daily work modes.");
+                return StatusCode((int)HttpStatusCode.InternalServerError, new ApiResponse<IEnumerable<EmployeeWorkModeDTO>>
+                {
+                    StatusCode = (int)HttpStatusCode.InternalServerError,
+                    Message = ex.Message,
+                    Data = null
+                });
+            }
+        }
+    }
 }

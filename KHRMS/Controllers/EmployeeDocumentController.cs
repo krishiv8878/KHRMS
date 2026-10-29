@@ -39,6 +39,36 @@ namespace KHRMS
             _userContextService = userContextService;
         }
 
+        private bool CanAccessDocument(EmployeeDocumentInfo doc)
+        {
+            if (_userContextService == null) return true;
+            if (_userContextService.IsAdmin() || _userContextService.IsHR()) return true;
+
+            var currentUserId = _userContextService.GetCurrentEmployeeId();
+            if (currentUserId > 0 && (doc.EmployeeId == currentUserId || doc.UploadedBy == currentUserId))
+            {
+                return true;
+            }
+
+            // Public company policies that are approved can be accessed by all authenticated employees
+            bool isApproved = !string.IsNullOrWhiteSpace(doc.Status) && doc.Status.Equals("Approved", StringComparison.OrdinalIgnoreCase);
+            bool isPublicCategory = string.Equals(doc.Category, "Company Policies", StringComparison.OrdinalIgnoreCase) ||
+                                   string.Equals(doc.Category, "Policies", StringComparison.OrdinalIgnoreCase) ||
+                                   string.Equals(doc.Category, "General", StringComparison.OrdinalIgnoreCase);
+
+            return isApproved && isPublicCategory;
+        }
+
+        private bool CanDeleteDocument(EmployeeDocumentInfo doc)
+        {
+            if (_userContextService == null) return true;
+            if (_userContextService.IsAdmin() || _userContextService.IsHR()) return true;
+
+            var currentUserId = _userContextService.GetCurrentEmployeeId();
+            return currentUserId > 0 && (doc.EmployeeId == currentUserId || doc.UploadedBy == currentUserId);
+        }
+
+
         [HttpGet("GetAllDocumentsInfo")]
         public async Task<ActionResult<ApiResponse<IEnumerable<EmployeeDocumentInfo>>>> GetAll()
         {
@@ -48,17 +78,13 @@ namespace KHRMS
 
             if (_userContextService != null)
             {
-                var currentUserId = _userContextService.GetCurrentEmployeeId();
                 var isHrOrAdmin = _userContextService.IsHR() || _userContextService.IsAdmin();
 
                 // HR / Admins see all documents (Pending, Approved, Rejected).
-                // Regular employees see all Approved documents, or documents they uploaded themselves (regardless of status).
-                if (!isHrOrAdmin && currentUserId > 0)
+                // Regular employees see ONLY their own documents (regardless of status), plus approved public company policies.
+                if (!isHrOrAdmin)
                 {
-                    documents = documents.Where(d =>
-                        (!string.IsNullOrWhiteSpace(d.Status) && d.Status.Equals("Approved", StringComparison.OrdinalIgnoreCase)) ||
-                        d.EmployeeId == currentUserId ||
-                        d.UploadedBy == currentUserId);
+                    documents = documents.Where(CanAccessDocument);
                 }
             }
 
@@ -91,6 +117,17 @@ namespace KHRMS
                 {
                     StatusCode = (int)HttpStatusCode.OK,
                     Message = ApiMessageConstant.EmployeeDocumentNotFound,
+                    Data = null
+                });
+            }
+
+            if (!CanAccessDocument(document))
+            {
+                Log.Warning("EmployeeDocumentController - Access denied to Document with ID: {Id}", id);
+                return StatusCode((int)HttpStatusCode.Forbidden, new ApiResponse<EmployeeDocumentInfo>
+                {
+                    StatusCode = (int)HttpStatusCode.Forbidden,
+                    Message = "You do not have permission to access this document.",
                     Data = null
                 });
             }
@@ -153,7 +190,8 @@ namespace KHRMS
                 await file.CopyToAsync(stream);
 
                 var currentUserId = _userContextService?.GetCurrentEmployeeId() ?? 0;
-                long targetEmpId = employeeId > 0 ? employeeId : currentUserId;
+                var isHrOrAdmin = _userContextService != null && (_userContextService.IsAdmin() || _userContextService.IsHR());
+                long targetEmpId = (isHrOrAdmin && employeeId > 0) ? employeeId : (currentUserId > 0 ? currentUserId : employeeId);
                 long targetDocId = (documentId.HasValue && documentId.Value > 0) ? documentId.Value : (docId.HasValue ? docId.Value : 0);
 
                 EmployeeDocumentInfo? existingDoc = null;
@@ -278,6 +316,12 @@ namespace KHRMS
                 return NotFound("Document not found.");
             }
 
+            if (!CanAccessDocument(document))
+            {
+                Log.Warning("EmployeeDocumentController - Access denied to view document file with ID: {Id}", id);
+                return StatusCode((int)HttpStatusCode.Forbidden, "You do not have permission to view this document.");
+            }
+
             var filePath = document.FilePath;
             if (!System.IO.File.Exists(filePath))
             {
@@ -303,6 +347,28 @@ namespace KHRMS
         public async Task<IActionResult> DeleteDocument(long id)
         {
             Log.Information("EmployeeDocumentController - DeleteDocument called with ID: {Id}", id);
+
+            var document = await _employeeDocumentService.GetByIdAsync(id);
+            if (document == null)
+            {
+                return Ok(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.OK,
+                    Message = ApiMessageConstant.EmployeeDocumentNotFound,
+                    Data = false
+                });
+            }
+
+            if (!CanDeleteDocument(document))
+            {
+                Log.Warning("EmployeeDocumentController - Access denied to delete document with ID: {Id}", id);
+                return StatusCode((int)HttpStatusCode.Forbidden, new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.Forbidden,
+                    Message = "You do not have permission to delete this document.",
+                    Data = false
+                });
+            }
 
             var isDeleted = await _employeeDocumentService.DeleteAsync(id);
             if (isDeleted)

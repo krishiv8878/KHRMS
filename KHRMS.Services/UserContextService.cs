@@ -1,3 +1,5 @@
+using KHRMS.Core;
+using KHRMS.Infrastructure;
 using KHRMS.Services.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -31,11 +33,46 @@ namespace KHRMS.Services
         {
             if (User == null) return new List<string>();
 
-            return User.FindAll(ClaimTypes.Role)
+            var roles = User.FindAll(ClaimTypes.Role)
                 .Select(c => c.Value)
                 .Union(User.FindAll("role").Select(c => c.Value))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
+
+            var roleTypeClaim = User.FindFirst("roleType")?.Value;
+            if (!string.IsNullOrWhiteSpace(roleTypeClaim))
+            {
+                roles.AddRange(roleTypeClaim.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+            }
+
+            // Fallback: If roles are empty or only "Employee", inspect database mappings for current employee
+            var empId = GetCurrentEmployeeId();
+            if (empId > 0 && (roles.Count == 0 || roles.All(r => string.Equals(r, "Employee", StringComparison.OrdinalIgnoreCase))))
+            {
+                try
+                {
+                    using var scope = _serviceProvider.CreateScope();
+                    var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+                    var mappings = unitOfWork.EmployeeRoleMappings.GetAll().GetAwaiter().GetResult()
+                        .Where(m => m.EmployeeId == empId && m.IsActive != false && m.IsDeleted != true)
+                        .Select(m => m.RoleId)
+                        .ToList();
+
+                    if (mappings.Count > 0)
+                    {
+                        var dbRoles = unitOfWork.RoleMaster.GetAll().GetAwaiter().GetResult()
+                            .Where(r => mappings.Contains(r.Id) && !string.IsNullOrWhiteSpace(r.RoleName) && r.IsActive != false && r.IsDeleted != true)
+                            .Select(r => r.RoleName!)
+                            .ToList();
+                        roles.AddRange(dbRoles);
+                    }
+                }
+                catch
+                {
+                    // Ignore DB lookup fallback failures
+                }
+            }
+
+            return roles.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         }
 
         public bool IsInRole(string role)

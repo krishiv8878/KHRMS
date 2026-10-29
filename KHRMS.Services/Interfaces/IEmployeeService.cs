@@ -1,4 +1,4 @@
-﻿using KHRMS.Core;
+using KHRMS.Core;
 using KHRMS.Services.Request;
 using System.Linq.Expressions;
 
@@ -8,6 +8,7 @@ namespace KHRMS.Services
     {
         Task<bool> CreateEmployee(EmployeeRequestModel employeeRequestModel);
         Task<IEnumerable<EmployeeRequestModel>> GetAllEmployees();
+        Task<IEnumerable<EmployeeLookupDto>> GetEmployeesLookupAsync();
         Task<Employee> GetEmployeeById(int employeeId);
         Task<bool> UpdateEmployee(EmployeeRequestModel employeeRequestModel);
         Task<bool> ExistingEmployeeUpdate(EmployeeRequestModel employeeRequestModel);

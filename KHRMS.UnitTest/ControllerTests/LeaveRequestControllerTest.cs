@@ -8,6 +8,7 @@ using KHRMS.Core.Models;
 using KHRMS.Infrastructure;
 using KHRMS.Infrastructure.Migrations;
 using KHRMS.Services;
+using KHRMS.Services.Interfaces;
 using KHRMS.Services.Request;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -19,12 +20,14 @@ namespace KHRMS.UnitTest.ControllerTests
     public class LeaveRequestControllerTest
     {
         private readonly Mock<ILeaveRequestTypeService> _mock;
+        private readonly Mock<IUserContextService> _mock2;
         private readonly IHttpContextAccessor _mockHttpContextAccessor;
         private readonly LeaveRequestController _controller;
         public LeaveRequestControllerTest()
         {
             _mock = new Mock<ILeaveRequestTypeService>();
-            _controller = new LeaveRequestController(_mock.Object, _mockHttpContextAccessor);
+            _mock2 = new Mock<IUserContextService>();
+            _controller = new LeaveRequestController(_mock.Object, _mockHttpContextAccessor, _mock2.Object);
         }
 
         [Fact]

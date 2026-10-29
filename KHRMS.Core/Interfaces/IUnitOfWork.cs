@@ -74,6 +74,17 @@ namespace KHRMS.Core
         IJobInterviewRepository JobInterviews { get; }
         IJobOfferRepository JobOffers { get; }
 
+        IEmployeeDailyWorkModeRepository EmployeeDailyWorkModes { get; }
+
+        // Configurable Approval Workflow System Repositories
+        IWorkflowDefinitionRepository WorkflowDefinitions { get; }
+        IWorkflowStepRepository WorkflowSteps { get; }
+        IWorkflowRoutingRuleRepository WorkflowRoutingRules { get; }
+        IWorkflowInstanceRepository WorkflowInstances { get; }
+        IWorkflowInstanceStepRepository WorkflowInstanceSteps { get; }
+        IWorkflowDelegationRepository WorkflowDelegations { get; }
+        IWorkflowAuditLogRepository WorkflowAuditLogs { get; }
+
         int Save();
     }
 }

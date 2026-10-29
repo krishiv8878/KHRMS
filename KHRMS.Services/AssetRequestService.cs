@@ -11,11 +11,13 @@ namespace KHRMS.Services
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<AssetRequestService> _logger;
+        private readonly IUserContextService _userContextService;
 
-        public AssetRequestService(IUnitOfWork unitOfWork, ILogger<AssetRequestService> logger)
+        public AssetRequestService(IUnitOfWork unitOfWork, ILogger<AssetRequestService> logger, IUserContextService userContextService)
         {
             _unitOfWork = unitOfWork;
             _logger = logger;
+            _userContextService = userContextService;
         }
 
         public async Task<AssetRequestResponseModel?> CreateAssetRequest(CreateAssetRequestModel model)
@@ -24,6 +26,13 @@ namespace KHRMS.Services
             {
                 if (model == null)
                     return null;
+
+                var currentEmpId = _userContextService.GetCurrentEmployeeId();
+                var canManage = await _userContextService.HasPermissionAsync("ASSET_MANAGE") || _userContextService.IsAdmin() || _userContextService.IsHR();
+                if (!canManage && currentEmpId > 0)
+                {
+                    model.EmployeeId = currentEmpId;
+                }
 
                 var asset = (await _unitOfWork.AssetsMasters.GetAll())
                     .FirstOrDefault(a => a.Id == model.AssetId && !a.IsDeleted);
@@ -442,17 +451,54 @@ namespace KHRMS.Services
         {
             try
             {
+                var currentEmpId = _userContextService.GetCurrentEmployeeId();
+                var canViewAll = await _userContextService.HasPermissionAsync("ASSET_VIEW_ALL") || _userContextService.IsAdmin() || _userContextService.IsHR();
+                var isManager = _userContextService.IsManager() || await _userContextService.HasPermissionAsync("ASSET_APPROVE");
+
+                if (!canViewAll && currentEmpId <= 0)
+                {
+                    return new List<AssetRequestResponseModel>();
+                }
+
                 var allRequests = (await _unitOfWork.AssetRequests.GetAll())
                     .Where(r => !r.IsDeleted)
                     .ToList();
 
-                if (employeeId.HasValue && employeeId.Value > 0)
+                var allEmployeesList = (await _unitOfWork.Employees.GetAll()).ToList();
+
+                if (canViewAll)
                 {
-                    allRequests = allRequests.Where(r => r.EmployeeId == employeeId.Value).ToList();
+                    if (employeeId.HasValue && employeeId.Value > 0)
+                    {
+                        allRequests = allRequests.Where(r => r.EmployeeId == employeeId.Value).ToList();
+                    }
+                }
+                else if (isManager)
+                {
+                    var reporteeIds = allEmployeesList.Where(e => e.ManagerId == currentEmpId).Select(e => e.Id).ToHashSet();
+                    reporteeIds.Add(currentEmpId);
+
+                    if (employeeId.HasValue && employeeId.Value > 0)
+                    {
+                        if (!reporteeIds.Contains(employeeId.Value))
+                        {
+                            return new List<AssetRequestResponseModel>();
+                        }
+                        allRequests = allRequests.Where(r => r.EmployeeId == employeeId.Value).ToList();
+                    }
+                    else
+                    {
+                        allRequests = allRequests.Where(r => reporteeIds.Contains(r.EmployeeId)).ToList();
+                    }
+                }
+                else
+                {
+                    // Regular employee can ONLY see their own asset requests
+                    allRequests = allRequests.Where(r => r.EmployeeId == currentEmpId).ToList();
                 }
 
                 var allAssets = (await _unitOfWork.AssetsMasters.GetAll()).ToDictionary(a => a.Id, a => a);
-                var allEmployees = (await _unitOfWork.Employees.GetAll()).ToDictionary(e => e.Id, e => e);
+                var allEmployees = allEmployeesList.ToDictionary(e => e.Id, e => e);
                 var allLogs = (await _unitOfWork.AssetRequestLogs.GetAll())
                     .GroupBy(l => l.AssetRequestId)
                     .ToDictionary(g => g.Key, g => g.OrderBy(l => l.CreatedDate).ToList());
@@ -484,6 +530,29 @@ namespace KHRMS.Services
 
                 if (request == null)
                     return null;
+
+                var currentEmpId = _userContextService.GetCurrentEmployeeId();
+                var canViewAll = await _userContextService.HasPermissionAsync("ASSET_VIEW_ALL") || _userContextService.IsAdmin() || _userContextService.IsHR();
+                var isManager = _userContextService.IsManager() || await _userContextService.HasPermissionAsync("ASSET_APPROVE");
+
+                if (!canViewAll)
+                {
+                    if (request.EmployeeId != currentEmpId)
+                    {
+                        if (isManager)
+                        {
+                            var emp = (await _unitOfWork.Employees.GetAll()).FirstOrDefault(e => e.Id == request.EmployeeId);
+                            if (emp == null || emp.ManagerId != currentEmpId)
+                            {
+                                return null;
+                            }
+                        }
+                        else
+                        {
+                            return null;
+                        }
+                    }
+                }
 
                 var asset = (await _unitOfWork.AssetsMasters.GetAll()).FirstOrDefault(a => a.Id == request.AssetId);
                 var employee = (await _unitOfWork.Employees.GetAll()).FirstOrDefault(e => e.Id == request.EmployeeId);
