@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace KHRMS.Services.Request
@@ -28,6 +28,9 @@ namespace KHRMS.Services.Request
         public string? TemporaryPassword { get; set; }
         public bool SendCredentialsEmail { get; set; } = true;
         public string? ClientUrl { get; set; }
+
+        public string? EmploymentType { get; set; } = "FullTime";
+        public DateTime? ProbationEndDate { get; set; }
     }
 
     public class CandidateOnboardResponse

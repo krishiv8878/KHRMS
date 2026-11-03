@@ -19,5 +19,8 @@ namespace KHRMS.Core.Models
 
         [ForeignKey("PermissionId")]
         public virtual PermissionMaster? Permission { get; set; }
+
+        [StringLength(30)]
+        public string Scope { get; set; } = "All"; // "Self", "Team", "TeamAndIndirect", "Department", "Branch", "All"
     }
 }

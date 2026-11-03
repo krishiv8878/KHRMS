@@ -428,6 +428,12 @@ namespace KHRMS.Infrastructure.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
+                    b.Property<int>("NoticePeriodDays")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ProbationNoticePeriodDays")
+                        .HasColumnType("int");
+
                     b.Property<int>("UpdatedBy")
                         .HasColumnType("int");
 
@@ -489,6 +495,17 @@ namespace KHRMS.Infrastructure.Migrations
                     b.Property<long?>("EmployeeCode")
                         .HasColumnType("bigint");
 
+                    b.Property<string>("EmploymentStatus")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("EmploymentType")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime?>("ExitDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("ExperienceDuration")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
@@ -526,6 +543,17 @@ namespace KHRMS.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<int?>("NoticePeriodOverrideDays")
+                        .HasColumnType("int");
+
+                    b.Property<string>("NoticePeriodOverrideReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("PanNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<DateTime?>("PassportExpiryDate")
                         .HasColumnType("datetime2");
 
@@ -546,6 +574,17 @@ namespace KHRMS.Infrastructure.Migrations
                     b.Property<string>("PermanentAddress")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("PersonId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("PersonalEmail")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<long?>("PreviousEmployeeId")
+                        .HasColumnType("bigint");
 
                     b.Property<string>("PrimaryContactAddress")
                         .HasMaxLength(200)
@@ -571,6 +610,13 @@ namespace KHRMS.Infrastructure.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)");
 
+                    b.Property<DateTime?>("ProbationEndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ProbationStatus")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<bool>("ProfileCompleted")
                         .HasColumnType("bit");
 
@@ -579,6 +625,9 @@ namespace KHRMS.Infrastructure.Migrations
 
                     b.Property<string>("ProjectIds")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("RehireDate")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("Responsibilities")
                         .HasColumnType("nvarchar(max)");
@@ -609,6 +658,10 @@ namespace KHRMS.Infrastructure.Migrations
                     b.Property<string>("SkillIds")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("UanNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<string>("University")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
@@ -623,6 +676,10 @@ namespace KHRMS.Infrastructure.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("PreviousEmployeeId");
+
+                    b.HasIndex("PanNumber", "UanNumber", "PersonalEmail");
 
                     b.ToTable("Employees");
                 });
@@ -751,8 +808,10 @@ namespace KHRMS.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
-                    b.Property<long>("AccountNumber")
-                        .HasColumnType("bigint");
+                    b.Property<string>("AccountNumber")
+                        .IsRequired()
+                        .HasMaxLength(35)
+                        .HasColumnType("nvarchar(35)");
 
                     b.Property<string>("BankName")
                         .IsRequired()
@@ -914,7 +973,16 @@ namespace KHRMS.Infrastructure.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsConvertedFromLop")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsLop")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsSandwichApplied")
                         .HasColumnType("bit");
 
                     b.Property<string>("LeaveMode")
@@ -926,8 +994,20 @@ namespace KHRMS.Infrastructure.Migrations
                     b.Property<long>("LeaveTypeId")
                         .HasColumnType("bigint");
 
+                    b.Property<decimal>("LopDays")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<long?>("OriginalLopRequestId")
+                        .HasColumnType("bigint");
+
+                    b.Property<decimal>("PaidDays")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<string>("RejectionReason")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("SandwichDays")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime>("StartDate")
                         .HasColumnType("datetime2");
@@ -936,6 +1016,9 @@ namespace KHRMS.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
+
+                    b.Property<decimal>("TotalWorkingDays")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("UpdatedBy")
                         .HasColumnType("int");
@@ -963,7 +1046,34 @@ namespace KHRMS.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
+                    b.Property<decimal>("AccrualAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<bool>("AccrualEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("AccrualFrequency")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
                     b.Property<int>("AllowedDays")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ApplicableEmploymentType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("ApplicableGender")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<bool>("CarryForwardEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("CompOffValidityDays")
                         .HasColumnType("int");
 
                     b.Property<int>("CreatedBy")
@@ -977,10 +1087,56 @@ namespace KHRMS.Infrastructure.Migrations
                         .HasMaxLength(250)
                         .HasColumnType("nvarchar(250)");
 
+                    b.Property<bool>("EncashmentAllowed")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("EncashmentSalaryFormula")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ExcessBalanceTreatment")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsCompOff")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsNegativeBalanceAllowed")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsPaid")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal>("MaxCarryForwardDays")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("MaxConsecutiveDays")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("MaxEncashmentDaysPerRequest")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("MaxSandwichLeavesAllowed")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("MinBalanceForEncashment")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("NegativeBalanceLimit")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("NoticeDaysRequired")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("SandwichRuleEnabled")
                         .HasColumnType("bit");
 
                     b.Property<string>("Type")
@@ -997,6 +1153,77 @@ namespace KHRMS.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("LeaveType");
+                });
+
+            modelBuilder.Entity("KHRMS.Core.Models.AttendanceLock", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("CreatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsLocked")
+                        .HasColumnType("bit");
+
+                    b.Property<long>("LockedByEmployeeId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("LockedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Month")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TotalEmployeesLocked")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("TotalLopDays")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("TotalOvertimeHours")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("TotalPresentDays")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<long?>("UnlockedByEmployeeId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("UnlockedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UnlockedReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("UpdatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Month", "Year")
+                        .IsUnique();
+
+                    b.ToTable("AttendanceLocks");
                 });
 
             modelBuilder.Entity("KHRMS.Core.Models.AttendanceLog", b =>
@@ -1027,6 +1254,448 @@ namespace KHRMS.Infrastructure.Migrations
                     b.HasIndex("EmployeeId");
 
                     b.ToTable("AttendanceLog");
+                });
+
+            modelBuilder.Entity("KHRMS.Core.Models.AuditLog", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("ActorEmail")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<long>("ActorEmployeeId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("AfterValuesJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("BeforeValuesJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EntityId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("EntityName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("ModuleName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("RequestId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActorEmployeeId");
+
+                    b.HasIndex("Timestamp");
+
+                    b.HasIndex("ModuleName", "EntityName", "EntityId");
+
+                    b.ToTable("AuditLogs");
+                });
+
+            modelBuilder.Entity("KHRMS.Core.Models.ChecklistTask", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<long?>("AssignedEmployeeId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("AssignedRole")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("AttachmentUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<long?>("ClearedByEmployeeId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("ClearedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("CreatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("DueDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long>("EmployeeChecklistId")
+                        .HasColumnType("bigint");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsMandatory")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Remarks")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("TaskName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("UpdatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("WaiveReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<long?>("WaivedByEmployeeId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssignedEmployeeId");
+
+                    b.HasIndex("ClearedByEmployeeId");
+
+                    b.HasIndex("EmployeeChecklistId");
+
+                    b.HasIndex("WaivedByEmployeeId");
+
+                    b.ToTable("ChecklistTasks");
+                });
+
+            modelBuilder.Entity("KHRMS.Core.Models.ChecklistTemplate", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("ChecklistType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int>("CreatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Department")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<int>("UpdatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ChecklistTemplates");
+                });
+
+            modelBuilder.Entity("KHRMS.Core.Models.ChecklistTemplateTask", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int>("CreatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long?>("DefaultAssigneeEmployeeId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("DefaultAssigneeRole")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
+                    b.Property<int>("DueDays")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsMandatory")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("TaskName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<long>("TemplateId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("UpdatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TemplateId");
+
+                    b.ToTable("ChecklistTemplateTasks");
+                });
+
+            modelBuilder.Entity("KHRMS.Core.Models.CompOffGrantRequest", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<long?>("ActionBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("ActionDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("AttendanceDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("CreatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("EligibleDays")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<long>("EmployeeId")
+                        .HasColumnType("bigint");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("RejectionReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<int>("UpdatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("WorkedMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<long?>("WorkflowInstanceId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmployeeId");
+
+                    b.ToTable("CompOffGrantRequests");
+                });
+
+            modelBuilder.Entity("KHRMS.Core.Models.DailyAttendanceRecord", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateOnly>("AttendanceDate")
+                        .HasColumnType("date");
+
+                    b.Property<long?>("AttendanceLockId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("CreatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("EarlyExitMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EffectiveWorkMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<long>("EmployeeId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("FirstClockIn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsRegularized")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("LastClockOut")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("LateArrivalMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<long?>("LeaveRequestId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("OvertimeMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Remarks")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<long?>("ShiftId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<int>("TotalBreakMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TotalWorkMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UpdatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ShiftId");
+
+                    b.HasIndex("AttendanceDate", "Status");
+
+                    b.HasIndex("EmployeeId", "AttendanceDate")
+                        .IsUnique();
+
+                    b.ToTable("DailyAttendanceRecords");
                 });
 
             modelBuilder.Entity("KHRMS.Core.Models.Email", b =>
@@ -1231,6 +1900,78 @@ namespace KHRMS.Infrastructure.Migrations
                     b.ToTable("EmailTriggerEvents");
                 });
 
+            modelBuilder.Entity("KHRMS.Core.Models.EmployeeChecklist", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("ChecklistType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime?>("CompletedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("CompletedTasks")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CreatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long>("EmployeeId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("InitiatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Remarks")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<long?>("TemplateId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("TotalTasks")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UpdatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmployeeId");
+
+                    b.HasIndex("TemplateId");
+
+                    b.ToTable("EmployeeChecklists");
+                });
+
             modelBuilder.Entity("KHRMS.Core.Models.EmployeeDailyWorkMode", b =>
                 {
                     b.Property<long>("Id")
@@ -1285,6 +2026,80 @@ namespace KHRMS.Infrastructure.Migrations
                     b.ToTable("EmployeeDailyWorkModes");
                 });
 
+            modelBuilder.Entity("KHRMS.Core.Models.EmployeeLoan", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("CreatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("DisbursementDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long>("EmployeeId")
+                        .HasColumnType("bigint");
+
+                    b.Property<decimal>("InterestRatePercent")
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("LoanType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<decimal>("MonthlyEmiAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("PrincipalAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<decimal>("RemainingBalance")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<int>("TenureMonths")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("TotalRepayableAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("UpdatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long?>("WorkflowInstanceId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmployeeId");
+
+                    b.ToTable("EmployeeLoans");
+                });
+
             modelBuilder.Entity("KHRMS.Core.Models.EmployeeSalaryAssignment", b =>
                 {
                     b.Property<long>("Id")
@@ -1308,6 +2123,9 @@ namespace KHRMS.Infrastructure.Migrations
                     b.Property<DateTime>("EffectiveFromDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("EffectiveToDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<long>("EmployeeId")
                         .HasColumnType("bigint");
 
@@ -1329,6 +2147,9 @@ namespace KHRMS.Infrastructure.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsCurrent")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
@@ -1340,6 +2161,9 @@ namespace KHRMS.Infrastructure.Migrations
 
                     b.Property<decimal>("MonthlyTds")
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<long?>("PreviousAssignmentId")
+                        .HasColumnType("bigint");
 
                     b.Property<decimal>("ProfessionalTax")
                         .HasColumnType("decimal(18,2)");
@@ -1365,9 +2189,64 @@ namespace KHRMS.Infrastructure.Migrations
                     b.Property<DateTime>("UpdatedDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<long?>("WorkflowInstanceId")
+                        .HasColumnType("bigint");
+
                     b.HasKey("Id");
 
                     b.ToTable("EmployeeSalaryAssignments");
+                });
+
+            modelBuilder.Entity("KHRMS.Core.Models.EmployeeShiftAssignment", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("CreatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateOnly>("EffectiveFromDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("EffectiveToDate")
+                        .HasColumnType("date");
+
+                    b.Property<long>("EmployeeId")
+                        .HasColumnType("bigint");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<long>("ShiftId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("UpdatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("WeekOffPattern")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ShiftId");
+
+                    b.HasIndex("EmployeeId", "EffectiveFromDate");
+
+                    b.ToTable("EmployeeShiftAssignments");
                 });
 
             modelBuilder.Entity("KHRMS.Core.Models.ExpenseAdvance", b =>
@@ -2074,6 +2953,297 @@ namespace KHRMS.Infrastructure.Migrations
                     b.ToTable("JobRequisitions");
                 });
 
+            modelBuilder.Entity("KHRMS.Core.Models.LeaveEncashmentRequest", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<long?>("ActionBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("ActionDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("CreatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("DailySalaryBasis")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<long>("EmployeeId")
+                        .HasColumnType("bigint");
+
+                    b.Property<decimal>("EstimatedAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<long>("LeaveTypeId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("PayRunId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("RejectionReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<decimal>("RequestedDays")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<int>("UpdatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long?>("WorkflowInstanceId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmployeeId");
+
+                    b.HasIndex("LeaveTypeId");
+
+                    b.ToTable("LeaveEncashmentRequests");
+                });
+
+            modelBuilder.Entity("KHRMS.Core.Models.LeaveEntitlement", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<decimal>("ConsumedDays")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("CreatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreditDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long>("EmployeeId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("ExpiryDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsExpired")
+                        .HasColumnType("bit");
+
+                    b.Property<long>("LeaveTypeId")
+                        .HasColumnType("bigint");
+
+                    b.Property<decimal>("RemainingDays")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<long?>("SourceReferenceId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("SourceType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<decimal>("TotalDays")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("UpdatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LeaveTypeId");
+
+                    b.HasIndex("EmployeeId", "LeaveTypeId", "IsExpired");
+
+                    b.ToTable("LeaveEntitlements");
+                });
+
+            modelBuilder.Entity("KHRMS.Core.Models.LeaveLedger", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<decimal>("BalanceAfter")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("CreatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("Days")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("EffectiveDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long>("EmployeeId")
+                        .HasColumnType("bigint");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<long?>("LeaveRequestId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("LeaveTypeId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Period")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Remarks")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("TransactionType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int>("UpdatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LeaveRequestId");
+
+                    b.HasIndex("LeaveTypeId");
+
+                    b.HasIndex("EmployeeId", "LeaveTypeId");
+
+                    b.HasIndex("EmployeeId", "Period");
+
+                    b.ToTable("LeaveLedgers");
+                });
+
+            modelBuilder.Entity("KHRMS.Core.Models.LopConversionRequest", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<long?>("ActionBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("ActionDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("ConversionDays")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("CreatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long>("EmployeeId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("FromDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<long>("OriginalLeaveRequestId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("RejectionReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<long>("TargetLeaveTypeId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("ToDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("UpdatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long?>("WorkflowInstanceId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmployeeId");
+
+                    b.HasIndex("OriginalLeaveRequestId");
+
+                    b.HasIndex("TargetLeaveTypeId");
+
+                    b.ToTable("LopConversionRequests");
+                });
+
             modelBuilder.Entity("KHRMS.Core.Models.Notification", b =>
                 {
                     b.Property<long>("Id")
@@ -2172,6 +3342,9 @@ namespace KHRMS.Infrastructure.Migrations
                     b.Property<DateTime?>("ApprovedDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<long?>("AttendanceLockId")
+                        .HasColumnType("bigint");
+
                     b.Property<int>("CreatedBy")
                         .HasColumnType("int");
 
@@ -2186,6 +3359,15 @@ namespace KHRMS.Infrastructure.Migrations
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
+
+                    b.Property<bool>("IsLocked")
+                        .HasColumnType("bit");
+
+                    b.Property<long?>("LockedByEmployeeId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("LockedDate")
+                        .HasColumnType("datetime2");
 
                     b.Property<int>("Month")
                         .HasColumnType("int");
@@ -2230,10 +3412,16 @@ namespace KHRMS.Infrastructure.Migrations
                     b.Property<DateTime>("UpdatedDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<long?>("WorkflowInstanceId")
+                        .HasColumnType("bigint");
+
                     b.Property<int>("Year")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Month", "Year")
+                        .IsUnique();
 
                     b.ToTable("PayRuns");
                 });
@@ -2246,14 +3434,25 @@ namespace KHRMS.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
-                    b.Property<long?>("AccountNumber")
-                        .HasColumnType("bigint");
+                    b.Property<string>("AccountNumber")
+                        .HasMaxLength(35)
+                        .HasColumnType("nvarchar(35)");
+
+                    b.Property<string>("AdjustmentReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<decimal>("ArrearsAmount")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("BankName")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
                     b.Property<decimal>("BasicPay")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("BonusAmount")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("CreatedBy")
@@ -2279,8 +3478,19 @@ namespace KHRMS.Infrastructure.Migrations
                     b.Property<decimal>("EsicDeduction")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<string>("ExceptionDetails")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<decimal>("GrossPay")
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<bool>("HasExceptionFlag")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("HoldReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<decimal>("Hra")
                         .HasColumnType("decimal(18,2)");
@@ -2295,10 +3505,19 @@ namespace KHRMS.Infrastructure.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsOnHold")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal>("LoanEmiDeduction")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<decimal>("LopDays")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal>("LopDeduction")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("ManualAdjustmentAmount")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal>("NetPay")
@@ -2423,6 +3642,9 @@ namespace KHRMS.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("EmployeeId", "Month", "Year")
+                        .IsUnique();
+
                     b.ToTable("Payslips");
                 });
 
@@ -2453,6 +3675,9 @@ namespace KHRMS.Infrastructure.Migrations
                         .HasColumnType("bit");
 
                     b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsSensitive")
                         .HasColumnType("bit");
 
                     b.Property<string>("ModuleName")
@@ -3106,6 +4331,11 @@ namespace KHRMS.Infrastructure.Migrations
                     b.Property<long>("RoleId")
                         .HasColumnType("bigint");
 
+                    b.Property<string>("Scope")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
                     b.Property<int>("UpdatedBy")
                         .HasColumnType("int");
 
@@ -3232,6 +4462,69 @@ namespace KHRMS.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("SalaryStructures");
+                });
+
+            modelBuilder.Entity("KHRMS.Core.Models.SystemSetting", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("CreatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("SettingKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("SettingValue")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("UpdatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SettingKey")
+                        .IsUnique();
+
+                    b.ToTable("SystemSettings");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1L,
+                            CreatedBy = 0,
+                            CreatedDate = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Description = "Determines whether rehired employees retain their previous employee code or receive a new one.",
+                            IsActive = true,
+                            IsDeleted = false,
+                            SettingKey = "ReusePreviousEmployeeCodeOnRehire",
+                            SettingValue = "false",
+                            UpdatedBy = 0,
+                            UpdatedDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
+                        });
                 });
 
             modelBuilder.Entity("KHRMS.Core.Models.Timesheet", b =>
@@ -3393,6 +4686,11 @@ namespace KHRMS.Infrastructure.Migrations
 
                     b.Property<long>("PermissionId")
                         .HasColumnType("bigint");
+
+                    b.Property<string>("Scope")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
 
                     b.Property<int>("UpdatedBy")
                         .HasColumnType("int");
@@ -3977,6 +5275,12 @@ namespace KHRMS.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
+                    b.Property<DateTime?>("ApprovedLwd")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("AssetClearanceOverrideReason")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int>("CreatedBy")
                         .HasColumnType("int");
 
@@ -3986,21 +5290,63 @@ namespace KHRMS.Infrastructure.Migrations
                     b.Property<long>("EmployeeId")
                         .HasColumnType("bigint");
 
+                    b.Property<string>("ExitInterviewRemarks")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("FnFPreparedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("FnFRemarks")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FnFStatus")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("HrRemarks")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsLwdLocked")
+                        .HasColumnType("bit");
+
                     b.Property<long>("ManagerId")
                         .HasColumnType("bigint");
+
+                    b.Property<string>("ManagerRemarks")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("NoticeHandling")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("NoticePeriod")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int?>("NoticePeriodDaysSnapshot")
+                        .HasColumnType("int");
+
+                    b.Property<string>("NoticePeriodSourceSnapshot")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("NoticeShortfallDays")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ProposedLwd")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Reason")
                         .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("RequestedLwd")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ResignationStatus")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("Resignation_Date")
@@ -4070,6 +5416,15 @@ namespace KHRMS.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
+                    b.Property<int>("AutoClockOutBufferHours")
+                        .HasColumnType("int");
+
+                    b.Property<string>("BreakEndTime")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("BreakStartTime")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int>("CreatedBy")
                         .HasColumnType("int");
 
@@ -4080,11 +5435,33 @@ namespace KHRMS.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("FullDayMinimumMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<int>("GracePeriodMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<int>("HalfDayMinimumMinutes")
+                        .HasColumnType("int");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
+
+                    b.Property<string>("LateMarkPenalty")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("MaxLateMarksPerMonth")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PresentMinimumMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ScheduledBreakMinutes")
+                        .HasColumnType("int");
 
                     b.Property<string>("ShiftName")
                         .IsRequired()
@@ -4317,6 +5694,14 @@ namespace KHRMS.Infrastructure.Migrations
                     b.Navigation("Employee");
                 });
 
+            modelBuilder.Entity("KHRMS.Core.Employee", b =>
+                {
+                    b.HasOne("KHRMS.Core.Employee", null)
+                        .WithMany()
+                        .HasForeignKey("PreviousEmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
             modelBuilder.Entity("KHRMS.Core.EmployeeRoleMapping", b =>
                 {
                     b.HasOne("KHRMS.Core.Employee", "Employee")
@@ -4366,6 +5751,75 @@ namespace KHRMS.Infrastructure.Migrations
                     b.Navigation("employee");
                 });
 
+            modelBuilder.Entity("KHRMS.Core.Models.ChecklistTask", b =>
+                {
+                    b.HasOne("KHRMS.Core.Employee", "AssignedEmployee")
+                        .WithMany()
+                        .HasForeignKey("AssignedEmployeeId");
+
+                    b.HasOne("KHRMS.Core.Employee", "ClearedByEmployee")
+                        .WithMany()
+                        .HasForeignKey("ClearedByEmployeeId");
+
+                    b.HasOne("KHRMS.Core.Models.EmployeeChecklist", "EmployeeChecklist")
+                        .WithMany("Tasks")
+                        .HasForeignKey("EmployeeChecklistId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("KHRMS.Core.Employee", "WaivedByEmployee")
+                        .WithMany()
+                        .HasForeignKey("WaivedByEmployeeId");
+
+                    b.Navigation("AssignedEmployee");
+
+                    b.Navigation("ClearedByEmployee");
+
+                    b.Navigation("EmployeeChecklist");
+
+                    b.Navigation("WaivedByEmployee");
+                });
+
+            modelBuilder.Entity("KHRMS.Core.Models.ChecklistTemplateTask", b =>
+                {
+                    b.HasOne("KHRMS.Core.Models.ChecklistTemplate", "Template")
+                        .WithMany("TemplateTasks")
+                        .HasForeignKey("TemplateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Template");
+                });
+
+            modelBuilder.Entity("KHRMS.Core.Models.CompOffGrantRequest", b =>
+                {
+                    b.HasOne("KHRMS.Core.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Employee");
+                });
+
+            modelBuilder.Entity("KHRMS.Core.Models.DailyAttendanceRecord", b =>
+                {
+                    b.HasOne("KHRMS.Core.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KHRMS.Core.ShiftMaster", "Shift")
+                        .WithMany()
+                        .HasForeignKey("ShiftId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Employee");
+
+                    b.Navigation("Shift");
+                });
+
             modelBuilder.Entity("KHRMS.Core.Models.Email", b =>
                 {
                     b.HasOne("KHRMS.Core.Models.EmailTemplatesMaster", "EmailTemplatesMaster")
@@ -4397,6 +5851,23 @@ namespace KHRMS.Infrastructure.Migrations
                     b.Navigation("EmailTemplate");
                 });
 
+            modelBuilder.Entity("KHRMS.Core.Models.EmployeeChecklist", b =>
+                {
+                    b.HasOne("KHRMS.Core.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KHRMS.Core.Models.ChecklistTemplate", "Template")
+                        .WithMany()
+                        .HasForeignKey("TemplateId");
+
+                    b.Navigation("Employee");
+
+                    b.Navigation("Template");
+                });
+
             modelBuilder.Entity("KHRMS.Core.Models.EmployeeDailyWorkMode", b =>
                 {
                     b.HasOne("KHRMS.Core.Employee", "Employee")
@@ -4406,6 +5877,127 @@ namespace KHRMS.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Employee");
+                });
+
+            modelBuilder.Entity("KHRMS.Core.Models.EmployeeLoan", b =>
+                {
+                    b.HasOne("KHRMS.Core.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Employee");
+                });
+
+            modelBuilder.Entity("KHRMS.Core.Models.EmployeeShiftAssignment", b =>
+                {
+                    b.HasOne("KHRMS.Core.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KHRMS.Core.ShiftMaster", "Shift")
+                        .WithMany()
+                        .HasForeignKey("ShiftId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Employee");
+
+                    b.Navigation("Shift");
+                });
+
+            modelBuilder.Entity("KHRMS.Core.Models.LeaveEncashmentRequest", b =>
+                {
+                    b.HasOne("KHRMS.Core.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KHRMS.Core.LeaveType", "LeaveType")
+                        .WithMany()
+                        .HasForeignKey("LeaveTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Employee");
+
+                    b.Navigation("LeaveType");
+                });
+
+            modelBuilder.Entity("KHRMS.Core.Models.LeaveEntitlement", b =>
+                {
+                    b.HasOne("KHRMS.Core.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KHRMS.Core.LeaveType", "LeaveType")
+                        .WithMany()
+                        .HasForeignKey("LeaveTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Employee");
+
+                    b.Navigation("LeaveType");
+                });
+
+            modelBuilder.Entity("KHRMS.Core.Models.LeaveLedger", b =>
+                {
+                    b.HasOne("KHRMS.Core.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KHRMS.Core.LeaveRequest", "LeaveRequest")
+                        .WithMany()
+                        .HasForeignKey("LeaveRequestId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("KHRMS.Core.LeaveType", "LeaveType")
+                        .WithMany()
+                        .HasForeignKey("LeaveTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Employee");
+
+                    b.Navigation("LeaveRequest");
+
+                    b.Navigation("LeaveType");
+                });
+
+            modelBuilder.Entity("KHRMS.Core.Models.LopConversionRequest", b =>
+                {
+                    b.HasOne("KHRMS.Core.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KHRMS.Core.LeaveRequest", "OriginalLeaveRequest")
+                        .WithMany()
+                        .HasForeignKey("OriginalLeaveRequestId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KHRMS.Core.LeaveType", "TargetLeaveType")
+                        .WithMany()
+                        .HasForeignKey("TargetLeaveTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Employee");
+
+                    b.Navigation("OriginalLeaveRequest");
+
+                    b.Navigation("TargetLeaveType");
                 });
 
             modelBuilder.Entity("KHRMS.Core.Models.RolePermissionMapping", b =>
@@ -4562,6 +6154,16 @@ namespace KHRMS.Infrastructure.Migrations
             modelBuilder.Entity("KHRMS.Core.AssetRequest", b =>
                 {
                     b.Navigation("Logs");
+                });
+
+            modelBuilder.Entity("KHRMS.Core.Models.ChecklistTemplate", b =>
+                {
+                    b.Navigation("TemplateTasks");
+                });
+
+            modelBuilder.Entity("KHRMS.Core.Models.EmployeeChecklist", b =>
+                {
+                    b.Navigation("Tasks");
                 });
 
             modelBuilder.Entity("KHRMS.Core.Models.WorkflowDefinition", b =>

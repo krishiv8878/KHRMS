@@ -103,6 +103,143 @@ namespace KHRMS.Infrastructure
                 .HasForeignKey(a => a.WorkflowInstanceId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            modelBuilder.Entity<AuditLog>(entity =>
+            {
+                entity.HasIndex(e => new { e.ModuleName, e.EntityName, e.EntityId });
+                entity.HasIndex(e => e.Timestamp);
+                entity.HasIndex(e => e.ActorEmployeeId);
+            });
+
+            // Checklist relationships
+            modelBuilder.Entity<ChecklistTemplateTask>()
+                .HasOne(t => t.Template)
+                .WithMany(tpl => tpl.TemplateTasks)
+                .HasForeignKey(t => t.TemplateId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<EmployeeChecklist>()
+                .HasOne(c => c.Employee)
+                .WithMany()
+                .HasForeignKey(c => c.EmployeeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<ChecklistTask>()
+                .HasOne(t => t.EmployeeChecklist)
+                .WithMany(c => c.Tasks)
+                .HasForeignKey(t => t.EmployeeChecklistId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Time & Attendance Rules & Constraints (Phase 4)
+            modelBuilder.Entity<EmployeeShiftAssignment>()
+                .HasOne(s => s.Employee)
+                .WithMany()
+                .HasForeignKey(s => s.EmployeeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<EmployeeShiftAssignment>()
+                .HasOne(s => s.Shift)
+                .WithMany()
+                .HasForeignKey(s => s.ShiftId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<EmployeeShiftAssignment>()
+                .HasIndex(s => new { s.EmployeeId, s.EffectiveFromDate });
+
+            modelBuilder.Entity<DailyAttendanceRecord>()
+                .HasOne(d => d.Employee)
+                .WithMany()
+                .HasForeignKey(d => d.EmployeeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<DailyAttendanceRecord>()
+                .HasOne(d => d.Shift)
+                .WithMany()
+                .HasForeignKey(d => d.ShiftId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<DailyAttendanceRecord>()
+                .HasIndex(d => new { d.EmployeeId, d.AttendanceDate })
+                .IsUnique();
+
+            modelBuilder.Entity<DailyAttendanceRecord>()
+                .HasIndex(d => new { d.AttendanceDate, d.Status });
+
+            modelBuilder.Entity<AttendanceLock>()
+                .HasIndex(a => new { a.Month, a.Year })
+                .IsUnique();
+
+            // Employee Tenures & Universal Identity Tracking
+            modelBuilder.Entity<Employee>()
+                .HasOne<Employee>()
+                .WithMany()
+                .HasForeignKey(e => e.PreviousEmployeeId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Employee>()
+                .HasIndex(e => e.PreviousEmployeeId);
+
+            modelBuilder.Entity<Employee>()
+                .HasIndex(e => new { e.PanNumber, e.UanNumber, e.PersonalEmail });
+
+            modelBuilder.Entity<SystemSetting>()
+                .HasIndex(s => s.SettingKey)
+                .IsUnique();
+
+            // Payroll Unique Indexes & Integrity (P1: DAT-02)
+            modelBuilder.Entity<PayRun>()
+                .HasIndex(p => new { p.Month, p.Year })
+                .IsUnique();
+
+            modelBuilder.Entity<Payslip>()
+                .HasIndex(p => new { p.EmployeeId, p.Month, p.Year })
+                .IsUnique();
+
+            modelBuilder.Entity<SystemSetting>().HasData(new SystemSetting
+            {
+                Id = 1,
+                SettingKey = "ReusePreviousEmployeeCodeOnRehire",
+                SettingValue = "false",
+                Description = "Determines whether rehired employees retain their previous employee code or receive a new one.",
+                IsActive = true,
+                IsDeleted = false,
+                CreatedDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+            });
+
+            // Phase 5: Leave Ledger & Entitlement Configurations
+            modelBuilder.Entity<LeaveLedger>(entity =>
+            {
+                entity.HasIndex(e => new { e.EmployeeId, e.LeaveTypeId });
+                entity.HasIndex(e => new { e.EmployeeId, e.Period });
+                entity.HasOne(e => e.Employee).WithMany().HasForeignKey(e => e.EmployeeId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(e => e.LeaveType).WithMany().HasForeignKey(e => e.LeaveTypeId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(e => e.LeaveRequest).WithMany().HasForeignKey(e => e.LeaveRequestId).OnDelete(DeleteBehavior.SetNull);
+            });
+
+            modelBuilder.Entity<LeaveEntitlement>(entity =>
+            {
+                entity.HasIndex(e => new { e.EmployeeId, e.LeaveTypeId, e.IsExpired });
+                entity.HasOne(e => e.Employee).WithMany().HasForeignKey(e => e.EmployeeId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(e => e.LeaveType).WithMany().HasForeignKey(e => e.LeaveTypeId).OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<LopConversionRequest>(entity =>
+            {
+                entity.HasOne(e => e.Employee).WithMany().HasForeignKey(e => e.EmployeeId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(e => e.OriginalLeaveRequest).WithMany().HasForeignKey(e => e.OriginalLeaveRequestId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(e => e.TargetLeaveType).WithMany().HasForeignKey(e => e.TargetLeaveTypeId).OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<LeaveEncashmentRequest>(entity =>
+            {
+                entity.HasOne(e => e.Employee).WithMany().HasForeignKey(e => e.EmployeeId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(e => e.LeaveType).WithMany().HasForeignKey(e => e.LeaveTypeId).OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<CompOffGrantRequest>(entity =>
+            {
+                entity.HasOne(e => e.Employee).WithMany().HasForeignKey(e => e.EmployeeId).OnDelete(DeleteBehavior.Restrict);
+            });
+
             // Global Query Filter: Automatically exclude soft-deleted records across all KHRMSBase entities
             foreach (var entityType in modelBuilder.Model.GetEntityTypes().ToList())
             {
@@ -162,6 +299,7 @@ namespace KHRMS.Infrastructure
         public DbSet<EmployeeSalaryAssignment> EmployeeSalaryAssignments { get; set; }
         public DbSet<PayRun> PayRuns { get; set; }
         public DbSet<PayRunEmployeeDetail> PayRunEmployeeDetails { get; set; }
+        public DbSet<EmployeeLoan> EmployeeLoans { get; set; }
         public DbSet<Payslip> Payslips { get; set; }
         public DbSet<ReimbursementClaim> ReimbursementClaims { get; set; }
         public DbSet<FullAndFinalSettlement> FullAndFinalSettlements { get; set; }
@@ -199,5 +337,30 @@ namespace KHRMS.Infrastructure
         public DbSet<WorkflowInstanceStep> WorkflowInstanceSteps { get; set; }
         public DbSet<WorkflowDelegation> WorkflowDelegations { get; set; }
         public DbSet<WorkflowAuditLog> WorkflowAuditLogs { get; set; }
+        public DbSet<AuditLog> AuditLogs { get; set; }
+
+        // Employee Lifecycle & Checklists
+        public DbSet<ChecklistTemplate> ChecklistTemplates { get; set; }
+        public DbSet<ChecklistTemplateTask> ChecklistTemplateTasks { get; set; }
+        public DbSet<EmployeeChecklist> EmployeeChecklists { get; set; }
+        public DbSet<ChecklistTask> ChecklistTasks { get; set; }
+        public DbSet<SystemSetting> SystemSettings { get; set; }
+
+        // Time & Attendance Rules & Computation (Phase 4)
+        public DbSet<EmployeeShiftAssignment> EmployeeShiftAssignments { get; set; }
+        public DbSet<DailyAttendanceRecord> DailyAttendanceRecords { get; set; }
+        public DbSet<AttendanceLock> AttendanceLocks { get; set; }
+
+        // Leave Management, Ledger, Accrual & Rollover (Phase 5)
+        public DbSet<LeaveLedger> LeaveLedgers { get; set; }
+        public DbSet<LeaveEntitlement> LeaveEntitlements { get; set; }
+        public DbSet<LopConversionRequest> LopConversionRequests { get; set; }
+        public DbSet<LeaveEncashmentRequest> LeaveEncashmentRequests { get; set; }
+        public DbSet<CompOffGrantRequest> CompOffGrantRequests { get; set; }
+
+        // Company Policy Engine & Helpdesk (Phase 7)
+        public DbSet<CompanyPolicy> CompanyPolicies { get; set; }
+        public DbSet<PolicyAcknowledgement> PolicyAcknowledgements { get; set; }
+        public DbSet<HelpdeskTicket> HelpdeskTickets { get; set; }
     }
 }

@@ -118,5 +118,11 @@ namespace KHRMS.Services.Request
         public List<String?>? Skills { get; set; }
         public List<long>? ProjectIds { get; set; }
         public List<String?>? Projects { get; set; }
+        public DateTime? ProbationEndDate { get; set; }
+        public string? ProbationStatus { get; set; }
+        public string? EmploymentStatus { get; set; }
+        public string? EmploymentType { get; set; }
+        public DateTime? RehireDate { get; set; }
+        public DateTime? ExitDate { get; set; }
     }
 }

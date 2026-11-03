@@ -252,6 +252,7 @@ namespace KHRMS.Controllers
         // OFFERS
         // ==========================================
         [HttpGet("offers")]
+        [RequirePermission("RECRUITMENT_MANAGE")]
         public async Task<IActionResult> GetOffers([FromQuery] long? requisitionId = null, [FromQuery] string? status = null)
         {
             try

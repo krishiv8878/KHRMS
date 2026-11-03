@@ -9,6 +9,8 @@ namespace KHRMS.Services.Workflow.Interfaces
     {
         Task<WorkflowInstance> StartWorkflowAsync(string requestType, long requestId, long requesterId, WorkflowContext context);
         Task<WorkflowActionResult> ActOnStepAsync(long instanceId, long currentUserId, WorkflowActionRequest request);
+        Task<WorkflowActionResult> ResubmitWorkflowAsync(string requestType, long requestId, long requesterId, string? comment = null);
+        Task<WorkflowActionResult> ResubmitWorkflowByIdAsync(long instanceId, long requesterId, string? comment = null);
         Task<bool> CancelWorkflowAsync(long instanceId, long requesterId, string cancelReason);
         Task<List<WorkflowInboxItemDTO>> GetPendingInboxAsync(long currentUserId);
         Task<List<WorkflowScopedRequestDTO>> GetRequestsInScopeAsync(long currentUserId, string? requestType, string? status);

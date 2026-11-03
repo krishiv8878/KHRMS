@@ -1,7 +1,8 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using KHRMS.Controllers;
 using KHRMS.Core;
 using KHRMS.Services;
+using KHRMS.Services.Interfaces;
 using KHRMS.Services.Request;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
@@ -11,11 +12,15 @@ namespace KHRMS.UnitTest.ControllerTests
     public class AttendanceRequestControllerTest
     {
         private readonly Mock<IAttendanceRequestService> _mock;
+        private readonly Mock<IEmployeeAccessService> _mockAccessService;
         private readonly AttendanceRequestController _controller;
         public AttendanceRequestControllerTest()
         {
             _mock = new Mock<IAttendanceRequestService>();
-            _controller = new AttendanceRequestController(_mock.Object);
+            _mockAccessService = new Mock<IEmployeeAccessService>();
+            _mockAccessService.Setup(x => x.CanAccessEmployeeAsync(It.IsAny<long>(), It.IsAny<string>()))
+                .ReturnsAsync(true);
+            _controller = new AttendanceRequestController(_mock.Object, _mockAccessService.Object);
         }
         [Fact]
         public async Task Add_AttendanceRequest_WhenValidRequestProvided_ReturnsSuccess()

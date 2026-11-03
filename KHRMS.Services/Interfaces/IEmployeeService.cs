@@ -1,6 +1,7 @@
 using KHRMS.Core;
 using KHRMS.Services.Request;
-using System.Linq.Expressions;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace KHRMS.Services
 {
@@ -15,6 +16,13 @@ namespace KHRMS.Services
         Task<bool> DeleteEmployee(long employeeId);
         Task<IEnumerable<EmployeeRequestModel>> GetAllManagers();
         Task<string?> UploadProfileImage(ProfileImageRequest request);
+        Task<IEnumerable<EmployeeRequestModel>> GetProbationRemindersAsync();
+        Task<bool> ProcessProbationDecisionAsync(long employeeId, ProbationDecisionDto dto);
 
+        // Tenures, Rehire & Notice Overrides
+        Task<bool> UpdateNoticeOverrideAsync(long employeeId, NoticePeriodOverrideDto dto);
+        Task<IEnumerable<MatchingFormerEmployeeDto>> GetMatchingFormerEmployeesAsync(string? email, string? pan, string? uan);
+        Task<IEnumerable<HistoricalRehireReportItemDto>> GetHistoricalRehiresReportAsync();
+        Task<IEnumerable<PreviousEmploymentHistoryDto>> GetPreviousEmploymentHistoryAsync(long employeeId);
     }
 }

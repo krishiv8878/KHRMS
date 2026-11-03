@@ -198,6 +198,11 @@ namespace KHRMS
                 if (targetDocId > 0)
                 {
                     existingDoc = await _unitOfWork.EmployeementDocument.GetById(targetDocId);
+                    if (existingDoc != null && !isHrOrAdmin && existingDoc.EmployeeId != currentUserId)
+                    {
+                        Log.Warning("Unauthorized document overwrite attempt by User {UserId} on Document {DocId} of Employee {TargetEmpId}", currentUserId, targetDocId, existingDoc.EmployeeId);
+                        return Forbid();
+                    }
                 }
 
                 // If not found by direct ID, check if this employee has an existing Rejected document with the same name

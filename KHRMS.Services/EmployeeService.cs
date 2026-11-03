@@ -10,11 +10,18 @@ using Microsoft.EntityFrameworkCore.Metadata; // Add this for PasswordHasher
 
 namespace KHRMS.Services
 {
-    public class EmployeeService(IUnitOfWork unitOfWork, ISendEmailService emailRepository, ITokenService tokenService) : IEmployeeService
+    public class EmployeeService(
+        IUnitOfWork unitOfWork,
+        ISendEmailService emailRepository,
+        ITokenService tokenService,
+        IAuditService auditService,
+        IUserContextService? userContextService = null) : IEmployeeService
     {
         private readonly IUnitOfWork _unitOfWork = unitOfWork;
         private readonly ISendEmailService _sendEmailService = emailRepository;
         private readonly ITokenService _tokenService = tokenService;
+        private readonly IAuditService _auditService = auditService;
+        private readonly IUserContextService? _userContextService = userContextService;
         private const string AllowdChar = "abcdefghijklmnopqrstuvwxyz" +
                                           "ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
                                           "0123456789" +
@@ -181,7 +188,11 @@ namespace KHRMS.Services
                 IsActive = employeeRequestModel.IsActive,
                 IsDeleted = false,
                 EmployeeCode = assignedEmpCode,
-                ProfileCompleted = false
+                ProfileCompleted = false,
+                ProbationEndDate = employeeRequestModel.ProbationEndDate ?? employeeRequestModel.DateOfJoining?.AddMonths(3) ?? now.AddMonths(3),
+                ProbationStatus = !string.IsNullOrWhiteSpace(employeeRequestModel.ProbationStatus) ? employeeRequestModel.ProbationStatus : "UnderProbation",
+                EmploymentStatus = !string.IsNullOrWhiteSpace(employeeRequestModel.EmploymentStatus) ? employeeRequestModel.EmploymentStatus : "Probation",
+                EmploymentType = !string.IsNullOrWhiteSpace(employeeRequestModel.EmploymentType) ? employeeRequestModel.EmploymentType : "FullTime"
             };
 
             await _unitOfWork.Employees.Add(newEmployee);
@@ -259,33 +270,96 @@ namespace KHRMS.Services
 
         public async Task<bool> DeleteEmployee(long employeeId)
         {
-            if (employeeId > 0)
+            if (employeeId <= 0) return false;
+
+            var employeeDetails = await _unitOfWork.Employees.GetById(employeeId);
+            if (employeeDetails == null || employeeDetails.IsDeleted) return false;
+
+            // Safeguard 1: Block deleting the last active Administrator
+            var allRoles = (await _unitOfWork.RoleMaster.GetAll()).ToList();
+            var adminRoleIds = allRoles
+                .Where(r => string.Equals(r.RoleName, "Admin", StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(r.RoleName, "System Admin", StringComparison.OrdinalIgnoreCase))
+                .Select(r => r.Id)
+                .ToHashSet();
+
+            var activeAdminMappings = (await _unitOfWork.EmployeeRoleMappings.GetAll())
+                .Where(m => adminRoleIds.Contains(m.RoleId) && m.IsActive && !m.IsDeleted)
+                .ToList();
+
+            bool isTargetAdmin = activeAdminMappings.Any(m => m.EmployeeId == employeeId);
+            if (isTargetAdmin)
             {
-                var employeeDetails = await _unitOfWork.Employees.GetById(employeeId);
-                if (employeeDetails != null)
+                var otherActiveAdmins = activeAdminMappings
+                    .Where(m => m.EmployeeId != employeeId)
+                    .Select(m => m.EmployeeId)
+                    .Distinct()
+                    .ToList();
+
+                if (!otherActiveAdmins.Any())
                 {
-                    employeeDetails.IsDeleted = true;
-                    employeeDetails.IsActive = false;
-                    employeeDetails.UpdatedDate = DateTime.Now;
-
-                    _unitOfWork.Employees.Update(employeeDetails);
-
-                    // Deactivate linked UserLogins so deleted employee cannot log in
-                    var userLogins = (await _unitOfWork.UserLogins.GetAll())
-                        .Where(u => u.UserId == employeeId || string.Equals(u.Email, employeeDetails.EmailAddress, StringComparison.OrdinalIgnoreCase))
-                        .ToList();
-
-                    foreach (var ul in userLogins)
-                    {
-                        ul.IsDeleted = true;
-                        ul.IsActive = false;
-                        _unitOfWork.UserLogins.Update(ul);
-                    }
-
-                    var result = _unitOfWork.Save();
-                    return result > 0;
+                    throw new InvalidOperationException("Cannot delete or deactivate the last active System Administrator.");
                 }
             }
+
+            var beforeSnapshot = new
+            {
+                employeeDetails.Id,
+                employeeDetails.EmployeeCode,
+                employeeDetails.FirstName,
+                employeeDetails.LastName,
+                employeeDetails.EmailAddress,
+                employeeDetails.IsActive
+            };
+
+            employeeDetails.IsDeleted = true;
+            employeeDetails.IsActive = false;
+            employeeDetails.UpdatedDate = DateTime.UtcNow;
+
+            _unitOfWork.Employees.Update(employeeDetails);
+
+            // Deactivate linked UserLogins so deleted employee cannot log in
+            var userLogins = (await _unitOfWork.UserLogins.GetAll())
+                .Where(u => u.UserId == employeeId || string.Equals(u.Email, employeeDetails.EmailAddress, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            foreach (var ul in userLogins)
+            {
+                ul.IsDeleted = true;
+                ul.IsActive = false;
+                ul.UpdatedDate = DateTime.UtcNow;
+                _unitOfWork.UserLogins.Update(ul);
+            }
+
+            // Deactivate assigned roles
+            var assignedRoles = (await _unitOfWork.EmployeeRoleMappings.GetAll())
+                .Where(m => m.EmployeeId == employeeId && m.IsActive && !m.IsDeleted)
+                .ToList();
+
+            foreach (var ar in assignedRoles)
+            {
+                ar.IsActive = false;
+                ar.IsDeleted = true;
+                ar.UpdatedDate = DateTime.UtcNow;
+                _unitOfWork.EmployeeRoleMappings.Update(ar);
+            }
+
+            var result = _unitOfWork.Save();
+
+            if (result > 0)
+            {
+                await _auditService.LogAsync(
+                    moduleName: "Workforce",
+                    entityName: "Employee",
+                    entityId: employeeId.ToString(),
+                    action: "DELETE",
+                    beforeValues: beforeSnapshot,
+                    afterValues: null,
+                    reason: "Employee offboarded and deleted"
+                );
+                return true;
+            }
+
             return false;
         }
 
@@ -369,7 +443,13 @@ namespace KHRMS.Services
                     .ToList(),
                 ManagerName = (emp.ManagerId.HasValue && employeeDictionary.TryGetValue(emp.ManagerId.Value, out var mgr))
                     ? $"{mgr.FirstName} {mgr.LastName}"
-                    : "Manager Not Assigned"
+                    : "Manager Not Assigned",
+                ProbationEndDate = emp.ProbationEndDate,
+                ProbationStatus = emp.ProbationStatus ?? "Confirmed",
+                EmploymentStatus = emp.EmploymentStatus ?? (emp.IsActive ? "Active" : "Exited"),
+                EmploymentType = emp.EmploymentType ?? "FullTime",
+                RehireDate = emp.RehireDate,
+                ExitDate = emp.ExitDate
 
             }).OrderByDescending(emp => emp.CreatedDate) // Sort new entries at the top
     .ToList();
@@ -495,6 +575,10 @@ namespace KHRMS.Services
                 employeeDetails.SkillIds = employeeRequestModel.SkillIds;
             if (employeeRequestModel.ProjectIds != null)
                 employeeDetails.ProjectIds = employeeRequestModel.ProjectIds;
+            if (employeeRequestModel.ProbationEndDate.HasValue) employeeDetails.ProbationEndDate = employeeRequestModel.ProbationEndDate.Value;
+            if (!string.IsNullOrWhiteSpace(employeeRequestModel.ProbationStatus)) employeeDetails.ProbationStatus = employeeRequestModel.ProbationStatus;
+            if (!string.IsNullOrWhiteSpace(employeeRequestModel.EmploymentStatus)) employeeDetails.EmploymentStatus = employeeRequestModel.EmploymentStatus;
+            if (!string.IsNullOrWhiteSpace(employeeRequestModel.EmploymentType)) employeeDetails.EmploymentType = employeeRequestModel.EmploymentType;
 
             _unitOfWork.Employees.Update(employeeDetails);
             var saveEmployeeResult = _unitOfWork.Save();
@@ -578,6 +662,17 @@ namespace KHRMS.Services
             if (request.File == null || request.File.Length == 0)
                 return null;
 
+            // Security Hardening (SEC-21): Enforce max file size of 5 MB
+            const long maxFileSize = 5 * 1024 * 1024;
+            if (request.File.Length > maxFileSize)
+                return null;
+
+            // Strictly whitelist safe image extensions
+            var allowedExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".webp" };
+            var extension = Path.GetExtension(request.File.FileName);
+            if (string.IsNullOrWhiteSpace(extension) || !allowedExtensions.Contains(extension))
+                return null;
+
             var employee = await _unitOfWork.Employees.GetById(request.EmployeeId);
 
             if (employee == null)
@@ -589,7 +684,7 @@ namespace KHRMS.Services
                     Directory.GetCurrentDirectory(),
                     "wwwroot",
                     "ProfileImages",
-                    employee.ProfileImage
+                    Path.GetFileName(employee.ProfileImage)
                 );
 
                 if (File.Exists(oldFilePath))
@@ -598,9 +693,7 @@ namespace KHRMS.Services
                 }
             }
 
-            var fileName =
-                Guid.NewGuid().ToString() +
-                Path.GetExtension(request.File.FileName);
+            var fileName = $"{Guid.NewGuid():N}{extension.ToLowerInvariant()}";
 
             var folderPath = Path.Combine(
                 Directory.GetCurrentDirectory(),
@@ -625,6 +718,251 @@ namespace KHRMS.Services
             _unitOfWork.Save();
 
             return employee.ProfileImage;
+        }
+
+        public async Task<IEnumerable<EmployeeRequestModel>> GetProbationRemindersAsync()
+        {
+            var allEmployees = await GetAllEmployees();
+            var thresholdDate = DateTime.Today.AddDays(15);
+
+            var reminders = allEmployees.Where(e =>
+                string.Equals(e.ProbationStatus, "UnderProbation", StringComparison.OrdinalIgnoreCase) &&
+                e.ProbationEndDate.HasValue &&
+                e.ProbationEndDate.Value.Date <= thresholdDate.Date
+            ).OrderBy(e => e.ProbationEndDate).ToList();
+
+            return reminders;
+        }
+
+        public async Task<bool> ProcessProbationDecisionAsync(long employeeId, ProbationDecisionDto dto)
+        {
+            var employee = await _unitOfWork.Employees.GetById(employeeId);
+            if (employee == null || employee.IsDeleted) throw new KeyNotFoundException($"Employee #{employeeId} not found.");
+
+            var currentUserId = _userContextService?.GetCurrentEmployeeId() ?? 0;
+            bool isAdminOrHr = _userContextService?.IsAdmin() == true || _userContextService?.IsHR() == true;
+            bool isManager = employee.ManagerId.HasValue && employee.ManagerId.Value == currentUserId;
+
+            if (!isAdminOrHr && !isManager)
+            {
+                throw new UnauthorizedAccessException("Only the reporting manager or HR can process probation decisions.");
+            }
+
+            var now = DateTime.Now;
+            if (string.Equals(dto.Decision, "Confirm", StringComparison.OrdinalIgnoreCase))
+            {
+                employee.ProbationStatus = "Confirmed";
+                employee.EmploymentStatus = "Active";
+            }
+            else if (string.Equals(dto.Decision, "Extend", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!dto.NewEndDate.HasValue || dto.NewEndDate.Value.Date <= DateTime.Today)
+                {
+                    throw new InvalidOperationException("A valid future extension date is required to extend probation.");
+                }
+                employee.ProbationStatus = "Extended";
+                employee.ProbationEndDate = dto.NewEndDate.Value;
+            }
+            else if (string.Equals(dto.Decision, "Terminate", StringComparison.OrdinalIgnoreCase))
+            {
+                employee.ProbationStatus = "Terminated";
+                employee.EmploymentStatus = "NoticePeriod";
+            }
+            else
+            {
+                throw new ArgumentException($"Invalid probation decision '{dto.Decision}'. Allowed values: Confirm, Extend, Terminate.");
+            }
+
+            employee.UpdatedBy = (int)currentUserId;
+            employee.UpdatedDate = now;
+            _unitOfWork.Employees.Update(employee);
+
+            return _unitOfWork.Save() > 0;
+        }
+
+        public async Task<bool> UpdateNoticeOverrideAsync(long employeeId, NoticePeriodOverrideDto dto)
+        {
+            var employee = await _unitOfWork.Employees.GetById(employeeId);
+            if (employee == null || employee.IsDeleted) throw new KeyNotFoundException($"Employee #{employeeId} not found.");
+
+            bool hasOverridePerm = _userContextService?.IsAdmin() == true ||
+                                   _userContextService?.IsHR() == true ||
+                                   await (_userContextService?.HasPermissionAsync("NOTICE_OVERRIDE") ?? Task.FromResult(false));
+
+            if (!hasOverridePerm)
+            {
+                throw new UnauthorizedAccessException("Permission Denied: Overriding employee notice period requires the 'NOTICE_OVERRIDE' permission.");
+            }
+
+            if (string.IsNullOrWhiteSpace(dto.Reason))
+            {
+                throw new InvalidOperationException("A mandatory justification reason is required to override notice period.");
+            }
+
+            var oldOverride = employee.NoticePeriodOverrideDays;
+            employee.NoticePeriodOverrideDays = dto.NoticePeriodDays;
+            employee.NoticePeriodOverrideReason = dto.Reason;
+            employee.UpdatedBy = (int)(_userContextService?.GetCurrentEmployeeId() ?? 0);
+            employee.UpdatedDate = DateTime.UtcNow;
+
+            _unitOfWork.Employees.Update(employee);
+            var saved = _unitOfWork.Save() > 0;
+
+            if (saved && _auditService != null)
+            {
+                await _auditService.LogAsync("Workforce", "Employee", employeeId.ToString(), "NOTICE_OVERRIDE",
+                    new { NoticePeriodOverrideDays = oldOverride },
+                    new { NoticePeriodOverrideDays = dto.NoticePeriodDays, Reason = dto.Reason },
+                    dto.Reason);
+            }
+
+            return saved;
+        }
+
+        public async Task<IEnumerable<MatchingFormerEmployeeDto>> GetMatchingFormerEmployeesAsync(string? email, string? pan, string? uan)
+        {
+            if (string.IsNullOrWhiteSpace(email) && string.IsNullOrWhiteSpace(pan) && string.IsNullOrWhiteSpace(uan))
+            {
+                return Enumerable.Empty<MatchingFormerEmployeeDto>();
+            }
+
+            var allEmployees = await _unitOfWork.Employees.GetAll();
+            var matches = new List<MatchingFormerEmployeeDto>();
+
+            var normalizedEmail = email?.Trim().ToLowerInvariant();
+            var normalizedPan = pan?.Trim().ToUpperInvariant();
+            var normalizedUan = uan?.Trim();
+
+            foreach (var emp in allEmployees)
+            {
+                bool isExitedOrDeleted = emp.IsDeleted || string.Equals(emp.EmploymentStatus, "Exited", StringComparison.OrdinalIgnoreCase);
+                if (!isExitedOrDeleted) continue;
+
+                var reasons = new List<string>();
+
+                if (!string.IsNullOrEmpty(normalizedPan) && !string.IsNullOrEmpty(emp.PanNumber) &&
+                    string.Equals(emp.PanNumber.Trim(), normalizedPan, StringComparison.OrdinalIgnoreCase))
+                {
+                    reasons.Add("Matched by PAN");
+                }
+
+                if (!string.IsNullOrEmpty(normalizedUan) && !string.IsNullOrEmpty(emp.UanNumber) &&
+                    string.Equals(emp.UanNumber.Trim(), normalizedUan, StringComparison.OrdinalIgnoreCase))
+                {
+                    reasons.Add("Matched by UAN");
+                }
+
+                if (!string.IsNullOrEmpty(normalizedEmail))
+                {
+                    if (!string.IsNullOrEmpty(emp.PersonalEmail) && string.Equals(emp.PersonalEmail.Trim(), normalizedEmail, StringComparison.OrdinalIgnoreCase))
+                    {
+                        reasons.Add("Matched by Personal Email");
+                    }
+                    else if (!string.IsNullOrEmpty(emp.EmailAddress) && string.Equals(emp.EmailAddress.Trim(), normalizedEmail, StringComparison.OrdinalIgnoreCase))
+                    {
+                        reasons.Add("Matched by Primary Email");
+                    }
+                }
+
+                if (reasons.Any())
+                {
+                    matches.Add(new MatchingFormerEmployeeDto
+                    {
+                        EmployeeId = emp.Id,
+                        FullName = $"{emp.FirstName} {emp.LastName}".Trim(),
+                        EmailAddress = emp.EmailAddress ?? "",
+                        PersonalEmail = emp.PersonalEmail,
+                        PanNumber = emp.PanNumber,
+                        UanNumber = emp.UanNumber,
+                        Designation = emp.Designation,
+                        DateOfJoining = emp.DateOfJoining,
+                        ExitDate = emp.ExitDate,
+                        EmploymentStatus = emp.EmploymentStatus ?? "Exited",
+                        MatchReason = string.Join(", ", reasons)
+                    });
+                }
+            }
+
+            return matches;
+        }
+
+        public async Task<IEnumerable<HistoricalRehireReportItemDto>> GetHistoricalRehiresReportAsync()
+        {
+            var allEmployees = await _unitOfWork.Employees.GetAll();
+            var rehireReport = allEmployees
+                .Where(e => e.RehireDate.HasValue || e.PreviousEmployeeId.HasValue)
+                .Select(e => new HistoricalRehireReportItemDto
+                {
+                    EmployeeId = e.Id,
+                    FullName = $"{e.FirstName} {e.LastName}".Trim(),
+                    EmailAddress = e.EmailAddress ?? "",
+                    RehireDate = e.RehireDate,
+                    CurrentDateOfJoining = e.DateOfJoining,
+                    Designation = e.Designation ?? ""
+                })
+                .OrderByDescending(r => r.RehireDate ?? r.CurrentDateOfJoining)
+                .ToList();
+
+            return rehireReport;
+        }
+
+        public async Task<IEnumerable<PreviousEmploymentHistoryDto>> GetPreviousEmploymentHistoryAsync(long employeeId)
+        {
+            var history = new List<PreviousEmploymentHistoryDto>();
+            var allEmployees = (await _unitOfWork.Employees.GetAll()).ToDictionary(e => e.Id);
+
+            if (!allEmployees.TryGetValue(employeeId, out var currentEmp)) return history;
+
+            long? prevId = currentEmp.PreviousEmployeeId;
+            var visited = new HashSet<long> { employeeId };
+
+            var allPayslips = await _unitOfWork.Payslips.GetAll();
+            var allDocs = await _unitOfWork.EmployeementDocument.GetAll();
+
+            while (prevId.HasValue && allEmployees.TryGetValue(prevId.Value, out var prevEmp))
+            {
+                if (visited.Contains(prevId.Value)) break;
+                visited.Add(prevId.Value);
+
+                var payslipsForTenure = allPayslips
+                    .Where(p => p.EmployeeId == prevEmp.Id && !p.IsDeleted)
+                    .OrderByDescending(p => p.Year).ThenByDescending(p => p.Month)
+                    .Select(p => new PreviousPayslipSummaryDto
+                    {
+                        Id = p.Id,
+                        Month = p.Month,
+                        Year = p.Year,
+                        NetPay = p.NetSalary,
+                        PayslipUrl = p.DocumentPath
+                    }).ToList();
+
+                var docsForTenure = allDocs
+                    .Where(d => d.EmployeeId == prevEmp.Id && !d.IsDeleted)
+                    .Select(d => new PreviousDocumentSummaryDto
+                    {
+                        Id = d.Id,
+                        DocumentType = d.Category ?? "Document",
+                        DocumentName = d.DocumentName ?? "File",
+                        DocumentUrl = d.FilePath,
+                        UploadedDate = d.UploadedDate ?? d.CreatedDate
+                    }).ToList();
+
+                history.Add(new PreviousEmploymentHistoryDto
+                {
+                    EmployeeId = prevEmp.Id,
+                    EmployeeCode = prevEmp.EmployeeCode,
+                    Designation = prevEmp.Designation ?? "",
+                    DateOfJoining = prevEmp.DateOfJoining,
+                    ExitDate = prevEmp.ExitDate,
+                    EmploymentStatus = prevEmp.EmploymentStatus ?? "Exited",
+                    Payslips = payslipsForTenure,
+                    Documents = docsForTenure
+                });
+
+                prevId = prevEmp.PreviousEmployeeId;
+            }
+
+            return history;
         }
     }
 }

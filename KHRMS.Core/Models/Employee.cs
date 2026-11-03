@@ -134,7 +134,56 @@ namespace KHRMS.Core
 
         public List<long>? SkillIds { get; set; }
         public List<long>? ProjectIds { get; set; }
+
+        // Probation & Employment Lifecycle Tracking
+        public DateTime? ProbationEndDate { get; set; }
+
+        [StringLength(50)]
+        public string? ProbationStatus { get; set; } = "Confirmed"; // UnderProbation, Confirmed, Extended, Terminated
+
+        [StringLength(50)]
+        public string? EmploymentStatus { get; set; } = "Active"; // Active, Probation, NoticePeriod, Exited
+
+        [StringLength(50)]
+        public string? EmploymentType { get; set; } = "FullTime"; // FullTime, Contract, Intern, PartTime
+
+        public DateTime? RehireDate { get; set; }
+
+        public DateTime? ExitDate { get; set; }
+
+        // Tenures & Universal Identity Tracking
+        public long? PreviousEmployeeId { get; set; }
+
+        [StringLength(100)]
+        public string? PersonId { get; set; }
+
+        // Notice Period Overrides & Identifiers
+        public int? NoticePeriodOverrideDays { get; set; }
+
+        [StringLength(500)]
+        public string? NoticePeriodOverrideReason { get; set; }
+
+        [StringLength(50)]
+        public string? PanNumber { get; set; }
+
+        [StringLength(50)]
+        public string? UanNumber { get; set; }
+
+        [StringLength(300)]
+        public string? PersonalEmail { get; set; }
+
+        [NotMapped]
+        public string? Department
+        {
+            get => Branch ?? Designation ?? "General";
+            set => Branch = value;
+        }
+
+        [NotMapped]
+        public string? WorkEmail
+        {
+            get => EmailAddress ?? PrimaryEmailAddress;
+            set => EmailAddress = value;
+        }
     }
-
 }
-

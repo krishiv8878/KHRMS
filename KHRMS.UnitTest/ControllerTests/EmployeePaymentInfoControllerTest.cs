@@ -1,6 +1,7 @@
-﻿using KHRMS.Core;
+using KHRMS.Core;
 using KHRMS.Infrastructure;
 using KHRMS.Services;
+using KHRMS.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using NPOI.SS.Formula.Functions;
@@ -16,7 +17,9 @@ namespace KHRMS.UnitTest.ControllerTests
         public EmployeePaymentInfoControllerTest()
         {
             _mockService = new Mock<IEmployeePaymentInfoService>();
-            _controller = new EmployeePaymentInfoController(_mockService.Object);
+            var mockAccess = new Mock<IEmployeeAccessService>();
+            mockAccess.Setup(a => a.CanAccessEmployeeAsync(It.IsAny<long>(), It.IsAny<string?>())).ReturnsAsync(true);
+            _controller = new EmployeePaymentInfoController(_mockService.Object, mockAccess.Object);
         }
 
         [Fact]

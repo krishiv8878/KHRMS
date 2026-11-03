@@ -21,6 +21,9 @@ namespace KHRMS.Services.Interfaces
         Task<PmsAppraisalDto> SubmitSelfReviewAsync(SubmitSelfReviewRequest request);
         Task<PmsAppraisalDto> SubmitManagerReviewAsync(SubmitManagerReviewRequest request);
         Task<PmsAppraisalDto> FinalizeAppraisalAsync(FinalizeAppraisalRequest request);
+        Task<PmsCalibrationDataDto> GetCalibrationDataAsync(long reviewCycleId, string? department = null);
+        Task<PmsCalibrationAppraisalItemDto> CalibrateAppraisalAsync(CalibrateAppraisalRequest request, long calibratedByEmpId);
+        Task<List<EmployeeAppraisalHistoryDto>> GetEmployeeAppraisalHistoryAsync(long employeeId);
 
         // 3. Continuous Feedback
         Task<List<PmsFeedbackDto>> GetFeedbackAsync(long? employeeId = null, string? feedbackType = null);

@@ -56,6 +56,26 @@ namespace KHRMS.Services.Request
         public string? Notes { get; set; }
     }
 
+    public class IndividualSalaryCreditRequest
+    {
+        public long EmployeeId { get; set; }
+        public int Month { get; set; } // 1 - 12
+        public int Year { get; set; }
+        public decimal GrossSalary { get; set; }
+        public decimal NetSalary { get; set; }
+        public decimal BasicSalary { get; set; }
+        public decimal Hra { get; set; }
+        public decimal SpecialAllowance { get; set; }
+        public decimal EpfDeduction { get; set; }
+        public decimal AdditionalDeductions { get; set; }
+        public decimal BonusAmount { get; set; }
+        public string? PaymentMode { get; set; }
+        public string? TransactionRef { get; set; }
+        public DateTime? PaymentDate { get; set; }
+        public string? DeductionReason { get; set; }
+        public string? Remarks { get; set; }
+    }
+
     public class UpdatePayRunStatusRequest
     {
         public long PayRunId { get; set; }
@@ -139,5 +159,43 @@ namespace KHRMS.Services.Request
         public string IfscCode { get; set; } = string.Empty;
         public decimal Amount { get; set; }
         public string Remarks { get; set; } = string.Empty;
+    }
+
+    public class ToggleHoldRequest
+    {
+        public long DetailId { get; set; }
+        public bool IsOnHold { get; set; }
+        public string? Reason { get; set; }
+    }
+
+    public class UpdateDetailAdjustmentRequest
+    {
+        public long DetailId { get; set; }
+        public decimal ManualAdjustmentAmount { get; set; }
+        public decimal ArrearsAmount { get; set; }
+        public decimal BonusAmount { get; set; }
+        public string? AdjustmentReason { get; set; }
+    }
+
+    public class LockPayRunRequest
+    {
+        public long PayRunId { get; set; }
+    }
+
+    public class ApplyEmployeeLoanRequest
+    {
+        public long EmployeeId { get; set; }
+        public string LoanType { get; set; } = "Personal Loan";
+        public decimal PrincipalAmount { get; set; }
+        public decimal InterestRatePercent { get; set; } = 0;
+        public int TenureMonths { get; set; } = 12;
+        public string? Reason { get; set; }
+    }
+
+    public class UpdateEmployeeLoanStatusRequest
+    {
+        public long LoanId { get; set; }
+        public string Status { get; set; } = "Active";
+        public string? Reason { get; set; }
     }
 }

@@ -211,10 +211,16 @@ namespace KHRMS.Services.Workflow.Services
             bool isReassign = actionNorm.Equals("Reassign", StringComparison.OrdinalIgnoreCase);
             bool isStandardApprove = actionNorm.Equals("Approve", StringComparison.OrdinalIgnoreCase);
             bool isStandardReject = actionNorm.Equals("Reject", StringComparison.OrdinalIgnoreCase);
+            bool isReturn = actionNorm.Equals("ReturnForRevision", StringComparison.OrdinalIgnoreCase);
 
-            if (!isOverride && !isReassign && !isStandardApprove && !isStandardReject)
+            if (!isOverride && !isReassign && !isStandardApprove && !isStandardReject && !isReturn)
             {
                 return new WorkflowActionResult { Success = false, StatusCode = "BadRequest", Message = $"Invalid action '{request.Action}'." };
+            }
+
+            if (isReturn && string.IsNullOrWhiteSpace(request.Reason))
+            {
+                return new WorkflowActionResult { Success = false, StatusCode = "BadRequest", Message = "A mandatory comment or instruction must be provided when returning a request for revision." };
             }
 
             // ==============================================================
@@ -321,6 +327,12 @@ namespace KHRMS.Services.Workflow.Services
                     return new WorkflowActionResult { Success = false, StatusCode = "Forbidden", Message = "Missing required permission 'REQUEST_OVERRIDE'." };
                 }
 
+                // SEC-34: Self-approval via administrative override is strictly prohibited
+                if (instance.RequesterEmployeeId == currentUserId)
+                {
+                    return new WorkflowActionResult { Success = false, StatusCode = "Forbidden", Message = "Administrators cannot execute override actions on their own requests." };
+                }
+
                 if (string.IsNullOrWhiteSpace(request.Reason))
                 {
                     return new WorkflowActionResult { Success = false, StatusCode = "BadRequest", Message = "A mandatory override reason must be provided when executing an administrative override." };
@@ -345,7 +357,7 @@ namespace KHRMS.Services.Workflow.Services
                     };
                 }
 
-                // Check 2: User is in current step's eligible approvers (holding permission alone is NOT enough!)
+                // Check 2: User is in current step's eligible approvers OR an active delegate
                 var eligibleIds = new List<long>();
                 try
                 {
@@ -353,17 +365,6 @@ namespace KHRMS.Services.Workflow.Services
                 }
                 catch { }
 
-                if (!eligibleIds.Contains(currentUserId))
-                {
-                    return new WorkflowActionResult
-                    {
-                        Success = false,
-                        StatusCode = "Forbidden",
-                        Message = "Access Denied: You are not an assigned approver for this workflow step. Holding approval permissions alone is not sufficient."
-                    };
-                }
-
-                // Check if acting as Delegate
                 var now = DateTime.UtcNow;
                 var delegations = (await _unitOfWork.WorkflowDelegations.GetAll())
                     .Where(d => d.ToEmployeeId == currentUserId && d.IsActive && !d.IsDeleted &&
@@ -371,8 +372,21 @@ namespace KHRMS.Services.Workflow.Services
                                 eligibleIds.Contains(d.FromEmployeeId))
                     .ToList();
 
-                actionCapacity = delegations.Any() ? "Delegate" : "Approver";
-                decision = isStandardApprove ? "Approved" : "Rejected";
+                bool isDirectApprover = eligibleIds.Contains(currentUserId);
+                bool isDelegate = delegations.Any();
+
+                if (!isDirectApprover && !isDelegate)
+                {
+                    return new WorkflowActionResult
+                    {
+                        Success = false,
+                        StatusCode = "Forbidden",
+                        Message = "Access Denied: You are not an assigned approver or active delegate for this workflow step. Holding approval permissions alone is not sufficient."
+                    };
+                }
+
+                actionCapacity = isDelegate ? "Delegate" : "Approver";
+                decision = isStandardApprove ? "Approved" : (isStandardReject ? "Rejected" : "NeedsRevision");
             }
 
             // ==============================================================
@@ -414,7 +428,7 @@ namespace KHRMS.Services.Workflow.Services
             // ==============================================================
             // 4. POST-DECISION PROGRESSION & AUDIT LOGGING
             // ==============================================================
-            string eventType = decision == "Approved" ? "StepApproved" : "StepRejected";
+            string eventType = decision == "Approved" ? "StepApproved" : (decision == "Rejected" ? "StepRejected" : "StepReturnedForRevision");
             await _unitOfWork.WorkflowAuditLogs.Add(new WorkflowAuditLog
             {
                 WorkflowInstanceId = instance.Id,
@@ -422,7 +436,7 @@ namespace KHRMS.Services.Workflow.Services
                 EventType = eventType,
                 PerformedByEmployeeId = currentUserId,
                 ActionCapacity = actionCapacity,
-                Details = $"Step #{currentStep.StepOrder} '{currentStep.StepName}' was {decision.ToLowerInvariant()} by User #{currentUserId} (Capacity: {actionCapacity}). Comment: {request.Reason ?? "None"}",
+                Details = $"Step #{currentStep.StepOrder} '{currentStep.StepName}' was {(decision == "NeedsRevision" ? "returned for revision" : decision.ToLowerInvariant())} by User #{currentUserId} (Capacity: {actionCapacity}). Comment: {request.Reason ?? "None"}",
                 OldStatus = "Pending",
                 NewStatus = decision,
                 Timestamp = DateTime.UtcNow,
@@ -437,6 +451,54 @@ namespace KHRMS.Services.Workflow.Services
 
             var allEmployees = (await _unitOfWork.Employees.GetAll()).ToDictionary(e => e.Id, e => $"{e.FirstName} {e.LastName}".Trim());
             string actorName = allEmployees.TryGetValue(currentUserId, out var aName) ? aName : $"User #{currentUserId}";
+
+            if (decision == "NeedsRevision")
+            {
+                instance.Status = "NeedsRevision";
+                instance.FinalActionBy = currentUserId;
+                instance.FinalComment = request.Reason;
+                instance.UpdatedBy = (int)currentUserId;
+                instance.UpdatedDate = DateTime.UtcNow;
+
+                _unitOfWork.WorkflowInstances.Update(instance);
+                _unitOfWork.Save();
+                await SyncDomainStatusAsync(instance, "NeedsRevision", currentUserId, request.Reason);
+
+                // Notify requester
+                try
+                {
+                    await _unitOfWork.Notifications.Add(new Notification
+                    {
+                        EmployeeId = instance.RequesterEmployeeId,
+                        Title = $"Your {instance.RequestType} Request Needs Revision",
+                        Message = $"Your {instance.RequestType} request #{instance.RequestId} was returned for revision at step '{currentStep.StepName}' by {actorName}. Comments: {request.Reason ?? "Please revise and resubmit."}",
+                        Category = instance.RequestType,
+                        Type = "alert",
+                        Icon = "edit_note",
+                        IconBg = "#fef3c7",
+                        IconColor = "#d97706",
+                        Route = "/index/request",
+                        QueryParams = $"tab={instance.RequestType.ToLowerInvariant()}",
+                        IsRead = false,
+                        CreatedDate = DateTime.UtcNow,
+                        UpdatedDate = DateTime.UtcNow,
+                        IsActive = true,
+                        IsDeleted = false
+                    });
+                    _unitOfWork.Save();
+                }
+                catch { }
+
+                return new WorkflowActionResult
+                {
+                    Success = true,
+                    Message = $"Workflow step #{currentStep.StepOrder} returned for revision.",
+                    WorkflowStatus = "NeedsRevision",
+                    IsWorkflowCompleted = false,
+                    CurrentStepOrder = currentStep.StepOrder,
+                    ActionCapacity = actionCapacity
+                };
+            }
 
             if (decision == "Rejected")
             {
@@ -523,7 +585,7 @@ namespace KHRMS.Services.Workflow.Services
                 _unitOfWork.WorkflowInstanceSteps.Update(nextStep);
                 _unitOfWork.WorkflowInstances.Update(instance);
                 _unitOfWork.Save();
-                await SyncDomainStatusAsync(instance, "Rejected", currentUserId, request.Reason);
+                await SyncDomainStatusAsync(instance, "Pending", currentUserId, request.Reason);
 
                 // Notify next step approvers
                 var nextApproverIds = new List<long>();
@@ -710,6 +772,166 @@ namespace KHRMS.Services.Workflow.Services
             return true;
         }
 
+        public async Task<WorkflowActionResult> ResubmitWorkflowAsync(string requestType, long requestId, long requesterId, string? comment = null)
+        {
+            var instance = (await _unitOfWork.WorkflowInstances.GetAll())
+                .FirstOrDefault(i => string.Equals(i.RequestType, requestType, StringComparison.OrdinalIgnoreCase) &&
+                                     i.RequestId == requestId && i.IsActive && !i.IsDeleted);
+
+            if (instance == null)
+            {
+                return new WorkflowActionResult { Success = false, StatusCode = "NotFound", Message = "Workflow instance not found." };
+            }
+
+            return await ResubmitWorkflowByIdAsync(instance.Id, requesterId, comment);
+        }
+
+        public async Task<WorkflowActionResult> ResubmitWorkflowByIdAsync(long instanceId, long requesterId, string? comment = null)
+        {
+            var instance = await _unitOfWork.WorkflowInstances.GetById(instanceId);
+            if (instance == null || !instance.IsActive || instance.IsDeleted)
+            {
+                return new WorkflowActionResult { Success = false, StatusCode = "NotFound", Message = "Workflow instance not found." };
+            }
+
+            if (!string.Equals(instance.Status, "NeedsRevision", StringComparison.OrdinalIgnoreCase))
+            {
+                return new WorkflowActionResult
+                {
+                    Success = false,
+                    StatusCode = "BadRequest",
+                    Message = $"Workflow instance #{instanceId} is '{instance.Status}'. Only requests with 'NeedsRevision' status can be resubmitted."
+                };
+            }
+
+            // Only the requester or an administrator can resubmit
+            bool canOverride = await _permissionService.HasPermissionAsync(requesterId, "REQUEST_OVERRIDE");
+            if (instance.RequesterEmployeeId != requesterId && !canOverride)
+            {
+                return new WorkflowActionResult
+                {
+                    Success = false,
+                    StatusCode = "Forbidden",
+                    Message = "Only the requester or an authorized administrator can resubmit this request."
+                };
+            }
+
+            var allSteps = (await _unitOfWork.WorkflowInstanceSteps.GetAll())
+                .Where(s => s.WorkflowInstanceId == instanceId && s.IsActive && !s.IsDeleted)
+                .OrderBy(s => s.StepOrder)
+                .ToList();
+
+            var returnedStep = allSteps.FirstOrDefault(s => s.StepOrder == instance.CurrentStepOrder);
+            if (returnedStep == null)
+            {
+                return new WorkflowActionResult { Success = false, StatusCode = "BadRequest", Message = "Current step not found." };
+            }
+
+            // Reset current step to Pending
+            returnedStep.Status = "Pending";
+            returnedStep.ActionDecision = null;
+            returnedStep.ActionByEmployeeId = null;
+            returnedStep.ActionTime = null;
+            returnedStep.Comment = null;
+            returnedStep.StepStartTime = DateTime.UtcNow;
+            returnedStep.UpdatedBy = (int)requesterId;
+            returnedStep.UpdatedDate = DateTime.UtcNow;
+
+            // If time limit exists, reset due time
+            var defStep = (await _unitOfWork.WorkflowSteps.GetAll())
+                .FirstOrDefault(s => s.WorkflowDefinitionId == instance.WorkflowDefinitionId && s.StepOrder == returnedStep.StepOrder);
+            if (defStep != null && defStep.TimeLimitHours.HasValue && defStep.IsEscalationEnabled)
+            {
+                returnedStep.DueTime = DateTime.UtcNow.AddHours(defStep.TimeLimitHours.Value);
+                returnedStep.IsEscalated = false;
+                returnedStep.EscalatedTime = null;
+            }
+
+            _unitOfWork.WorkflowInstanceSteps.Update(returnedStep);
+
+            // Reset instance status to Pending
+            instance.Status = "Pending";
+            instance.FinalActionBy = null;
+            instance.FinalComment = null;
+            instance.UpdatedBy = (int)requesterId;
+            instance.UpdatedDate = DateTime.UtcNow;
+
+            _unitOfWork.WorkflowInstances.Update(instance);
+            _unitOfWork.Save();
+
+            // Audit log
+            await _unitOfWork.WorkflowAuditLogs.Add(new WorkflowAuditLog
+            {
+                WorkflowInstanceId = instance.Id,
+                WorkflowInstanceStepId = returnedStep.Id,
+                EventType = "WorkflowResubmitted",
+                PerformedByEmployeeId = requesterId,
+                ActionCapacity = "Requester",
+                Details = $"Workflow resubmitted after revision. Comment: {comment ?? "Revised by requester"}",
+                OldStatus = "NeedsRevision",
+                NewStatus = "Pending",
+                Timestamp = DateTime.UtcNow,
+                CreatedBy = (int)requesterId,
+                CreatedDate = DateTime.UtcNow,
+                UpdatedBy = (int)requesterId,
+                UpdatedDate = DateTime.UtcNow,
+                IsActive = true,
+                IsDeleted = false
+            });
+            _unitOfWork.Save();
+
+            // Sync domain entity back to Pending
+            await SyncDomainStatusAsync(instance, "Pending", requesterId, comment);
+
+            // Notify approvers of returnedStep
+            var approverIds = new List<long>();
+            try
+            {
+                approverIds = JsonSerializer.Deserialize<List<long>>(returnedStep.EligibleApproverIdsJson) ?? new List<long>();
+            }
+            catch { }
+
+            var allEmployees = (await _unitOfWork.Employees.GetAll()).ToDictionary(e => e.Id, e => $"{e.FirstName} {e.LastName}".Trim());
+            string requesterName = allEmployees.TryGetValue(requesterId, out var rName) ? rName : $"Employee #{requesterId}";
+
+            foreach (var appEmpId in approverIds)
+            {
+                try
+                {
+                    await _unitOfWork.Notifications.Add(new Notification
+                    {
+                        EmployeeId = appEmpId,
+                        Title = $"{instance.RequestType} Request Resubmitted",
+                        Message = $"{requesterName} has resubmitted their {instance.RequestType} request #{instance.RequestId} after revision. Please review step '{returnedStep.StepName}'.",
+                        Category = instance.RequestType,
+                        Type = "request",
+                        Icon = "assignment",
+                        IconBg = "#eff6ff",
+                        IconColor = "#2563eb",
+                        Route = "/index/request",
+                        QueryParams = $"tab={instance.RequestType.ToLowerInvariant()}",
+                        IsRead = false,
+                        CreatedDate = DateTime.UtcNow,
+                        UpdatedDate = DateTime.UtcNow,
+                        IsActive = true,
+                        IsDeleted = false
+                    });
+                }
+                catch { }
+            }
+            _unitOfWork.Save();
+
+            return new WorkflowActionResult
+            {
+                Success = true,
+                Message = "Workflow resubmitted successfully and returned to pending approval.",
+                WorkflowStatus = "Pending",
+                IsWorkflowCompleted = false,
+                CurrentStepOrder = returnedStep.StepOrder,
+                ActionCapacity = "Requester"
+            };
+        }
+
         public async Task<List<WorkflowInboxItemDTO>> GetPendingInboxAsync(long currentUserId)
         {
             var pendingInstances = (await _unitOfWork.WorkflowInstances.GetAll())
@@ -729,6 +951,13 @@ namespace KHRMS.Services.Workflow.Services
             var leaveTypes = (await _unitOfWork.LeaveType.GetAll()).ToDictionary(t => t.Id);
             bool canReassign = await _permissionService.HasPermissionAsync(currentUserId, "REQUEST_REASSIGN");
 
+            var now = DateTime.UtcNow;
+            var activeDelegations = (await _unitOfWork.WorkflowDelegations.GetAll())
+                .Where(d => d.ToEmployeeId == currentUserId && d.IsActive && !d.IsDeleted &&
+                            d.StartDate <= now && d.EndDate >= now)
+                .ToList();
+            var delegatorIds = activeDelegations.Select(d => d.FromEmployeeId).ToHashSet();
+
             var inboxItems = new List<WorkflowInboxItemDTO>();
 
             foreach (var inst in pendingInstances)
@@ -743,8 +972,10 @@ namespace KHRMS.Services.Workflow.Services
                 }
                 catch { }
 
-                // INBOX FILTER: only items where current user is an eligible approver!
-                if (!approverIds.Contains(currentUserId)) continue;
+                // INBOX FILTER: current user is an assigned approver OR an active delegate
+                bool isDirectApprover = approverIds.Contains(currentUserId);
+                bool isDelegatedApprover = approverIds.Any(id => delegatorIds.Contains(id));
+                if (!isDirectApprover && !isDelegatedApprover) continue;
 
                 employees.TryGetValue(inst.RequesterEmployeeId, out var reqEmp);
                 string reqName = reqEmp != null ? $"{reqEmp.FirstName} {reqEmp.LastName}".Trim() : $"Employee #{inst.RequesterEmployeeId}";
@@ -793,6 +1024,7 @@ namespace KHRMS.Services.Workflow.Services
                     Status = inst.Status,
                     IsEscalated = curStep.IsEscalated,
                     CanApprove = true,
+                    CanReturnForRevision = true,
                     CanOverride = false,
                     CanReassign = canReassign,
                     CanCancel = inst.RequesterEmployeeId == currentUserId,
@@ -846,6 +1078,13 @@ namespace KHRMS.Services.Workflow.Services
             bool canOverrideGlobal = await _permissionService.HasPermissionAsync(currentUserId, "REQUEST_OVERRIDE");
             bool canReassignGlobal = await _permissionService.HasPermissionAsync(currentUserId, "REQUEST_REASSIGN");
 
+            var now = DateTime.UtcNow;
+            var activeDelegations = (await _unitOfWork.WorkflowDelegations.GetAll())
+                .Where(d => d.ToEmployeeId == currentUserId && d.IsActive && !d.IsDeleted &&
+                            d.StartDate <= now && d.EndDate >= now)
+                .ToList();
+            var delegatorIds = activeDelegations.Select(d => d.FromEmployeeId).ToHashSet();
+
             var result = new List<WorkflowScopedRequestDTO>();
 
             foreach (var inst in instances)
@@ -870,13 +1109,17 @@ namespace KHRMS.Services.Workflow.Services
                     .ToList();
 
                 bool isPending = string.Equals(inst.Status, "Pending", StringComparison.OrdinalIgnoreCase);
+                bool isDirectApprover = approverIds.Contains(currentUserId);
+                bool isDelegatedApprover = approverIds.Any(id => delegatorIds.Contains(id));
+                bool canApproveOrReturn = isPending && (isDirectApprover || isDelegatedApprover);
 
                 var payload = new Dictionary<string, object?>();
                 string title = $"{inst.RequestType} Request #{inst.RequestId}";
                 string summary = isPending && curStep != null ? $"Pending {curStep.StepName}" : inst.Status;
 
                 bool isInDecisionChain = inst.RequesterEmployeeId == currentUserId ||
-                                         approverIds.Contains(currentUserId) ||
+                                         isDirectApprover ||
+                                         isDelegatedApprover ||
                                          allSteps.Any(s => s.WorkflowInstanceId == inst.Id && s.ActionByEmployeeId == currentUserId) ||
                                          canOverrideGlobal;
 
@@ -910,8 +1153,9 @@ namespace KHRMS.Services.Workflow.Services
                     CurrentStepOrder = inst.CurrentStepOrder,
                     CurrentStepName = curStep?.StepName ?? string.Empty,
                     PendingWith = string.Join(", ", pendingNames),
-                    CanApprove = isPending && approverIds.Contains(currentUserId),
-                    CanOverride = isPending && canOverrideGlobal && !approverIds.Contains(currentUserId),
+                    CanApprove = canApproveOrReturn,
+                    CanReturnForRevision = canApproveOrReturn,
+                    CanOverride = isPending && canOverrideGlobal && !isDirectApprover && !isDelegatedApprover,
                     CanReassign = isPending && canReassignGlobal,
                     CanCancel = isPending && inst.RequesterEmployeeId == currentUserId,
                     PayloadSummary = payload
@@ -949,14 +1193,25 @@ namespace KHRMS.Services.Workflow.Services
                 catch { }
             }
 
+            var now = DateTime.UtcNow;
+            var activeDelegations = (await _unitOfWork.WorkflowDelegations.GetAll())
+                .Where(d => d.ToEmployeeId == currentUserId && d.IsActive && !d.IsDeleted &&
+                            d.StartDate <= now && d.EndDate >= now)
+                .ToList();
+            var delegatorIds = activeDelegations.Select(d => d.FromEmployeeId).ToHashSet();
+            bool isDirectApprover = approverIds.Contains(currentUserId);
+            bool isDelegatedApprover = approverIds.Any(id => delegatorIds.Contains(id));
+
             bool isPending = string.Equals(instance.Status, "Pending", StringComparison.OrdinalIgnoreCase);
+            bool canApproveOrReturn = isPending && (isDirectApprover || isDelegatedApprover);
             bool canOverride = isPending && await _permissionService.HasPermissionAsync(currentUserId, "REQUEST_OVERRIDE");
             bool canReassign = isPending && await _permissionService.HasPermissionAsync(currentUserId, "REQUEST_REASSIGN");
 
             var pendingNames = approverIds.Select(id => employees.TryGetValue(id, out var n) ? n : $"Emp #{id}").ToList();
 
             bool isInDecisionChain = instance.RequesterEmployeeId == currentUserId ||
-                                     approverIds.Contains(currentUserId) ||
+                                     isDirectApprover ||
+                                     isDelegatedApprover ||
                                      steps.Any(s => s.ActionByEmployeeId == currentUserId) ||
                                      canOverride;
 
@@ -991,8 +1246,9 @@ namespace KHRMS.Services.Workflow.Services
                 StartedDate = instance.StartedDate,
                 CompletedDate = instance.CompletedDate,
                 PendingWith = string.Join(", ", pendingNames),
-                CanApprove = isPending && approverIds.Contains(currentUserId),
-                CanOverride = canOverride && !approverIds.Contains(currentUserId),
+                CanApprove = canApproveOrReturn,
+                CanReturnForRevision = canApproveOrReturn,
+                CanOverride = canOverride && !isDirectApprover && !isDelegatedApprover,
                 CanReassign = canReassign,
                 CanCancel = isPending && instance.RequesterEmployeeId == currentUserId,
                 PayloadSummary = payload,
@@ -1379,9 +1635,112 @@ namespace KHRMS.Services.Workflow.Services
                             report.TotalApprovedAmount = 0;
                             report.NetPayableAmount = 0;
                         }
+                        else if (string.Equals(status, "NeedsRevision", StringComparison.OrdinalIgnoreCase))
+                        {
+                            report.Status = "NeedsRevision";
+                            report.ManagerId = actorId;
+                            report.ManagerActionDate = DateTime.UtcNow;
+                            report.ManagerRemarks = comment;
+                        }
+                        else if (string.Equals(status, "Pending", StringComparison.OrdinalIgnoreCase))
+                        {
+                            report.Status = "Submitted";
+                            report.ManagerRemarks = comment;
+                        }
 
                         report.UpdatedDate = DateTime.UtcNow;
                         _unitOfWork.ExpenseReports.Update(report);
+                        _unitOfWork.Save();
+                    }
+                }
+                else if (string.Equals(instance.RequestType, "Asset", StringComparison.OrdinalIgnoreCase) ||
+                         string.Equals(instance.RequestType, "AssetRequest", StringComparison.OrdinalIgnoreCase))
+                {
+                    var assetReq = await _unitOfWork.AssetRequests.GetById(instance.RequestId);
+                    if (assetReq != null)
+                    {
+                        string prevStatus = assetReq.Status;
+                        string targetStatus = status;
+                        if (string.Equals(status, "Pending", StringComparison.OrdinalIgnoreCase))
+                        {
+                            targetStatus = "Submitted";
+                        }
+                        assetReq.Status = targetStatus;
+                        if (!string.IsNullOrWhiteSpace(comment))
+                        {
+                            assetReq.AdminRemarks = comment;
+                        }
+                        assetReq.UpdatedBy = (int)actorId;
+                        assetReq.UpdatedDate = DateTime.UtcNow;
+                        _unitOfWork.AssetRequests.Update(assetReq);
+
+                        var actor = await _unitOfWork.Employees.GetById(actorId);
+                        string actorName = actor != null ? $"{actor.FirstName} {actor.LastName}".Trim() : $"Employee #{actorId}";
+
+                        await _unitOfWork.AssetRequestLogs.Add(new AssetRequestLog
+                        {
+                            AssetRequestId = assetReq.Id,
+                            FromStatus = prevStatus,
+                            ToStatus = targetStatus,
+                            ActionByEmployeeId = actorId,
+                            ActionByName = actorName,
+                            Remarks = comment,
+                            CreatedDate = DateTime.UtcNow
+                        });
+                        _unitOfWork.Save();
+                    }
+                }
+                else if (string.Equals(instance.RequestType, "Document", StringComparison.OrdinalIgnoreCase) ||
+                         string.Equals(instance.RequestType, "EmployeeDocument", StringComparison.OrdinalIgnoreCase))
+                {
+                    var doc = await _unitOfWork.EmployeementDocument.GetById(instance.RequestId);
+                    if (doc != null)
+                    {
+                        doc.Status = status;
+                        doc.ActionBy = actorId;
+                        doc.ActionDate = DateTime.UtcNow;
+                        if (!string.IsNullOrWhiteSpace(comment))
+                        {
+                            doc.RejectionReason = comment;
+                        }
+                        doc.UpdatedBy = (int)actorId;
+                        doc.UpdatedDate = DateTime.UtcNow;
+                        _unitOfWork.EmployeementDocument.Update(doc);
+                        _unitOfWork.Save();
+                    }
+                }
+                else if (string.Equals(instance.RequestType, "Resignation", StringComparison.OrdinalIgnoreCase))
+                {
+                    var resign = await _unitOfWork.Resignation.GetById(instance.RequestId);
+                    if (resign != null)
+                    {
+                        if (string.Equals(status, "Approved", StringComparison.OrdinalIgnoreCase))
+                        {
+                            resign.ResignationStatus = "ExitClearance";
+                            resign.Status = true;
+                        }
+                        else if (string.Equals(status, "Rejected", StringComparison.OrdinalIgnoreCase))
+                        {
+                            resign.ResignationStatus = "Rejected";
+                            resign.Status = false;
+                        }
+                        else if (string.Equals(status, "NeedsRevision", StringComparison.OrdinalIgnoreCase))
+                        {
+                            resign.ResignationStatus = "NeedsRevision";
+                        }
+                        else if (string.Equals(status, "Pending", StringComparison.OrdinalIgnoreCase))
+                        {
+                            resign.ResignationStatus = "Submitted";
+                        }
+
+                        if (!string.IsNullOrWhiteSpace(comment))
+                        {
+                            resign.ManagerRemarks = comment;
+                        }
+
+                        resign.UpdatedBy = (int)actorId;
+                        resign.UpdatedDate = DateTime.UtcNow;
+                        _unitOfWork.Resignation.Update(resign);
                         _unitOfWork.Save();
                     }
                 }

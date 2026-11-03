@@ -27,7 +27,8 @@ namespace KHRMS.Core
         public string IFSCCode { get; set; }
 
         [Required(ErrorMessage = "Account Number is required")]
-        public long AccountNumber { get; set; }
+        [StringLength(35)]
+        public string AccountNumber { get; set; } = string.Empty;
 
         public string NameOnAccount { get; set; }
 

@@ -1,4 +1,5 @@
-﻿using KHRMS.Infrastructure;
+using KHRMS.Authorization;
+using KHRMS.Infrastructure;
 using KHRMS.Services;
 using System.Net;
 using Microsoft.AspNetCore.Mvc;
@@ -11,6 +12,7 @@ namespace KHRMS
     [Authorize]
     [Route("api/[controller]")]
     [ApiController]
+    [RequirePermission("EMAIL_TEMPLATE_MANAGE")]
     public class EmailController(IEmailService emailService) : ControllerBase
 
     {

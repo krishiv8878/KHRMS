@@ -11,6 +11,7 @@ using KHRMS.Services.Interfaces;
 using KHRMS.Services.Request;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.AI;
 
 namespace KHRMS.Controllers
@@ -18,6 +19,7 @@ namespace KHRMS.Controllers
     [Authorize]
     [Route("api/[controller]")]
     [ApiController]
+    [EnableRateLimiting("chat-policy")]
     public class ChatController(
         IChatClient chatClient,
         ILeaveRequestTypeService leaveService,
@@ -26,7 +28,8 @@ namespace KHRMS.Controllers
         IHolidayService holidayService,
         IUserContextService userContext,
         IChatPolicyService policyService,
-        IUnitOfWork unitOfWork) : ControllerBase
+        IUnitOfWork unitOfWork,
+        IEmployeeAccessService employeeAccessService) : ControllerBase
     {
         // ──────────────────────────────────────────────────────────────────────
         // POST api/chat
@@ -109,7 +112,7 @@ namespace KHRMS.Controllers
                     Console.ForegroundColor = ConsoleColor.Cyan;
                     Console.WriteLine("\n======================= AI TOKEN PROFILER =======================");
                     Console.ResetColor();
-                    Console.WriteLine($"[QUERY]              : \"{(userQuery.Length > 80 ? userQuery.Substring(0, 77) + "..." : userQuery)}\"");
+                    Console.WriteLine($"[QUERY]              : [Masked: {userQuery.Length} characters]");
                     Console.WriteLine($"[PROMPT TOKENS]      : ~{sysPromptTokens} tok (HR System Persona)");
                     Console.WriteLine($"[HISTORY TOKENS]     : ~{histTokens} tok ({recentMessages.Count()} messages retained)");
                     Console.WriteLine($"[TOOLS EXECUTED]     : {toolsLog}");
@@ -518,11 +521,17 @@ namespace KHRMS.Controllers
                     {
                         try
                         {
-                            bool isPrivileged = userContext.IsAdmin() || userContext.IsHR() || userContext.IsManager();
-                            if (!isPrivileged)
+                            bool isHrOrAdmin = userContext.IsAdmin() || userContext.IsHR();
+                            bool isManager = userContext.IsManager();
+                            if (!isHrOrAdmin && !isManager)
                             {
                                 return "{\"info\":\"You do not have a Manager, HR, or Admin role to view team approvals.\"}";
                             }
+
+                            var currentCallerId = userContext.GetCurrentEmployeeId();
+                            var subordinateIds = !isHrOrAdmin
+                                ? await employeeAccessService.GetSubordinateEmployeeIdsAsync(currentCallerId)
+                                : new List<long>();
 
                             // Strict filter: default to Pending, strictly return requests matching the target status
                             var targetStatus = string.IsNullOrWhiteSpace(status) ? "Pending" : status.Trim();
@@ -534,6 +543,10 @@ namespace KHRMS.Controllers
                                 string.Equals(targetCategory, "Leave", StringComparison.OrdinalIgnoreCase))
                             {
                                 var teamLeaves = await leaveService.GetAllEmployeesLeaveRequest();
+                                if (!isHrOrAdmin)
+                                {
+                                    teamLeaves = teamLeaves.Where(l => subordinateIds.Contains(l.EmployeeId));
+                                }
                                 if (!string.Equals(targetStatus, "All", StringComparison.OrdinalIgnoreCase))
                                 {
                                     teamLeaves = teamLeaves.Where(l => string.Equals(l.Status, targetStatus, StringComparison.OrdinalIgnoreCase));
@@ -560,6 +573,10 @@ namespace KHRMS.Controllers
                                 string.Equals(targetCategory, "Attendance", StringComparison.OrdinalIgnoreCase))
                             {
                                 var teamAttendance = await attendanceService.GetAllAsync();
+                                if (!isHrOrAdmin)
+                                {
+                                    teamAttendance = teamAttendance.Where(a => subordinateIds.Contains(a.EmployeeId));
+                                }
                                 if (!string.Equals(targetStatus, "All", StringComparison.OrdinalIgnoreCase))
                                 {
                                     teamAttendance = teamAttendance.Where(a => string.Equals(a.Status, targetStatus, StringComparison.OrdinalIgnoreCase));

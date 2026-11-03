@@ -5,6 +5,7 @@ using KHRMS.Core.Models;
 using KHRMS.Services.Interfaces;
 using KHRMS.Services.Request;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 
 namespace KHRMS.Services
 {
@@ -192,13 +193,25 @@ namespace KHRMS.Services
         public async Task<EmployeeSalaryAssignment?> GetEmployeeSalaryAssignmentAsync(long employeeId)
         {
             var list = await _unitOfWork.EmployeeSalaryAssignments.GetAll();
-            return list.FirstOrDefault(a => a.EmployeeId == employeeId && !a.IsDeleted);
+            return list.Where(a => a.EmployeeId == employeeId && !a.IsDeleted)
+                       .OrderByDescending(a => a.IsCurrent)
+                       .ThenByDescending(a => a.EffectiveFromDate)
+                       .FirstOrDefault();
         }
 
         public async Task<IEnumerable<EmployeeSalaryAssignment>> GetAllSalaryAssignmentsAsync()
         {
             var list = await _unitOfWork.EmployeeSalaryAssignments.GetAll();
-            return list.Where(a => !a.IsDeleted).ToList();
+            return list.Where(a => !a.IsDeleted && a.IsCurrent).ToList();
+        }
+
+        public async Task<IEnumerable<EmployeeSalaryAssignment>> GetEmployeeSalaryHistoryAsync(long employeeId)
+        {
+            var list = await _unitOfWork.EmployeeSalaryAssignments.GetAll();
+            return list.Where(a => a.EmployeeId == employeeId && !a.IsDeleted)
+                       .OrderByDescending(a => a.EffectiveFromDate)
+                       .ThenByDescending(a => a.CreatedDate)
+                       .ToList();
         }
 
         public async Task<EmployeeSalaryAssignment> AssignSalaryAsync(AssignSalaryRequest req)
@@ -210,65 +223,52 @@ namespace KHRMS.Services
             });
 
             var list = await _unitOfWork.EmployeeSalaryAssignments.GetAll();
-            var existing = list.FirstOrDefault(a => a.EmployeeId == req.EmployeeId && !a.IsDeleted);
+            var existing = list.FirstOrDefault(a => a.EmployeeId == req.EmployeeId && !a.IsDeleted && a.IsCurrent);
 
             long currentUserId = _userContext.GetCurrentEmployeeId();
 
             if (existing != null)
             {
-                existing.AnnualCtc = req.AnnualCtc;
-                existing.MonthlyGross = calc.MonthlyGross;
-                existing.BasicSalary = req.BasicSalary ?? calc.BasicSalary;
-                existing.Hra = req.Hra ?? calc.Hra;
-                existing.SpecialAllowance = req.SpecialAllowance ?? calc.SpecialAllowance;
-                existing.EpfEmployee = req.EpfEmployee ?? calc.EpfEmployee;
-                existing.EpfEmployer = req.EpfEmployer ?? calc.EpfEmployer;
-                existing.EsicEmployee = req.EsicEmployee ?? calc.EsicEmployee;
-                existing.EsicEmployer = req.EsicEmployer ?? calc.EsicEmployer;
-                existing.ProfessionalTax = req.ProfessionalTax ?? calc.ProfessionalTax;
-                existing.MonthlyTds = req.MonthlyTds ?? calc.MonthlyTds;
-                existing.MonthlyNetTakeHome = calc.MonthlyNetTakeHome;
-                existing.TaxRegime = req.TaxRegime;
-                existing.EffectiveFromDate = req.EffectiveFromDate;
-                existing.Remarks = req.Remarks;
+                existing.IsCurrent = false;
+                existing.EffectiveToDate = req.EffectiveFromDate > existing.EffectiveFromDate ? req.EffectiveFromDate.AddDays(-1) : DateTime.UtcNow;
                 existing.UpdatedBy = (int)currentUserId;
                 existing.UpdatedDate = DateTime.UtcNow;
-
                 _unitOfWork.EmployeeSalaryAssignments.Update(existing);
                 _unitOfWork.Save();
-                return existing;
             }
-            else
-            {
-                var newAssignment = new EmployeeSalaryAssignment
-                {
-                    EmployeeId = req.EmployeeId,
-                    SalaryStructureId = req.SalaryStructureId,
-                    AnnualCtc = req.AnnualCtc,
-                    MonthlyGross = calc.MonthlyGross,
-                    BasicSalary = req.BasicSalary ?? calc.BasicSalary,
-                    Hra = req.Hra ?? calc.Hra,
-                    SpecialAllowance = req.SpecialAllowance ?? calc.SpecialAllowance,
-                    EpfEmployee = req.EpfEmployee ?? calc.EpfEmployee,
-                    EpfEmployer = req.EpfEmployer ?? calc.EpfEmployer,
-                    EsicEmployee = req.EsicEmployee ?? calc.EsicEmployee,
-                    EsicEmployer = req.EsicEmployer ?? calc.EsicEmployer,
-                    ProfessionalTax = req.ProfessionalTax ?? calc.ProfessionalTax,
-                    MonthlyTds = req.MonthlyTds ?? calc.MonthlyTds,
-                    MonthlyNetTakeHome = calc.MonthlyNetTakeHome,
-                    TaxRegime = req.TaxRegime,
-                    EffectiveFromDate = req.EffectiveFromDate,
-                    Remarks = req.Remarks,
-                    CreatedBy = (int)currentUserId,
-                    CreatedDate = DateTime.UtcNow,
-                    UpdatedDate = DateTime.UtcNow,
-                    IsActive = true
-                };
 
-                await _unitOfWork.EmployeeSalaryAssignments.Add(newAssignment);
-                _unitOfWork.Save();
-                return newAssignment;
-            }
+            var newAssignment = new EmployeeSalaryAssignment
+            {
+                EmployeeId = req.EmployeeId,
+                SalaryStructureId = req.SalaryStructureId,
+                AnnualCtc = req.AnnualCtc,
+                MonthlyGross = calc.MonthlyGross,
+                BasicSalary = req.BasicSalary ?? calc.BasicSalary,
+                Hra = req.Hra ?? calc.Hra,
+                SpecialAllowance = req.SpecialAllowance ?? calc.SpecialAllowance,
+                EpfEmployee = req.EpfEmployee ?? calc.EpfEmployee,
+                EpfEmployer = req.EpfEmployer ?? calc.EpfEmployer,
+                EsicEmployee = req.EsicEmployee ?? calc.EsicEmployee,
+                EsicEmployer = req.EsicEmployer ?? calc.EsicEmployer,
+                ProfessionalTax = req.ProfessionalTax ?? calc.ProfessionalTax,
+                MonthlyTds = req.MonthlyTds ?? calc.MonthlyTds,
+                MonthlyNetTakeHome = calc.MonthlyNetTakeHome,
+                TaxRegime = req.TaxRegime,
+                EffectiveFromDate = req.EffectiveFromDate,
+                EffectiveToDate = null,
+                IsCurrent = true,
+                PreviousAssignmentId = existing?.Id,
+                Remarks = req.Remarks,
+                CreatedBy = (int)currentUserId,
+                CreatedDate = DateTime.UtcNow,
+                UpdatedDate = DateTime.UtcNow,
+                IsActive = true,
+                IsDeleted = false
+            };
+
+            await _unitOfWork.EmployeeSalaryAssignments.Add(newAssignment);
+            _unitOfWork.Save();
+            return newAssignment;
         }
 
         #endregion
@@ -310,15 +310,28 @@ namespace KHRMS.Services
             var startDate = new DateTime(req.Year, req.Month, 1);
             var endDate = new DateTime(req.Year, req.Month, daysInMonth);
 
-            // Calculate total working days (excluding Saturdays and Sundays)
+            // FIN-01: Exclude official public holidays from standard working days so employees are not penalized
+            var holidaysInMonth = (await _unitOfWork.Holidays.GetAll())
+                .Where(h => !h.IsDeleted && !h.IsOptional &&
+                            h.HolidayDate.Year == req.Year && h.HolidayDate.Month == req.Month)
+                .Select(h => h.HolidayDate)
+                .ToHashSet();
+
+            // Calculate total working days (excluding Saturdays, Sundays, and public holidays)
             int standardWorkingDays = 0;
             for (var d = startDate; d <= endDate; d = d.AddDays(1))
             {
-                if (d.DayOfWeek != DayOfWeek.Saturday && d.DayOfWeek != DayOfWeek.Sunday)
+                var dOnly = DateOnly.FromDateTime(d);
+                if (d.DayOfWeek != DayOfWeek.Saturday && d.DayOfWeek != DayOfWeek.Sunday && !holidaysInMonth.Contains(dOnly))
                 {
                     standardWorkingDays++;
                 }
             }
+
+            // FIN-03: Fetch LeaveTypes to distinguish between Paid Leaves and Loss of Pay (LOP / LWP)
+            var leaveTypesMap = (await _unitOfWork.LeaveType.GetAll())
+                .Where(lt => !lt.IsDeleted)
+                .ToDictionary(lt => lt.Id, lt => lt.Type ?? string.Empty);
 
             var employees = (await _unitOfWork.Employees.GetAll())
                 .Where(e => !e.IsDeleted && (!e.DateOfJoining.HasValue || e.DateOfJoining.Value.Date <= endDate.Date))
@@ -331,6 +344,18 @@ namespace KHRMS.Services
             var pendingReimbursements = (await _unitOfWork.ReimbursementClaims.GetAll())
                 .Where(r => !r.IsDeleted && r.Status == "Approved" && r.PayRunId == null).ToList();
 
+            var activeLoans = (await _unitOfWork.EmployeeLoans.GetAll())
+                .Where(l => l.Status == "Active" && l.RemainingBalance > 0 && !l.IsDeleted)
+                .ToList();
+
+            int priorMonth = req.Month == 1 ? 12 : req.Month - 1;
+            int priorYear = req.Month == 1 ? req.Year - 1 : req.Year;
+            var priorPayRun = (await _unitOfWork.PayRuns.GetAll())
+                .FirstOrDefault(p => p.Month == priorMonth && p.Year == priorYear && !p.IsDeleted);
+            var priorDetails = priorPayRun != null
+                ? (await _unitOfWork.PayRunEmployeeDetails.GetAll()).Where(d => d.PayRunId == priorPayRun.Id && !d.IsDeleted).ToList()
+                : new List<PayRunEmployeeDetail>();
+
             long currentUserId = _userContext.GetCurrentEmployeeId();
 
             var payRun = new PayRun
@@ -339,7 +364,7 @@ namespace KHRMS.Services
                 Year = req.Year,
                 PayPeriodStart = startDate,
                 PayPeriodEnd = endDate,
-                Status = "Draft",
+                Status = "Calculated",
                 PaymentMode = req.PaymentMode ?? "Bank Transfer",
                 Notes = req.Notes,
                 ProcessedByEmployeeId = (int)currentUserId,
@@ -375,31 +400,83 @@ namespace KHRMS.Services
                     a.AttendanceDate.Year == req.Year && a.AttendanceDate.Month == req.Month).ToList();
                 decimal presentDays = empAttendance.Count(a => a.ClockIn != default);
 
-                // Approved leaves in month
+                // FIN-03: Leaves calculation - separate Paid Leaves from explicit Loss of Pay (LOP / LWP) and handle Half-Days
                 decimal paidLeaveDays = 0;
+                decimal explicitLopDays = 0;
+
                 foreach (var leave in allLeaves.Where(l => l.EmployeeId == emp.Id))
                 {
                     var leaveStart = leave.StartDate < startDate ? startDate : leave.StartDate;
                     var leaveEnd = leave.EndDate > endDate ? endDate : leave.EndDate;
                     if (leaveStart <= leaveEnd)
                     {
+                        bool isLopType = false;
+                        if (leaveTypesMap.TryGetValue(leave.LeaveTypeId, out var ltName))
+                        {
+                            var lowerName = ltName.ToLowerInvariant();
+                            isLopType = lowerName.Contains("loss of pay") || lowerName.Contains("lwp") ||
+                                        lowerName.Contains("unpaid") || lowerName.Contains("lop");
+                        }
+
+                        decimal dayWeight = (leave.LeaveMode?.Equals("HalfDay", StringComparison.OrdinalIgnoreCase) == true ||
+                                             leave.LeaveMode?.Equals("Half Day", StringComparison.OrdinalIgnoreCase) == true)
+                                            ? 0.5m : 1.0m;
+
                         for (var ld = leaveStart; ld <= leaveEnd; ld = ld.AddDays(1))
                         {
-                            if (ld.DayOfWeek != DayOfWeek.Saturday && ld.DayOfWeek != DayOfWeek.Sunday)
+                            var ldOnly = DateOnly.FromDateTime(ld);
+                            if (ld.DayOfWeek != DayOfWeek.Saturday && ld.DayOfWeek != DayOfWeek.Sunday && !holidaysInMonth.Contains(ldOnly))
                             {
-                                paidLeaveDays += 1m;
+                                if (isLopType)
+                                {
+                                    explicitLopDays += dayWeight;
+                                }
+                                else
+                                {
+                                    paidLeaveDays += dayWeight;
+                                }
                             }
                         }
                     }
                 }
 
-                // If system has attendance records for user, calculate LOP. If no records logged, assume present to avoid accidental zero payout.
-                decimal accountedDays = presentDays + paidLeaveDays;
-                decimal lopDays = 0;
-                if (empAttendance.Any() && accountedDays < standardWorkingDays)
+                // Proration for employees who joined after cycle start
+                DateTime effectiveCycleStart = startDate;
+                if (emp.DateOfJoining.HasValue && emp.DateOfJoining.Value > startDate)
                 {
-                    lopDays = standardWorkingDays - accountedDays;
+                    effectiveCycleStart = emp.DateOfJoining.Value.Date;
                 }
+
+                int employeeExpectedDays = 0;
+                for (var d = effectiveCycleStart; d <= endDate; d = d.AddDays(1))
+                {
+                    var dOnly = DateOnly.FromDateTime(d);
+                    if (d.DayOfWeek != DayOfWeek.Saturday && d.DayOfWeek != DayOfWeek.Sunday && !holidaysInMonth.Contains(dOnly))
+                    {
+                        employeeExpectedDays++;
+                    }
+                }
+
+                if (employeeExpectedDays <= 0)
+                {
+                    continue;
+                }
+
+                // Account for worked days and paid leaves against expected working days
+                decimal accountedDays = presentDays + paidLeaveDays;
+                decimal unexcusedAbsenceDays = 0;
+                // FIN-02: Zero-Attendance Anomaly Detection
+                if (!empAttendance.Any() && paidLeaveDays == 0 && explicitLopDays == 0)
+                {
+                    unexcusedAbsenceDays = employeeExpectedDays;
+                    presentDays = 0;
+                    Log.Warning("Zero attendance recorded for EmployeeId: {EmployeeId} ({Name}) for {Month}/{Year}. Marked as unexcused absence.", emp.Id, $"{emp.FirstName} {emp.LastName}", req.Month, req.Year);
+                }
+                else if (accountedDays < employeeExpectedDays)
+                {
+                    unexcusedAbsenceDays = employeeExpectedDays - accountedDays;
+                }
+                decimal lopDays = Math.Min(employeeExpectedDays, explicitLopDays + unexcusedAbsenceDays);
 
                 decimal perDayPay = standardWorkingDays > 0 ? (monthlyGross / standardWorkingDays) : 0m;
                 decimal lopDeduction = Math.Round(perDayPay * lopDays, 2);
@@ -413,11 +490,47 @@ namespace KHRMS.Services
                     _unitOfWork.ReimbursementClaims.Update(r);
                 }
 
+                // Loan EMI deductions
+                var empLoans = activeLoans.Where(l => l.EmployeeId == emp.Id).ToList();
+                decimal loanEmi = empLoans.Sum(l => Math.Min(l.MonthlyEmiAmount, l.RemainingBalance));
+
                 decimal actualGross = Math.Max(0, monthlyGross - lopDeduction + totalApprovedReimbursement);
-                decimal actualDeductions = epf + esic + pt + tds;
+                decimal actualDeductions = epf + esic + pt + tds + loanEmi;
                 decimal actualNet = Math.Max(0, actualGross - actualDeductions);
 
                 var bank = bankInfos.FirstOrDefault(b => b.EmployeeId == emp.Id);
+
+                // Automated Exception Detection
+                var exceptions = new List<string>();
+                if (bank == null || string.IsNullOrWhiteSpace(bank.AccountNumber) || string.IsNullOrWhiteSpace(bank.IFSCCode))
+                {
+                    exceptions.Add("Missing bank account coordinates");
+                }
+                if (actualNet <= 0 || actualDeductions >= actualGross)
+                {
+                    exceptions.Add("Negative or zero net take-home pay");
+                }
+                if (unexcusedAbsenceDays > 0 && (!empAttendance.Any() || unexcusedAbsenceDays >= 3))
+                {
+                    exceptions.Add($"High unexcused absence gap ({unexcusedAbsenceDays} days)");
+                }
+                if (emp.DateOfJoining.HasValue && emp.DateOfJoining.Value.Date > startDate.Date)
+                {
+                    exceptions.Add($"New joiner proration (Joined {emp.DateOfJoining.Value:dd MMM yyyy})");
+                }
+                if (string.Equals(emp.EmploymentStatus, "Exited", StringComparison.OrdinalIgnoreCase))
+                {
+                    exceptions.Add("Exited employee (Subject to FnF settlement)");
+                }
+                var priorEmpDetail = priorDetails.FirstOrDefault(p => p.EmployeeId == emp.Id);
+                if (priorEmpDetail != null && priorEmpDetail.NetPay > 0)
+                {
+                    decimal diff = Math.Abs(actualNet - priorEmpDetail.NetPay);
+                    if (diff / priorEmpDetail.NetPay > 0.20m)
+                    {
+                        exceptions.Add($">20% variance vs prior month (Prior: ₹{priorEmpDetail.NetPay:N0}, Current: ₹{actualNet:N0})");
+                    }
+                }
 
                 var detail = new PayRunEmployeeDetail
                 {
@@ -425,8 +538,8 @@ namespace KHRMS.Services
                     EmployeeId = emp.Id,
                     EmployeeName = $"{emp.FirstName} {emp.LastName}".Trim(),
                     EmployeeCode = emp.EmployeeCode.HasValue ? emp.EmployeeCode.Value.ToString() : $"EMP{emp.Id:D4}",
-                    TotalWorkingDays = standardWorkingDays,
-                    PresentDays = presentDays > 0 ? presentDays : standardWorkingDays,
+                    TotalWorkingDays = employeeExpectedDays,
+                    PresentDays = presentDays,
                     PaidLeaveDays = paidLeaveDays,
                     LopDays = lopDays,
                     LopDeduction = lopDeduction,
@@ -439,10 +552,17 @@ namespace KHRMS.Services
                     EsicDeduction = esic,
                     PtDeduction = pt,
                     TdsDeduction = tds,
+                    LoanEmiDeduction = loanEmi,
                     OtherDeductions = 0,
                     TotalDeductions = actualDeductions,
                     NetPay = actualNet,
                     PaymentStatus = "Pending",
+                    IsOnHold = false,
+                    ManualAdjustmentAmount = 0,
+                    ArrearsAmount = 0,
+                    BonusAmount = 0,
+                    HasExceptionFlag = exceptions.Count > 0,
+                    ExceptionDetails = exceptions.Count > 0 ? string.Join("; ", exceptions) : null,
                     BankName = bank?.BankName ?? "Not Configured",
                     AccountNumber = bank?.AccountNumber,
                     IfscCode = bank?.IFSCCode ?? "",
@@ -476,6 +596,66 @@ namespace KHRMS.Services
             var payRun = await _unitOfWork.PayRuns.GetById(req.PayRunId);
             if (payRun == null) throw new KeyNotFoundException($"PayRun {req.PayRunId} not found");
 
+            // SEC-03: Pay Run State Machine Transition Validation
+            if (payRun.Status.Equals("Disbursed", StringComparison.OrdinalIgnoreCase) || payRun.Status.Equals("Paid", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Cannot modify or change the status of an already disbursed/paid pay run. Disbursed pay runs are final and immutable.");
+            }
+
+            var currentStatus = (payRun.Status ?? "Draft").Trim();
+            var targetStatus = (req.Status ?? "").Trim();
+
+            bool isValidTransition = false;
+            if (string.Equals(currentStatus, targetStatus, StringComparison.OrdinalIgnoreCase))
+            {
+                isValidTransition = true;
+            }
+            else if (string.Equals(currentStatus, "Draft", StringComparison.OrdinalIgnoreCase))
+            {
+                isValidTransition = string.Equals(targetStatus, "Calculated", StringComparison.OrdinalIgnoreCase) ||
+                                    string.Equals(targetStatus, "Submitted", StringComparison.OrdinalIgnoreCase) ||
+                                    string.Equals(targetStatus, "In Review", StringComparison.OrdinalIgnoreCase) ||
+                                    string.Equals(targetStatus, "Cancelled", StringComparison.OrdinalIgnoreCase);
+            }
+            else if (string.Equals(currentStatus, "Calculated", StringComparison.OrdinalIgnoreCase))
+            {
+                isValidTransition = string.Equals(targetStatus, "In Review", StringComparison.OrdinalIgnoreCase) ||
+                                    string.Equals(targetStatus, "Approved", StringComparison.OrdinalIgnoreCase) ||
+                                    string.Equals(targetStatus, "Draft", StringComparison.OrdinalIgnoreCase) ||
+                                    string.Equals(targetStatus, "Cancelled", StringComparison.OrdinalIgnoreCase);
+            }
+            else if (string.Equals(currentStatus, "Submitted", StringComparison.OrdinalIgnoreCase) || string.Equals(currentStatus, "In Review", StringComparison.OrdinalIgnoreCase))
+            {
+                isValidTransition = string.Equals(targetStatus, "Approved", StringComparison.OrdinalIgnoreCase) ||
+                                    string.Equals(targetStatus, "In Review", StringComparison.OrdinalIgnoreCase) ||
+                                    string.Equals(targetStatus, "Calculated", StringComparison.OrdinalIgnoreCase) ||
+                                    string.Equals(targetStatus, "Draft", StringComparison.OrdinalIgnoreCase) ||
+                                    string.Equals(targetStatus, "Cancelled", StringComparison.OrdinalIgnoreCase);
+            }
+            else if (string.Equals(currentStatus, "Approved", StringComparison.OrdinalIgnoreCase))
+            {
+                isValidTransition = string.Equals(targetStatus, "Locked", StringComparison.OrdinalIgnoreCase) ||
+                                    string.Equals(targetStatus, "Disbursed", StringComparison.OrdinalIgnoreCase) ||
+                                    string.Equals(targetStatus, "Paid", StringComparison.OrdinalIgnoreCase) ||
+                                    string.Equals(targetStatus, "In Review", StringComparison.OrdinalIgnoreCase) ||
+                                    string.Equals(targetStatus, "Draft", StringComparison.OrdinalIgnoreCase) ||
+                                    string.Equals(targetStatus, "Cancelled", StringComparison.OrdinalIgnoreCase);
+            }
+            else if (string.Equals(currentStatus, "Locked", StringComparison.OrdinalIgnoreCase))
+            {
+                isValidTransition = string.Equals(targetStatus, "Disbursed", StringComparison.OrdinalIgnoreCase) ||
+                                    string.Equals(targetStatus, "Paid", StringComparison.OrdinalIgnoreCase);
+            }
+            else if (string.Equals(currentStatus, "Cancelled", StringComparison.OrdinalIgnoreCase))
+            {
+                isValidTransition = string.Equals(targetStatus, "Draft", StringComparison.OrdinalIgnoreCase);
+            }
+
+            if (!isValidTransition)
+            {
+                throw new InvalidOperationException($"Invalid pay run status transition from '{currentStatus}' to '{targetStatus}'. Sequential pay run lifecycle: Draft -> Calculated -> In Review -> Approved -> Locked -> Paid.");
+            }
+
             long currentUserId = _userContext.GetCurrentEmployeeId();
             payRun.Status = req.Status;
             payRun.Notes = string.IsNullOrEmpty(req.Notes) ? payRun.Notes : req.Notes;
@@ -487,9 +667,40 @@ namespace KHRMS.Services
                 payRun.ApprovedByEmployeeId = (int)currentUserId;
                 payRun.ApprovedDate = DateTime.UtcNow;
             }
-            else if (req.Status.Equals("Disbursed", StringComparison.OrdinalIgnoreCase))
+            else if (req.Status.Equals("Locked", StringComparison.OrdinalIgnoreCase))
+            {
+                payRun.IsLocked = true;
+                payRun.LockedDate = DateTime.UtcNow;
+                payRun.LockedByEmployeeId = currentUserId;
+            }
+            else if (req.Status.Equals("Disbursed", StringComparison.OrdinalIgnoreCase) || req.Status.Equals("Paid", StringComparison.OrdinalIgnoreCase))
             {
                 payRun.DisbursedDate = DateTime.UtcNow;
+
+                // Decrement remaining balance on active employee loans
+                var activeLoans = (await _unitOfWork.EmployeeLoans.GetAll())
+                    .Where(l => l.Status == "Active" && l.RemainingBalance > 0 && !l.IsDeleted).ToList();
+
+                var payRunDetails = (await _unitOfWork.PayRunEmployeeDetails.GetAll())
+                    .Where(d => d.PayRunId == payRun.Id && !d.IsDeleted).ToList();
+
+                foreach (var d in payRunDetails.Where(d => d.LoanEmiDeduction > 0))
+                {
+                    decimal remEmi = d.LoanEmiDeduction;
+                    foreach (var loan in activeLoans.Where(l => l.EmployeeId == d.EmployeeId).OrderBy(l => l.CreatedDate))
+                    {
+                        if (remEmi <= 0) break;
+                        decimal deductLoan = Math.Min(remEmi, loan.RemainingBalance);
+                        loan.RemainingBalance -= deductLoan;
+                        remEmi -= deductLoan;
+                        if (loan.RemainingBalance <= 0)
+                        {
+                            loan.Status = "Closed";
+                        }
+                        loan.UpdatedDate = DateTime.UtcNow;
+                        _unitOfWork.EmployeeLoans.Update(loan);
+                    }
+                }
 
                 // Update employee detail payment statuses
                 var details = (await _unitOfWork.PayRunEmployeeDetails.GetAll())
@@ -610,7 +821,7 @@ namespace KHRMS.Services
                                 ["markedBy"] = "Automated Pay Run Engine",
                                 ["markedAt"] = DateTime.UtcNow.ToString("o"),
                                 ["bankName"] = d.BankName ?? "Direct Deposit",
-                                ["accountNumber"] = d.AccountNumber?.ToString() ?? "",
+                                ["accountNumber"] = d.AccountNumber ?? "",
                                 ["ifscCode"] = d.IfscCode ?? ""
                             };
                             disbList.Add(newDisb);
@@ -643,9 +854,11 @@ namespace KHRMS.Services
         {
             var payRun = await _unitOfWork.PayRuns.GetById(payRunId);
             if (payRun == null) return false;
-            if (payRun.Status.Equals("Disbursed", StringComparison.OrdinalIgnoreCase))
+            if (payRun.IsLocked || payRun.Status.Equals("Locked", StringComparison.OrdinalIgnoreCase) ||
+                payRun.Status.Equals("Disbursed", StringComparison.OrdinalIgnoreCase) ||
+                payRun.Status.Equals("Paid", StringComparison.OrdinalIgnoreCase))
             {
-                throw new InvalidOperationException("Cannot discard or delete a pay run that has already been Disbursed.");
+                throw new InvalidOperationException("Cannot discard or delete a pay run that has already been Locked, Disbursed, or Paid.");
             }
 
             payRun.IsDeleted = true;
@@ -674,9 +887,406 @@ namespace KHRMS.Services
             return true;
         }
 
+        public async Task<bool> LockPayRunAsync(long payRunId, long employeeId)
+        {
+            var payRun = await _unitOfWork.PayRuns.GetById(payRunId);
+            if (payRun == null) throw new KeyNotFoundException($"PayRun {payRunId} not found");
+
+            if (payRun.Status.Equals("Disbursed", StringComparison.OrdinalIgnoreCase) || payRun.Status.Equals("Paid", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Cannot lock an already disbursed or paid pay run.");
+            }
+
+            payRun.IsLocked = true;
+            payRun.LockedDate = DateTime.UtcNow;
+            payRun.LockedByEmployeeId = employeeId;
+            payRun.Status = "Locked";
+            payRun.UpdatedDate = DateTime.UtcNow;
+
+            _unitOfWork.PayRuns.Update(payRun);
+            _unitOfWork.Save();
+            return true;
+        }
+
+        public async Task<bool> RecalculatePayRunAsync(long payRunId)
+        {
+            var payRun = await _unitOfWork.PayRuns.GetById(payRunId);
+            if (payRun == null) throw new KeyNotFoundException($"PayRun {payRunId} not found");
+
+            if (payRun.IsLocked || payRun.Status.Equals("Locked", StringComparison.OrdinalIgnoreCase) ||
+                payRun.Status.Equals("Disbursed", StringComparison.OrdinalIgnoreCase) ||
+                payRun.Status.Equals("Paid", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Cannot recalculate a locked or disbursed pay run.");
+            }
+
+            var details = (await _unitOfWork.PayRunEmployeeDetails.GetAll())
+                .Where(d => d.PayRunId == payRunId && !d.IsDeleted).ToList();
+
+            decimal totalGross = 0;
+            decimal totalDeductions = 0;
+            decimal totalNet = 0;
+
+            foreach (var d in details)
+            {
+                decimal baseGross = d.BasicPay + d.Hra + d.SpecialAllowance + d.Reimbursements - d.LopDeduction;
+                d.GrossPay = Math.Max(0, baseGross + d.ArrearsAmount + d.BonusAmount);
+
+                decimal manualDeduction = d.ManualAdjustmentAmount < 0 ? Math.Abs(d.ManualAdjustmentAmount) : 0m;
+                decimal manualAddition = d.ManualAdjustmentAmount > 0 ? d.ManualAdjustmentAmount : 0m;
+
+                d.TotalDeductions = d.EpfDeduction + d.EsicDeduction + d.PtDeduction + d.TdsDeduction + d.LoanEmiDeduction + d.OtherDeductions + manualDeduction;
+
+                if (d.IsOnHold)
+                {
+                    d.NetPay = 0;
+                }
+                else
+                {
+                    d.NetPay = Math.Max(0, d.GrossPay - d.TotalDeductions + manualAddition);
+                }
+
+                d.UpdatedDate = DateTime.UtcNow;
+                _unitOfWork.PayRunEmployeeDetails.Update(d);
+
+                totalGross += d.GrossPay;
+                totalDeductions += d.TotalDeductions;
+                totalNet += d.NetPay;
+            }
+
+            payRun.TotalGrossPay = totalGross;
+            payRun.TotalDeductions = totalDeductions;
+            payRun.TotalNetPay = totalNet;
+            payRun.UpdatedDate = DateTime.UtcNow;
+
+            _unitOfWork.PayRuns.Update(payRun);
+            _unitOfWork.Save();
+            return true;
+        }
+
+        public async Task<bool> ToggleHoldEmployeeDetailAsync(long detailId, bool isHold, string? reason)
+        {
+            var detail = await _unitOfWork.PayRunEmployeeDetails.GetById(detailId);
+            if (detail == null) throw new KeyNotFoundException($"PayRunEmployeeDetail {detailId} not found");
+
+            var payRun = await _unitOfWork.PayRuns.GetById(detail.PayRunId);
+            if (payRun != null && (payRun.IsLocked || payRun.Status.Equals("Locked", StringComparison.OrdinalIgnoreCase) ||
+                                  payRun.Status.Equals("Disbursed", StringComparison.OrdinalIgnoreCase) ||
+                                  payRun.Status.Equals("Paid", StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new InvalidOperationException("Cannot modify holds on a locked or disbursed pay run.");
+            }
+
+            detail.IsOnHold = isHold;
+            detail.HoldReason = isHold ? reason : null;
+            detail.UpdatedDate = DateTime.UtcNow;
+            _unitOfWork.PayRunEmployeeDetails.Update(detail);
+            _unitOfWork.Save();
+
+            await RecalculatePayRunAsync(detail.PayRunId);
+            return true;
+        }
+
+        public async Task<bool> UpdateEmployeeAdjustmentAsync(long detailId, decimal manualAdjustment, decimal arrears, decimal bonus, string? reason)
+        {
+            var detail = await _unitOfWork.PayRunEmployeeDetails.GetById(detailId);
+            if (detail == null) throw new KeyNotFoundException($"PayRunEmployeeDetail {detailId} not found");
+
+            var payRun = await _unitOfWork.PayRuns.GetById(detail.PayRunId);
+            if (payRun != null && (payRun.IsLocked || payRun.Status.Equals("Locked", StringComparison.OrdinalIgnoreCase) ||
+                                  payRun.Status.Equals("Disbursed", StringComparison.OrdinalIgnoreCase) ||
+                                  payRun.Status.Equals("Paid", StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new InvalidOperationException("Cannot modify adjustments on a locked or disbursed pay run.");
+            }
+
+            detail.ManualAdjustmentAmount = manualAdjustment;
+            detail.ArrearsAmount = arrears;
+            detail.BonusAmount = bonus;
+            detail.AdjustmentReason = reason;
+            detail.UpdatedDate = DateTime.UtcNow;
+
+            _unitOfWork.PayRunEmployeeDetails.Update(detail);
+            _unitOfWork.Save();
+
+            await RecalculatePayRunAsync(detail.PayRunId);
+            return true;
+        }
+
+        public async Task<IEnumerable<EmployeeLoan>> GetAllLoansAsync(long? employeeId = null)
+        {
+            var loans = (await _unitOfWork.EmployeeLoans.GetAll())
+                .Where(l => !l.IsDeleted);
+
+            if (employeeId.HasValue && employeeId.Value > 0)
+            {
+                loans = loans.Where(l => l.EmployeeId == employeeId.Value);
+            }
+
+            var emps = (await _unitOfWork.Employees.GetAll()).ToDictionary(e => e.Id);
+            var list = loans.OrderByDescending(l => l.CreatedDate).ToList();
+            foreach (var item in list)
+            {
+                if (emps.TryGetValue(item.EmployeeId, out var emp))
+                {
+                    item.Employee = emp;
+                }
+            }
+
+            return list;
+        }
+
+        public async Task<EmployeeLoan> ApplyLoanAsync(ApplyEmployeeLoanRequest req, long createdBy)
+        {
+            if (req.PrincipalAmount <= 0)
+            {
+                throw new ArgumentException("Loan principal amount must be greater than 0.");
+            }
+            if (req.TenureMonths <= 0)
+            {
+                throw new ArgumentException("Loan tenure must be at least 1 month.");
+            }
+
+            decimal interestAmount = req.PrincipalAmount * (req.InterestRatePercent / 100m);
+            decimal totalRepayable = req.PrincipalAmount + interestAmount;
+            decimal monthlyEmi = Math.Round(totalRepayable / req.TenureMonths, 2);
+
+            var loan = new EmployeeLoan
+            {
+                EmployeeId = req.EmployeeId,
+                LoanType = req.LoanType ?? "Personal Loan",
+                PrincipalAmount = req.PrincipalAmount,
+                InterestRatePercent = req.InterestRatePercent,
+                TotalRepayableAmount = totalRepayable,
+                MonthlyEmiAmount = monthlyEmi,
+                TenureMonths = req.TenureMonths,
+                DisbursementDate = DateTime.UtcNow,
+                RemainingBalance = totalRepayable,
+                Status = "Active",
+                Reason = req.Reason,
+                CreatedBy = (int)createdBy,
+                CreatedDate = DateTime.UtcNow,
+                IsActive = true,
+                IsDeleted = false
+            };
+
+            await _unitOfWork.EmployeeLoans.Add(loan);
+            _unitOfWork.Save();
+            return loan;
+        }
+
+        public async Task<EmployeeLoan> UpdateLoanStatusAsync(long loanId, string status, string? reason)
+        {
+            var loan = await _unitOfWork.EmployeeLoans.GetById(loanId);
+            if (loan == null) throw new KeyNotFoundException($"Loan {loanId} not found");
+
+            loan.Status = status;
+            loan.Reason = !string.IsNullOrWhiteSpace(reason) ? reason : loan.Reason;
+            loan.UpdatedDate = DateTime.UtcNow;
+
+            _unitOfWork.EmployeeLoans.Update(loan);
+            _unitOfWork.Save();
+            return loan;
+        }
+
         #endregion
 
         #region Payslips & Self-Service
+
+        public async Task<PayslipDto> RecordIndividualSalaryCreditAsync(IndividualSalaryCreditRequest req)
+        {
+            if (req.EmployeeId <= 0) throw new ArgumentException("Valid EmployeeId is required");
+            if (req.Month < 1 || req.Month > 12) throw new ArgumentException("Month must be between 1 and 12");
+            if (req.Year < 2000 || req.Year > 2100) throw new ArgumentException("Valid Year is required");
+
+            long currentUserId = _userContext.GetCurrentEmployeeId();
+            var employee = await _unitOfWork.Employees.GetById((int)req.EmployeeId);
+            if (employee == null) throw new KeyNotFoundException($"Employee {req.EmployeeId} not found");
+
+            var bank = (await _unitOfWork.EmployeePaymentInfo.GetAll())
+                .FirstOrDefault(b => b.EmployeeId == req.EmployeeId && !b.IsDeleted);
+
+            var allSlips = await _unitOfWork.Payslips.GetAll();
+            var existingSlip = allSlips.FirstOrDefault(p => p.EmployeeId == req.EmployeeId && p.Month == req.Month && p.Year == req.Year && !p.IsDeleted);
+
+            var breakdownJson = JsonSerializer.Serialize(new
+            {
+                BasicPay = req.BasicSalary,
+                Hra = req.Hra,
+                SpecialAllowance = req.SpecialAllowance,
+                Bonus = req.BonusAmount,
+                EpfDeduction = req.EpfDeduction,
+                AdditionalDeductions = req.AdditionalDeductions,
+                DeductionReason = req.DeductionReason,
+                PaymentMode = req.PaymentMode,
+                TransactionRef = req.TransactionRef,
+                PaymentDate = req.PaymentDate?.ToString("yyyy-MM-dd")
+            });
+
+            decimal totalDeductions = req.EpfDeduction + req.AdditionalDeductions;
+            decimal grossSalary = req.GrossSalary > 0 ? req.GrossSalary : (req.BasicSalary + req.Hra + req.SpecialAllowance + req.BonusAmount);
+            decimal netSalary = req.NetSalary > 0 ? req.NetSalary : (grossSalary - totalDeductions);
+
+            Payslip payslip;
+            if (existingSlip != null)
+            {
+                payslip = existingSlip;
+                payslip.GrossSalary = grossSalary;
+                payslip.TotalDeductions = totalDeductions;
+                payslip.NetSalary = netSalary;
+                payslip.BreakdownJson = breakdownJson;
+                payslip.UpdatedBy = (int)currentUserId;
+                payslip.UpdatedDate = DateTime.UtcNow;
+                _unitOfWork.Payslips.Update(payslip);
+            }
+            else
+            {
+                payslip = new Payslip
+                {
+                    EmployeeId = req.EmployeeId,
+                    Month = req.Month,
+                    Year = req.Year,
+                    PayslipNumber = $"PAY-{req.Year}{req.Month:D2}-{req.EmployeeId:D4}",
+                    GrossSalary = grossSalary,
+                    TotalDeductions = totalDeductions,
+                    NetSalary = netSalary,
+                    WorkingDays = DateTime.DaysInMonth(req.Year, req.Month),
+                    PresentDays = DateTime.DaysInMonth(req.Year, req.Month),
+                    LopDays = 0,
+                    BreakdownJson = breakdownJson,
+                    GeneratedDate = req.PaymentDate ?? DateTime.UtcNow,
+                    CreatedBy = (int)currentUserId,
+                    CreatedDate = DateTime.UtcNow,
+                    UpdatedDate = DateTime.UtcNow,
+                    IsActive = true
+                };
+                await _unitOfWork.Payslips.Add(payslip);
+            }
+
+            // Sync with PayRunEmployeeDetail if exists
+            var matchingPayRun = (await _unitOfWork.PayRuns.GetAll())
+                .FirstOrDefault(p => p.Month == req.Month && p.Year == req.Year && !p.IsDeleted);
+            if (matchingPayRun != null)
+            {
+                var details = await _unitOfWork.PayRunEmployeeDetails.GetAll();
+                var detail = details.FirstOrDefault(d => d.EmployeeId == req.EmployeeId && d.PayRunId == matchingPayRun.Id && !d.IsDeleted);
+                if (detail != null)
+                {
+                    detail.PaymentStatus = "Processed";
+                    detail.GrossPay = grossSalary;
+                    detail.NetPay = netSalary;
+                    detail.UpdatedBy = (int)currentUserId;
+                    detail.UpdatedDate = DateTime.UtcNow;
+                    _unitOfWork.PayRunEmployeeDetails.Update(detail);
+                }
+            }
+
+            // Sync with Employee.Responsibilities JSON for backward compatibility
+            try
+            {
+                var monthName = new DateTime(req.Year, req.Month, 1).ToString("MMMM yyyy");
+                var respStr = employee.Responsibilities;
+                Dictionary<string, object>? respDict = null;
+                if (!string.IsNullOrWhiteSpace(respStr) && respStr.TrimStart().StartsWith("{"))
+                {
+                    respDict = JsonSerializer.Deserialize<Dictionary<string, object>>(respStr);
+                }
+                respDict ??= new Dictionary<string, object>();
+
+                var disbList = new List<Dictionary<string, object>>();
+                if (respDict.TryGetValue("disbursements", out var dObj) && dObj is JsonElement je && je.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var elem in je.EnumerateArray())
+                    {
+                        var dDict = JsonSerializer.Deserialize<Dictionary<string, object>>(elem.GetRawText());
+                        if (dDict != null)
+                        {
+                            var m = dDict.GetValueOrDefault("month")?.ToString() ?? dDict.GetValueOrDefault("monthYear")?.ToString() ?? "";
+                            if (!string.Equals(m, monthName, StringComparison.OrdinalIgnoreCase))
+                            {
+                                disbList.Add(dDict);
+                            }
+                        }
+                    }
+                }
+
+                var paymentDateIso = req.PaymentDate?.ToString("o") ?? DateTime.UtcNow.ToString("o");
+                var paymentDateYmd = req.PaymentDate?.ToString("yyyy-MM-dd") ?? DateTime.UtcNow.ToString("yyyy-MM-dd");
+
+                var newDisb = new Dictionary<string, object>
+                {
+                    ["id"] = $"INDIV-{req.Year}{req.Month:D2}-{req.EmployeeId}",
+                    ["monthYear"] = monthName,
+                    ["month"] = monthName,
+                    ["creditDate"] = paymentDateIso,
+                    ["paymentDate"] = paymentDateYmd,
+                    ["paymentMode"] = req.PaymentMode ?? "Direct Bank Transfer (NEFT)",
+                    ["transactionRef"] = req.TransactionRef ?? $"UTR-{req.Year}{req.Month:D2}-{req.EmployeeId}",
+                    ["grossSalary"] = grossSalary,
+                    ["basicSalary"] = req.BasicSalary,
+                    ["hra"] = req.Hra,
+                    ["specialAllowance"] = req.SpecialAllowance,
+                    ["pfDeduction"] = req.EpfDeduction,
+                    ["additionalDeductions"] = req.AdditionalDeductions,
+                    ["deductionReason"] = req.DeductionReason ?? "",
+                    ["bonusAmount"] = req.BonusAmount,
+                    ["netSalaryCredited"] = netSalary,
+                    ["netSalary"] = netSalary,
+                    ["status"] = "Credited",
+                    ["markedBy"] = _userContext.GetCurrentEmployeeId() > 0 ? "HR Operations" : "System",
+                    ["markedAt"] = DateTime.UtcNow.ToString("o"),
+                    ["bankName"] = bank?.BankName ?? "Direct Deposit",
+                    ["accountNumber"] = bank?.AccountNumber ?? "",
+                    ["ifscCode"] = bank?.IFSCCode ?? ""
+                };
+                disbList.Add(newDisb);
+                respDict["disbursements"] = disbList;
+                respDict["lastDisbursedMonth"] = monthName;
+                respDict["lastDisbursedDate"] = paymentDateIso;
+                employee.Responsibilities = JsonSerializer.Serialize(respDict);
+                _unitOfWork.Employees.Update(employee);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to sync individual salary credit to employee.Responsibilities");
+            }
+
+            _unitOfWork.Save();
+
+            return await GetPayslipByIdAsync(payslip.Id) ?? new PayslipDto
+            {
+                Id = payslip.Id,
+                EmployeeId = req.EmployeeId,
+                Month = req.Month,
+                Year = req.Year,
+                GrossSalary = grossSalary,
+                NetSalary = netSalary,
+                PayslipNumber = payslip.PayslipNumber
+            };
+        }
+
+        public async Task<IEnumerable<PayslipDto>> GetAllPayslipsAsync()
+        {
+            var payslips = (await _unitOfWork.Payslips.GetAll())
+                .Where(p => !p.IsDeleted)
+                .OrderByDescending(p => p.Year).ThenByDescending(p => p.Month).ToList();
+
+            var employees = (await _unitOfWork.Employees.GetAll()).ToDictionary(e => e.Id);
+            var banks = (await _unitOfWork.EmployeePaymentInfo.GetAll())
+                .Where(b => !b.IsDeleted)
+                .GroupBy(b => b.EmployeeId)
+                .ToDictionary(g => g.Key, g => g.First());
+
+            var list = new List<PayslipDto>();
+            foreach (var p in payslips)
+            {
+                employees.TryGetValue(p.EmployeeId, out var emp);
+                banks.TryGetValue(p.EmployeeId, out var bank);
+                var dto = BuildPayslipDto(p, emp, bank);
+                list.Add(dto);
+            }
+            return list;
+        }
 
         public async Task<IEnumerable<PayslipDto>> GetEmployeePayslipsAsync(long employeeId)
         {
@@ -746,7 +1356,7 @@ namespace KHRMS.Services
                 Designation = emp?.Designation ?? "Staff",
                 Department = emp?.Branch ?? "General",
                 BankName = bank?.BankName ?? "",
-                AccountNumber = bank != null ? bank.AccountNumber.ToString() : "",
+                AccountNumber = bank?.AccountNumber ?? "",
                 IfscCode = bank?.IFSCCode ?? "",
                 Pan = emp?.PassportNumber ?? "N/A",
                 Month = p.Month,
@@ -979,7 +1589,7 @@ namespace KHRMS.Services
                 string empCode = EscapeCsv(d.EmployeeCode ?? "");
                 string name = EscapeCsv(d.EmployeeName ?? "");
                 string bank = EscapeCsv(d.BankName ?? "");
-                string acc = d.AccountNumber.HasValue ? d.AccountNumber.Value.ToString() : "";
+                string acc = EscapeCsv(d.AccountNumber ?? "");
                 string ifsc = EscapeCsv(d.IfscCode ?? "");
                 string amount = d.NetPay.ToString("F2");
                 string mode = "NEFT";
@@ -993,7 +1603,17 @@ namespace KHRMS.Services
 
         private static string EscapeCsv(string field)
         {
-            if (field.Contains(",") || field.Contains("\"") || field.Contains("\n"))
+            if (string.IsNullOrEmpty(field))
+                return string.Empty;
+
+            // SEC-19: Neutralize CSV formula injection by prefixing formula triggers with single apostrophe
+            char firstChar = field[0];
+            if (firstChar == '=' || firstChar == '+' || firstChar == '-' || firstChar == '@' || firstChar == '\t' || firstChar == '\r')
+            {
+                field = "'" + field;
+            }
+
+            if (field.Contains(",") || field.Contains("\"") || field.Contains("\n") || field.Contains("\r"))
             {
                 return $"\"{field.Replace("\"", "\"\"")}\"";
             }

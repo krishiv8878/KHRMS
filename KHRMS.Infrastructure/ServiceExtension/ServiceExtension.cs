@@ -58,6 +58,7 @@ namespace KHRMS.Infrastructure
             services.AddScoped<IWorkflowInstanceStepRepository, WorkflowInstanceStepRepository>();
             services.AddScoped<IWorkflowDelegationRepository, WorkflowDelegationRepository>();
             services.AddScoped<IWorkflowAuditLogRepository, WorkflowAuditLogRepository>();
+            services.AddScoped<IAuditLogRepository, AuditLogRepository>();
 
             return services;
         }

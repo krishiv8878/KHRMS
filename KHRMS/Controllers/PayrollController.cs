@@ -87,8 +87,9 @@ namespace KHRMS.Controllers
         public async Task<IActionResult> GetSalaryAssignment(long? employeeId)
         {
             long currentEmpId = _userContext.GetCurrentEmployeeId();
-            bool isPrivileged = _userContext.IsAdmin() || _userContext.IsHR() || await _userContext.HasPermissionAsync("PAYROLL_VIEW_ALL");
             long targetId = employeeId.HasValue && employeeId.Value > 0 ? employeeId.Value : currentEmpId;
+
+            bool isPrivileged = _userContext.IsAdmin() || _userContext.IsHR() || User.IsInRole("Admin") || User.IsInRole("HR") || await _userContext.HasPermissionAsync("PAYROLL_VIEW_ALL");
 
             if (!isPrivileged && targetId != currentEmpId)
             {
@@ -136,6 +137,31 @@ namespace KHRMS.Controllers
             });
         }
 
+        [HttpGet("salary-assignment/history/{employeeId}")]
+        public async Task<IActionResult> GetSalaryHistory(long employeeId)
+        {
+            long currentEmpId = _userContext.GetCurrentEmployeeId();
+            bool isPrivileged = _userContext.IsAdmin() || _userContext.IsHR() || User.IsInRole("Admin") || User.IsInRole("HR") || await _userContext.HasPermissionAsync("PAYROLL_VIEW_ALL");
+
+            if (!isPrivileged && employeeId != currentEmpId)
+            {
+                return StatusCode((int)HttpStatusCode.Forbidden, new ApiResponse<IEnumerable<EmployeeSalaryAssignment>?>
+                {
+                    StatusCode = (int)HttpStatusCode.Forbidden,
+                    Message = "Access Denied: You do not have permission to view another employee's salary history.",
+                    Data = null
+                });
+            }
+
+            var history = await _payrollService.GetEmployeeSalaryHistoryAsync(employeeId);
+            return Ok(new ApiResponse<IEnumerable<EmployeeSalaryAssignment>>
+            {
+                StatusCode = (int)HttpStatusCode.OK,
+                Message = "Salary revision history retrieved successfully",
+                Data = history
+            });
+        }
+
         #endregion
 
         #region 2. Pay Run Engine
@@ -179,7 +205,7 @@ namespace KHRMS.Controllers
             try
             {
                 var result = await _payrollService.CreatePayRunAsync(request);
-                return Ok(new ApiResponse<PayRun>
+                    return Ok(new ApiResponse<PayRun>
                 {
                     StatusCode = (int)HttpStatusCode.OK,
                     Message = $"Pay run created for {request.Month}/{request.Year}",
@@ -225,13 +251,158 @@ namespace KHRMS.Controllers
         public async Task<IActionResult> UpdatePayRunStatus([FromBody] UpdatePayRunStatusRequest request)
         {
             if (request == null || request.PayRunId <= 0) return BadRequest("Valid PayRunId required");
-            var result = await _payrollService.UpdatePayRunStatusAsync(request);
-            return Ok(new ApiResponse<PayRun>
+            try
             {
-                StatusCode = (int)HttpStatusCode.OK,
-                Message = $"Pay run status updated to {request.Status}",
-                Data = result
-            });
+                var result = await _payrollService.UpdatePayRunStatusAsync(request);
+                return Ok(new ApiResponse<PayRun>
+                {
+                    StatusCode = (int)HttpStatusCode.OK,
+                    Message = $"Pay run status updated to {request.Status}",
+                    Data = result
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = ex.Message
+                });
+            }
+        }
+
+        [HttpPost("payrun/{id}/lock")]
+        [RequirePermission("PAYROLL_PROCESS")]
+        public async Task<IActionResult> LockPayRun(long id)
+        {
+            try
+            {
+                long currentEmpId = _userContext.GetCurrentEmployeeId();
+                var success = await _payrollService.LockPayRunAsync(id, currentEmpId);
+                return Ok(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.OK,
+                    Message = "Pay run locked successfully",
+                    Data = success
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = ex.Message
+                });
+            }
+        }
+
+        [HttpPost("payrun/{id}/recalculate")]
+        [RequirePermission("PAYROLL_PROCESS")]
+        public async Task<IActionResult> RecalculatePayRun(long id)
+        {
+            try
+            {
+                var success = await _payrollService.RecalculatePayRunAsync(id);
+                return Ok(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.OK,
+                    Message = "Pay run recalculated successfully",
+                    Data = success
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = ex.Message
+                });
+            }
+        }
+
+        [HttpPost("payrun/detail/hold")]
+        [RequirePermission("PAYROLL_PROCESS")]
+        public async Task<IActionResult> ToggleHoldEmployeeDetail([FromBody] ToggleHoldRequest request)
+        {
+            if (request == null || request.DetailId <= 0) return BadRequest("Valid DetailId required");
+            try
+            {
+                var success = await _payrollService.ToggleHoldEmployeeDetailAsync(request.DetailId, request.IsOnHold, request.Reason);
+                return Ok(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.OK,
+                    Message = request.IsOnHold ? "Employee salary placed on hold" : "Employee salary hold released",
+                    Data = success
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = ex.Message
+                });
+            }
+        }
+
+        [HttpPost("payrun/detail/adjustment")]
+        [RequirePermission("PAYROLL_PROCESS")]
+        public async Task<IActionResult> UpdateEmployeeAdjustment([FromBody] UpdateDetailAdjustmentRequest request)
+        {
+            if (request == null || request.DetailId <= 0) return BadRequest("Valid DetailId required");
+            try
+            {
+                var success = await _payrollService.UpdateEmployeeAdjustmentAsync(
+                    request.DetailId,
+                    request.ManualAdjustmentAmount,
+                    request.ArrearsAmount,
+                    request.BonusAmount,
+                    request.AdjustmentReason);
+
+                return Ok(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.OK,
+                    Message = "Line-item adjustments updated successfully",
+                    Data = success
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = ex.Message
+                });
+            }
+        }
+
+        [HttpPost("individual-credit")]
+        [RequirePermission("PAYROLL_PROCESS")]
+        public async Task<IActionResult> RecordIndividualSalaryCredit([FromBody] IndividualSalaryCreditRequest request)
+        {
+            if (request == null || request.EmployeeId <= 0)
+            {
+                return BadRequest(new ApiResponse<object> { StatusCode = 400, Message = "Valid EmployeeId required" });
+            }
+
+            try
+            {
+                var payslip = await _payrollService.RecordIndividualSalaryCreditAsync(request);
+                return Ok(new ApiResponse<PayslipDto>
+                {
+                    StatusCode = (int)HttpStatusCode.OK,
+                    Message = "Individual salary credit recorded and payslip generated successfully",
+                    Data = payslip
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = ex.Message
+                });
+            }
         }
 
         #endregion
@@ -256,7 +427,18 @@ namespace KHRMS.Controllers
         public async Task<IActionResult> GetPayslips(long? employeeId)
         {
             long currentEmpId = _userContext.GetCurrentEmployeeId();
-            bool isPrivileged = _userContext.IsAdmin() || _userContext.IsHR() || await _userContext.HasPermissionAsync("PAYROLL_VIEW_ALL");
+            bool isPrivileged = _userContext.IsAdmin() || _userContext.IsHR() || User.IsInRole("Admin") || User.IsInRole("HR") || await _userContext.HasPermissionAsync("PAYROLL_VIEW_ALL");
+            if (isPrivileged && (!employeeId.HasValue || employeeId.Value <= 0))
+            {
+                var allPayslips = await _payrollService.GetAllPayslipsAsync();
+                return Ok(new ApiResponse<IEnumerable<PayslipDto>>
+                {
+                    StatusCode = (int)HttpStatusCode.OK,
+                    Message = "Payslips retrieved",
+                    Data = allPayslips
+                });
+            }
+
             long targetId = employeeId.HasValue && employeeId.Value > 0 ? employeeId.Value : currentEmpId;
 
             if (!isPrivileged && targetId != currentEmpId)
@@ -286,7 +468,7 @@ namespace KHRMS.Controllers
             if (dto == null) return NotFound(new ApiResponse<object> { StatusCode = 404, Message = "Payslip not found" });
 
             long currentEmpId = _userContext.GetCurrentEmployeeId();
-            bool isPrivileged = _userContext.IsAdmin() || _userContext.IsHR() || await _userContext.HasPermissionAsync("PAYROLL_VIEW_ALL");
+            bool isPrivileged = _userContext.IsAdmin() || _userContext.IsHR() || User.IsInRole("Admin") || User.IsInRole("HR") || await _userContext.HasPermissionAsync("PAYROLL_VIEW_ALL");
             if (!isPrivileged && dto.EmployeeId != currentEmpId)
             {
                 return StatusCode((int)HttpStatusCode.Forbidden, "Access Denied: You do not have permission to view this payslip.");
@@ -304,7 +486,7 @@ namespace KHRMS.Controllers
             if (dto == null) return NotFound(new ApiResponse<object> { StatusCode = 404, Message = "Payslip not found" });
 
             long currentEmpId = _userContext.GetCurrentEmployeeId();
-            bool isPrivileged = _userContext.IsAdmin() || _userContext.IsHR() || await _userContext.HasPermissionAsync("PAYROLL_VIEW_ALL");
+            bool isPrivileged = _userContext.IsAdmin() || _userContext.IsHR() || User.IsInRole("Admin") || User.IsInRole("HR") || await _userContext.HasPermissionAsync("PAYROLL_VIEW_ALL");
             if (!isPrivileged && dto.EmployeeId != currentEmpId)
             {
                 return StatusCode((int)HttpStatusCode.Forbidden, new ApiResponse<PayslipDto>
@@ -332,8 +514,9 @@ namespace KHRMS.Controllers
         public async Task<IActionResult> GetReimbursements(long? employeeId)
         {
             long currentEmpId = _userContext.GetCurrentEmployeeId();
-            bool isPrivileged = _userContext.IsAdmin() || _userContext.IsHR() || await _userContext.HasPermissionAsync("PAYROLL_VIEW_ALL");
             long targetId = employeeId.HasValue && employeeId.Value > 0 ? employeeId.Value : currentEmpId;
+
+            bool isPrivileged = _userContext.IsAdmin() || _userContext.IsHR() || User.IsInRole("Admin") || User.IsInRole("HR") || await _userContext.HasPermissionAsync("PAYROLL_VIEW_ALL");
 
             if (!isPrivileged && targetId != currentEmpId)
             {
@@ -425,7 +608,7 @@ namespace KHRMS.Controllers
         public async Task<IActionResult> GetFnF(long employeeId)
         {
             long currentEmpId = _userContext.GetCurrentEmployeeId();
-            bool isPrivileged = _userContext.IsAdmin() || _userContext.IsHR() || await _userContext.HasPermissionAsync("PAYROLL_VIEW_ALL");
+            bool isPrivileged = _userContext.IsAdmin() || _userContext.IsHR() || User.IsInRole("Admin") || User.IsInRole("HR") || await _userContext.HasPermissionAsync("PAYROLL_VIEW_ALL");
 
             if (!isPrivileged && employeeId != currentEmpId)
             {
@@ -457,6 +640,87 @@ namespace KHRMS.Controllers
                 Message = $"FnF status updated to {status}",
                 Data = result
             });
+        }
+
+        #endregion
+
+        #region 7. Employee Loans & Advances
+
+        [HttpGet("loans/{employeeId?}")]
+        public async Task<IActionResult> GetLoans(long? employeeId)
+        {
+            long currentEmpId = _userContext.GetCurrentEmployeeId();
+            bool isPrivileged = _userContext.IsAdmin() || _userContext.IsHR() || User.IsInRole("Admin") || User.IsInRole("HR") || await _userContext.HasPermissionAsync("PAYROLL_VIEW_ALL");
+
+            if (!isPrivileged)
+            {
+                employeeId = currentEmpId;
+            }
+
+            var loans = await _payrollService.GetAllLoansAsync(employeeId);
+            return Ok(new ApiResponse<IEnumerable<EmployeeLoan>>
+            {
+                StatusCode = (int)HttpStatusCode.OK,
+                Message = "Loans and advances retrieved successfully",
+                Data = loans
+            });
+        }
+
+        [HttpPost("loans/apply")]
+        public async Task<IActionResult> ApplyLoan([FromBody] ApplyEmployeeLoanRequest request)
+        {
+            if (request == null) return BadRequest("Invalid loan application data");
+            long currentEmpId = _userContext.GetCurrentEmployeeId();
+            bool isPrivileged = _userContext.IsAdmin() || _userContext.IsHR() || User.IsInRole("Admin") || User.IsInRole("HR");
+
+            if (!isPrivileged || request.EmployeeId <= 0)
+            {
+                request.EmployeeId = currentEmpId;
+            }
+
+            try
+            {
+                var result = await _payrollService.ApplyLoanAsync(request, currentEmpId);
+                return Ok(new ApiResponse<EmployeeLoan>
+                {
+                    StatusCode = (int)HttpStatusCode.OK,
+                    Message = "Loan/Advance application submitted successfully",
+                    Data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = ex.Message
+                });
+            }
+        }
+
+        [HttpPost("loans/status")]
+        [RequirePermission("PAYROLL_PROCESS")]
+        public async Task<IActionResult> UpdateLoanStatus([FromBody] UpdateEmployeeLoanStatusRequest request)
+        {
+            if (request == null || request.LoanId <= 0) return BadRequest("Valid LoanId required");
+            try
+            {
+                var result = await _payrollService.UpdateLoanStatusAsync(request.LoanId, request.Status, request.Reason);
+                return Ok(new ApiResponse<EmployeeLoan>
+                {
+                    StatusCode = (int)HttpStatusCode.OK,
+                    Message = $"Loan status updated to {request.Status}",
+                    Data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = ex.Message
+                });
+            }
         }
 
         #endregion

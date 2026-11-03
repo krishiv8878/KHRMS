@@ -1,4 +1,5 @@
 using KHRMS.Core.Interfaces;
+using KHRMS.Core.Models;
 
 namespace KHRMS.Core
 {
@@ -49,6 +50,7 @@ namespace KHRMS.Core
         IEmployeeSalaryAssignmentRepository EmployeeSalaryAssignments { get; }
         IPayRunRepository PayRuns { get; }
         IPayRunEmployeeDetailRepository PayRunEmployeeDetails { get; }
+        IEmployeeLoanRepository EmployeeLoans { get; }
         IPayslipRepository Payslips { get; }
         IReimbursementClaimRepository ReimbursementClaims { get; }
         IFullAndFinalSettlementRepository FullAndFinalSettlements { get; }
@@ -84,6 +86,31 @@ namespace KHRMS.Core
         IWorkflowInstanceStepRepository WorkflowInstanceSteps { get; }
         IWorkflowDelegationRepository WorkflowDelegations { get; }
         IWorkflowAuditLogRepository WorkflowAuditLogs { get; }
+        IAuditLogRepository AuditLogs { get; }
+
+        // Employee Lifecycle & Checklists
+        IChecklistTemplateRepository ChecklistTemplates { get; }
+        IChecklistTemplateTaskRepository ChecklistTemplateTasks { get; }
+        IEmployeeChecklistRepository EmployeeChecklists { get; }
+        IChecklistTaskRepository ChecklistTasks { get; }
+        ISystemSettingRepository SystemSettings { get; }
+
+        // Time & Attendance Rules & Computation
+        IEmployeeShiftAssignmentRepository EmployeeShiftAssignments { get; }
+        IDailyAttendanceRecordRepository DailyAttendanceRecords { get; }
+        IAttendanceLockRepository AttendanceLocks { get; }
+
+        // Leave Management, Ledger, Accrual & Rollover (Phase 5)
+        ILeaveLedgerRepository LeaveLedgers { get; }
+        ILeaveEntitlementRepository LeaveEntitlements { get; }
+        ILopConversionRequestRepository LopConversionRequests { get; }
+        ILeaveEncashmentRequestRepository LeaveEncashmentRequests { get; }
+        ICompOffGrantRequestRepository CompOffGrantRequests { get; }
+
+        // Company Policy Engine & Helpdesk (Phase 7)
+        ICompanyPolicyRepository CompanyPolicies { get; }
+        IPolicyAcknowledgementRepository PolicyAcknowledgements { get; }
+        IHelpdeskTicketRepository HelpdeskTickets { get; }
 
         int Save();
     }

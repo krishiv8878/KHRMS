@@ -2,6 +2,7 @@ using KHRMS.Authorization;
 using KHRMS.Core;
 using KHRMS.Infrastructure;
 using KHRMS.Services;
+using KHRMS.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Serilog;
@@ -9,6 +10,20 @@ using System.Net;
 
 namespace KHRMS
 {
+    public class EmployeePaymentInfoResponseDto
+    {
+        public long Id { get; set; }
+        public long EmployeeId { get; set; }
+        public string BankName { get; set; } = string.Empty;
+        public string IFSCCode { get; set; } = string.Empty;
+        public string AccountNumber { get; set; } = string.Empty;
+        public string? NameOnAccount { get; set; }
+        public bool IsActive { get; set; }
+        public bool IsDeleted { get; set; }
+        public DateTime? CreatedDate { get; set; }
+        public DateTime? UpdatedDate { get; set; }
+    }
+
     /// <summary>
     /// API Controller for managing Employee Payment Information.
     /// Provides endpoints to Create, Read, Update, and Delete employee payment records.
@@ -16,11 +31,12 @@ namespace KHRMS
     [Authorize]
     [ApiController]
     [Route("api/[controller]")]
-
-    public class EmployeePaymentInfoController(IEmployeePaymentInfoService employeePaymentInfoService) : ControllerBase
-
+    public class EmployeePaymentInfoController(
+        IEmployeePaymentInfoService employeePaymentInfoService,
+        IEmployeeAccessService employeeAccessService) : ControllerBase
     {
         private readonly IEmployeePaymentInfoService _employeePaymentInfoService = employeePaymentInfoService;
+        private readonly IEmployeeAccessService _employeeAccessService = employeeAccessService;
 
 
         [HttpGet("GetAllPaymentInfo")]
@@ -29,14 +45,20 @@ namespace KHRMS
         {
             Log.Information("EmployeePaymentInfoController - GetAllPaymentInfo called.");
 
-            var isPrivileged = User.IsInRole("Admin") || User.IsInRole("System Admin") || User.IsInRole("HR") || User.IsInRole("HR Operations");
+            long currentEmpId = _employeeAccessService.GetCurrentEmployeeId();
+            bool isAdminOrHr = User.IsInRole("Admin") ||
+                               User.IsInRole("System Admin") ||
+                               User.IsInRole("HR") ||
+                               User.IsInRole("HR Operations") ||
+                               User.IsInRole("HR Manager") ||
+                               User.IsInRole("HR Admin") ||
+                               User.IsInRole("Human Resources");
 
-            long currentEmpId = 0;
-            var claimVal = User.FindFirst("UserId")?.Value;
-            if (!string.IsNullOrEmpty(claimVal) && long.TryParse(claimVal, out long parsedId))
-            {
-                currentEmpId = parsedId;
-            }
+            var isPrivileged = isAdminOrHr ||
+                               await _employeeAccessService.CanAccessEmployeeAsync(0, "PAYROLL_VIEW_ALL") ||
+                               await _employeeAccessService.CanAccessEmployeeAsync(0, "EMPLOYEE_PAYMENT_MANAGE") ||
+                               await _employeeAccessService.CanAccessEmployeeAsync(0, "PAYROLL_PROCESS") ||
+                               await _employeeAccessService.CanAccessEmployeeAsync(0, "PAYROLL_MANAGE");
 
             IEnumerable<EmployeePaymentInfo> entities;
             if (isPrivileged)
@@ -65,11 +87,17 @@ namespace KHRMS
             }
 
             Log.Information("EmployeePaymentInfoController - {Count} payment info records found.", entities.Count());
-            return Ok(new ApiResponse<IEnumerable<EmployeePaymentInfo>>
+            var canViewRaw = await _employeeAccessService.CanAccessEmployeeAsync(0, "SALARY_VIEW_ALL") ||
+                             await _employeeAccessService.CanAccessEmployeeAsync(0, "EMPLOYEE_PAYMENT_MANAGE") ||
+                             await _employeeAccessService.CanAccessEmployeeAsync(0, "PAYROLL_VIEW_ALL");
+
+            var resultData = entities.Select(e => ApplyMasking(e, canViewRaw || e.EmployeeId == currentEmpId)).ToList();
+
+            return Ok(new ApiResponse<IEnumerable<EmployeePaymentInfoResponseDto>>
             {
                 StatusCode = (int)HttpStatusCode.OK,
                 Message = ApiMessageConstant.AllEmployeePaymentRequestsFound,
-                Data = entities
+                Data = resultData
             });
         }
 
@@ -81,19 +109,12 @@ namespace KHRMS
         {
             Log.Information("EmployeePaymentInfoController - GetPaymentInfoByEmployeeId called with EmployeeId: {EmployeeId}", employeeId);
 
-            long targetEmpId = employeeId ?? 0;
-            if (targetEmpId <= 0)
-            {
-                var claimVal = User.FindFirst("UserId")?.Value;
-                if (!string.IsNullOrEmpty(claimVal) && long.TryParse(claimVal, out long parsedClaimId))
-                {
-                    targetEmpId = parsedClaimId;
-                }
-            }
+            long currentEmpId = _employeeAccessService.GetCurrentEmployeeId();
+            long targetEmpId = employeeId.HasValue && employeeId.Value > 0 ? employeeId.Value : currentEmpId;
 
             if (targetEmpId <= 0)
             {
-                return BadRequest(new ApiResponse<EmployeePaymentInfo>
+                return BadRequest(new ApiResponse<EmployeePaymentInfoResponseDto>
                 {
                     StatusCode = (int)HttpStatusCode.BadRequest,
                     Message = "Employee ID is required",
@@ -101,10 +122,19 @@ namespace KHRMS
                 });
             }
 
+            // Enforce central authorization rule (Self, Team, or Privileged)
+            if (!await _employeeAccessService.CanAccessEmployeeAsync(targetEmpId, "PAYROLL_VIEW_ALL") &&
+                !await _employeeAccessService.CanAccessEmployeeAsync(targetEmpId, "EMPLOYEE_PAYMENT_MANAGE") &&
+                !await _employeeAccessService.CanAccessEmployeeAsync(targetEmpId, "PAYROLL_MANAGE"))
+            {
+                Log.Warning("EmployeePaymentInfoController - Unauthorized access attempt by {CurrentEmpId} for {TargetEmpId}", currentEmpId, targetEmpId);
+                return Forbid();
+            }
+
             var entity = await _employeePaymentInfoService.GetByEmployeeIdAsync(targetEmpId);
             if (entity == null)
             {
-                return Ok(new ApiResponse<EmployeePaymentInfo>
+                return Ok(new ApiResponse<EmployeePaymentInfoResponseDto>
                 {
                     StatusCode = (int)HttpStatusCode.OK,
                     Message = ApiMessageConstant.EmployeePaymentRequestsNotFound,
@@ -112,11 +142,16 @@ namespace KHRMS
                 });
             }
 
-            return Ok(new ApiResponse<EmployeePaymentInfo>
+            var canViewRaw = (currentEmpId == targetEmpId) ||
+                             await _employeeAccessService.CanAccessEmployeeAsync(0, "SALARY_VIEW_ALL") ||
+                             await _employeeAccessService.CanAccessEmployeeAsync(0, "EMPLOYEE_PAYMENT_MANAGE") ||
+                             await _employeeAccessService.CanAccessEmployeeAsync(0, "PAYROLL_VIEW_ALL");
+
+            return Ok(new ApiResponse<EmployeePaymentInfoResponseDto>
             {
                 StatusCode = (int)HttpStatusCode.OK,
                 Message = ApiMessageConstant.EmployeePaymentRequestsFound,
-                Data = entity
+                Data = ApplyMasking(entity, canViewRaw)
             });
         }
 
@@ -133,7 +168,7 @@ namespace KHRMS
             if (entity == null)
             {
                 Log.Warning("EmployeePaymentInfoController - No record found for ID: {Id}", id);
-                return Ok(new ApiResponse<EmployeePaymentInfo>
+                return Ok(new ApiResponse<EmployeePaymentInfoResponseDto>
                 {
                     StatusCode = (int)HttpStatusCode.OK,
                     Message = ApiMessageConstant.EmployeePaymentRequestsNotFound,
@@ -141,17 +176,14 @@ namespace KHRMS
                 });
             }
 
-            var isPrivileged = User.IsInRole("Admin") || User.IsInRole("System Admin") || User.IsInRole("HR") || User.IsInRole("HR Operations");
-            long currentEmpId = 0;
-            var claimVal = User.FindFirst("UserId")?.Value;
-            if (!string.IsNullOrEmpty(claimVal) && long.TryParse(claimVal, out long parsedClaimId))
-            {
-                currentEmpId = parsedClaimId;
-            }
+            long currentEmpId = _employeeAccessService.GetCurrentEmployeeId();
+            var canAccess = await _employeeAccessService.CanAccessEmployeeAsync(entity.EmployeeId, "PAYROLL_VIEW_ALL") ||
+                            await _employeeAccessService.CanAccessEmployeeAsync(entity.EmployeeId, "EMPLOYEE_PAYMENT_MANAGE") ||
+                            await _employeeAccessService.CanAccessEmployeeAsync(entity.EmployeeId, "PAYROLL_MANAGE");
 
-            if (!isPrivileged && currentEmpId > 0 && entity.EmployeeId != currentEmpId)
+            if (!canAccess && (currentEmpId <= 0 || entity.EmployeeId != currentEmpId))
             {
-                return StatusCode((int)HttpStatusCode.Forbidden, new ApiResponse<EmployeePaymentInfo>
+                return StatusCode((int)HttpStatusCode.Forbidden, new ApiResponse<EmployeePaymentInfoResponseDto>
                 {
                     StatusCode = (int)HttpStatusCode.Forbidden,
                     Message = "Access Denied: You do not have permission to view another employee's banking details.",
@@ -159,12 +191,17 @@ namespace KHRMS
                 });
             }
 
+            var canViewRaw = (currentEmpId == entity.EmployeeId) ||
+                             await _employeeAccessService.CanAccessEmployeeAsync(0, "SALARY_VIEW_ALL") ||
+                             await _employeeAccessService.CanAccessEmployeeAsync(0, "EMPLOYEE_PAYMENT_MANAGE") ||
+                             await _employeeAccessService.CanAccessEmployeeAsync(0, "PAYROLL_VIEW_ALL");
+
             Log.Information("EmployeePaymentInfoController - Record found for ID: {Id}", id);
-            return Ok(new ApiResponse<EmployeePaymentInfo>
+            return Ok(new ApiResponse<EmployeePaymentInfoResponseDto>
             {
                 StatusCode = (int)HttpStatusCode.OK,
                 Message = ApiMessageConstant.EmployeePaymentRequestsFound,
-                Data = entity
+                Data = ApplyMasking(entity, canViewRaw)
             });
         }
 
@@ -188,14 +225,25 @@ namespace KHRMS
                 });
             }
 
-            if (entity.EmployeeId <= 0)
+            long currentEmpId = _employeeAccessService.GetCurrentEmployeeId();
+            long targetEmpId = entity.EmployeeId > 0 ? entity.EmployeeId : currentEmpId;
+
+            if (entity.Id > 0)
             {
-                var claimVal = User.FindFirst("UserId")?.Value;
-                if (!string.IsNullOrEmpty(claimVal) && long.TryParse(claimVal, out long parsedId))
+                var existing = await _employeePaymentInfoService.GetByIdAsync(entity.Id);
+                if (existing != null)
                 {
-                    entity.EmployeeId = parsedId;
+                    targetEmpId = existing.EmployeeId;
                 }
             }
+
+            if (!await _employeeAccessService.CanAccessEmployeeAsync(targetEmpId, "PAYROLL_MANAGE"))
+            {
+                Log.Warning("EmployeePaymentInfoController - Unauthorized UpdatePaymentInfo attempt by {CurrentEmpId} for {TargetEmpId}", currentEmpId, targetEmpId);
+                return Forbid();
+            }
+
+            entity.EmployeeId = targetEmpId;
 
             if (!ModelState.IsValid)
             {
@@ -254,14 +302,25 @@ namespace KHRMS
                 });
             }
 
-            if (entity.EmployeeId <= 0)
+            long currentEmpId = _employeeAccessService.GetCurrentEmployeeId();
+            long targetEmpId = entity.EmployeeId > 0 ? entity.EmployeeId : currentEmpId;
+
+            if (entity.Id > 0)
             {
-                var claimVal = User.FindFirst("UserId")?.Value;
-                if (!string.IsNullOrEmpty(claimVal) && long.TryParse(claimVal, out long parsedId))
+                var existing = await _employeePaymentInfoService.GetByIdAsync(entity.Id);
+                if (existing != null)
                 {
-                    entity.EmployeeId = parsedId;
+                    targetEmpId = existing.EmployeeId;
                 }
             }
+
+            if (!await _employeeAccessService.CanAccessEmployeeAsync(targetEmpId, "PAYROLL_MANAGE"))
+            {
+                Log.Warning("EmployeePaymentInfoController - Unauthorized UpdatePaymentInfo attempt by {CurrentEmpId} for {TargetEmpId}", currentEmpId, targetEmpId);
+                return Forbid();
+            }
+
+            entity.EmployeeId = targetEmpId;
 
             try
             {
@@ -320,6 +379,24 @@ namespace KHRMS
                 Message = ApiMessageConstant.PaymentInfoRequestDeleted,
                 Data = true
             });
+        }
+
+        private static EmployeePaymentInfoResponseDto ApplyMasking(EmployeePaymentInfo item, bool canViewRaw)
+        {
+            if (item == null) return null!;
+            return new EmployeePaymentInfoResponseDto
+            {
+                Id = item.Id,
+                EmployeeId = item.EmployeeId,
+                BankName = item.BankName,
+                IFSCCode = (canViewRaw ? item.IFSCCode : FieldMaskingHelper.MaskIfsc(item.IFSCCode)) ?? string.Empty,
+                AccountNumber = (canViewRaw ? item.AccountNumber : FieldMaskingHelper.MaskAccountNumber(item.AccountNumber)) ?? string.Empty,
+                NameOnAccount = item.NameOnAccount,
+                IsActive = item.IsActive,
+                IsDeleted = item.IsDeleted,
+                CreatedDate = item.CreatedDate,
+                UpdatedDate = item.UpdatedDate
+            };
         }
     }
 

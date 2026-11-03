@@ -1,7 +1,8 @@
-﻿using KHRMS.Core;
+using KHRMS.Core;
 using KHRMS.Infrastructure;
 using KHRMS.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Serilog;
 using System.Net;
 
@@ -9,10 +10,11 @@ namespace KHRMS.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+    [EnableRateLimiting("auth-policy")]
     public class UserRegistrationController(IUserRegistrationService userRegistrationService) : ControllerBase
     {
         public readonly IUserRegistrationService _userRegistrationService = userRegistrationService;
-
 
         /// <summary>
         /// Registers a new user.
@@ -45,6 +47,5 @@ namespace KHRMS.Controllers
                 Data = false
             });
         }
-
     }
 }

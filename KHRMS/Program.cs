@@ -17,6 +17,8 @@ using System.IdentityModel.Tokens.Jwt;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.AI;
 using OpenAI;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -62,11 +64,19 @@ builder.Services.AddScoped<ITimesheetService, TimesheetService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IEmailTriggerEventService, EmailTriggerEventService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
+builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<IPayrollService, PayrollService>();
 builder.Services.AddScoped<IPmsService, PmsService>();
 builder.Services.AddScoped<IExpenseService, ExpenseService>();
 builder.Services.AddScoped<IRecruitmentService, RecruitmentService>();
 builder.Services.AddScoped<IEmployeeDailyWorkModeService, EmployeeDailyWorkModeService>();
+builder.Services.AddScoped<IChecklistService, ChecklistService>();
+builder.Services.AddScoped<IAttendanceLockService, AttendanceLockService>();
+builder.Services.AddScoped<IDailyAttendanceService, DailyAttendanceService>();
+builder.Services.AddScoped<ILeaveLedgerService, LeaveLedgerService>();
+builder.Services.AddScoped<ILopConversionService, LopConversionService>();
+builder.Services.AddScoped<ILeaveEncashmentService, LeaveEncashmentService>();
+builder.Services.AddScoped<ICompOffService, CompOffService>();
 
 // Configurable Approval Workflow System
 builder.Services.AddScoped<IConditionEvaluator, ConditionEvaluator>();
@@ -82,11 +92,45 @@ builder.Services.AddScoped<IWorkflowEngineService, WorkflowEngineService>();
 builder.Services.AddScoped<IWorkflowDelegationService, WorkflowDelegationService>();
 builder.Services.AddScoped<IWorkflowAdminService, WorkflowAdminService>();
 builder.Services.AddHostedService<WorkflowEscalationBackgroundService>();
+builder.Services.AddHostedService<LwdReminderBackgroundService>();
+builder.Services.AddHostedService<DailyAttendanceBackgroundService>();
+builder.Services.AddHostedService<LeaveAccrualBackgroundService>();
+builder.Services.AddHostedService<LeaveRolloverBackgroundService>();
+builder.Services.AddHostedService<CompOffExpiryBackgroundService>();
 builder.Services.AddMemoryCache();
+
+// SEC-04: Fixed-window Rate Limiting policies for Auth and Chatbot endpoints
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    // Policy for login / registration endpoints (10 requests per minute per IP)
+    options.AddPolicy("auth-policy", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+
+    // Policy for AI Chatbot endpoint (20 requests per minute per user/IP)
+    options.AddPolicy("chat-policy", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.User.Identity?.Name ?? httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 20,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+});
 
 // Add context-aware services
 builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
 builder.Services.AddScoped<IUserContextService, UserContextService>();
+builder.Services.AddScoped<IEmployeeAccessService, EmployeeAccessService>();
 
 // Add Session support
 builder.Services.AddDistributedMemoryCache();
@@ -96,7 +140,7 @@ builder.Services.AddSession(options =>
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
     options.Cookie.SameSite = SameSiteMode.Lax; 
-    options.Cookie.SecurePolicy = CookieSecurePolicy.None;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
 });
 
 //  Add CORS
@@ -115,7 +159,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         ValidAudience = builder.Configuration["Jwt:ValidAudience"],
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:PasswordResetSecret"]!)),
     });
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    // Default-Deny standard: Fallback policy mandates authentication unless explicitly decorated with [AllowAnonymous]
+    options.FallbackPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
+});
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -192,9 +242,23 @@ app.UseMiddleware<GlobalExceptionHandlingMiddleware>();
 // Serilog request logging
 app.UseSerilogRequestLogging();
 
+// SEC-26: Standard HTTP Security Headers Middleware
+app.Use(async (context, next) =>
+{
+    context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
+    context.Response.Headers.Append("X-Frame-Options", "SAMEORIGIN");
+    context.Response.Headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");
+    if (!context.Response.Headers.ContainsKey("Strict-Transport-Security") && context.Request.IsHttps)
+    {
+        context.Response.Headers.Append("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+    }
+    await next();
+});
+
 // Middleware ordering
 app.UseRouting();
 app.UseCors("corspolice");
+app.UseRateLimiter();
 app.UseSession();
 app.UseAuthentication();
 app.UseAuthorization();

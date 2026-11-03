@@ -347,6 +347,22 @@ namespace KHRMS.Services
                 throw new InvalidOperationException($"Cannot log timesheet tasks for future dates ({dto.EntryDate:yyyy-MM-dd}).");
             }
 
+            // SEC-36: Enforce upper cap on timesheet hours (max 24 hours in a single calendar day)
+            if (dto.Hours <= 0 || dto.Hours > 24m)
+            {
+                throw new InvalidOperationException("Hours logged for a single task entry must be greater than 0 and cannot exceed 24 hours.");
+            }
+
+            var activeDayEntries = (await _unitOfWork.TimesheetEntries.GetAll())
+                .Where(e => !e.IsDeleted && e.EmployeeId == employeeId && e.EntryDate.Date == entryDate && e.Id != dto.Id && e.TimesheetId == null)
+                .ToList();
+
+            var currentDayTotal = activeDayEntries.Sum(e => e.Hours);
+            if (currentDayTotal + dto.Hours > 24m)
+            {
+                throw new InvalidOperationException($"Total logged hours for {dto.EntryDate:yyyy-MM-dd} cannot exceed 24 hours. (Currently logged: {currentDayTotal:F2}h, attempting to add: {dto.Hours:F2}h).");
+            }
+
             // Check if user has an approved leave on this entry date
             var allLeaves = await _unitOfWork.LeaveRequest.GetAll();
             var leaveOnDate = allLeaves.FirstOrDefault(l => !l.IsDeleted && l.EmployeeId == employeeId && 
@@ -737,11 +753,13 @@ namespace KHRMS.Services
             if (timesheet == null || timesheet.IsDeleted) return false;
 
             var isApproved = dto.Status.Equals("Approved", StringComparison.OrdinalIgnoreCase);
+            var isReturn = dto.Status.Equals("NeedsRevision", StringComparison.OrdinalIgnoreCase) ||
+                           dto.Status.Equals("ReturnForRevision", StringComparison.OrdinalIgnoreCase);
 
             // Route through central Workflow Engine if managed by workflow
             if (timesheet.WorkflowInstanceId.HasValue && timesheet.WorkflowInstanceId.Value > 0 && _workflowEngine != null)
             {
-                var action = isApproved ? "Approve" : "Reject";
+                var action = isApproved ? "Approve" : (isReturn ? "ReturnForRevision" : "Reject");
                 var actionResult = await _workflowEngine.ActOnStepAsync(
                     timesheet.WorkflowInstanceId.Value,
                     managerId,
@@ -754,7 +772,7 @@ namespace KHRMS.Services
 
                 return true;
             }
-            timesheet.Status = isApproved ? "Approved" : "Rejected";
+            timesheet.Status = isApproved ? "Approved" : (isReturn ? "NeedsRevision" : "Rejected");
             timesheet.ActionBy = managerId;
             timesheet.ActionDate = DateTime.UtcNow;
             timesheet.RejectionReason = isApproved ? null : dto.RejectionReason;

@@ -70,12 +70,13 @@ namespace KHRMS.Controllers
         [RequirePermission("TIMESHEET_LOG_SELF")]
         public async Task<IActionResult> SaveEntry([FromBody] TimesheetEntryDTO dto)
         {
-            if (dto == null || dto.ProjectId <= 0 || dto.Hours <= 0 || string.IsNullOrWhiteSpace(dto.TaskDescription))
+            // SEC-36: Cap daily timesheet hours
+            if (dto == null || dto.ProjectId <= 0 || dto.Hours <= 0 || dto.Hours > 24m || string.IsNullOrWhiteSpace(dto.TaskDescription))
             {
                 return BadRequest(new ApiResponse<string>
                 {
                     StatusCode = (int)HttpStatusCode.BadRequest,
-                    Message = "Invalid task entry details. Project, Task Description, and positive hours are required.",
+                    Message = "Invalid task entry details. Project, Task Description, and positive hours (maximum 24 hours) are required.",
                     Data = null
                 });
             }
@@ -92,14 +93,26 @@ namespace KHRMS.Controllers
             }
 
             Log.Information("TimesheetController - SaveEntry for Employee: {EmpId}, Project: {ProjectId}, Date: {Date}", employeeId, dto.ProjectId, dto.EntryDate);
-            var saved = await _timesheetService.SaveEntryAsync(dto, employeeId);
-
-            return Ok(new ApiResponse<TimesheetEntryDTO>
+            try
             {
-                StatusCode = (int)HttpStatusCode.OK,
-                Message = "Task entry saved successfully.",
-                Data = saved
-            });
+                var saved = await _timesheetService.SaveEntryAsync(dto, employeeId);
+                return Ok(new ApiResponse<TimesheetEntryDTO>
+                {
+                    StatusCode = (int)HttpStatusCode.OK,
+                    Message = "Task entry saved successfully.",
+                    Data = saved
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+                Log.Warning("TimesheetController - SaveEntry validation failed: {Message}", ex.Message);
+                return BadRequest(new ApiResponse<string>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = ex.Message,
+                    Data = null
+                });
+            }
         }
 
         [HttpDelete("DeleteEntry/{id}")]

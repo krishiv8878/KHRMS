@@ -17,11 +17,16 @@ namespace KHRMS
     [Authorize]
     [Route("api/[controller]")]
     [ApiController]
-    public class LeaveRequestController(ILeaveRequestTypeService leaveRequestTypeService, IHttpContextAccessor httpContextAccessor, IUserContextService userContextService) : ControllerBase
+    public class LeaveRequestController(
+        ILeaveRequestTypeService leaveRequestTypeService,
+        IHttpContextAccessor httpContextAccessor,
+        IUserContextService userContextService,
+        IEmployeeAccessService employeeAccessService) : ControllerBase
     {
         public readonly ILeaveRequestTypeService _leaveRequestTypeService = leaveRequestTypeService;
         public readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
         private readonly IUserContextService _userContext = userContextService;
+        private readonly IEmployeeAccessService _employeeAccessService = employeeAccessService;
 
         [HttpGet("GetAllLeaveRequest")]
         [RequirePermission("LEAVE_APPLY_SELF")]
@@ -106,6 +111,12 @@ namespace KHRMS
                 });
             }
 
+            if (!await _employeeAccessService.CanAccessEmployeeAsync(result.EmployeeId, "LEAVE_MANAGE"))
+            {
+                Log.Warning("LeaveRequestController - Unauthorized access attempt by {CurrentEmpId} for LeaveRequest {Id} of Employee {TargetEmpId}", _employeeAccessService.GetCurrentEmployeeId(), id, result.EmployeeId);
+                return Forbid();
+            }
+
             Log.Information("LeaveRequestController - Leave request found for ID: {Id}", id);
             return Ok(new ApiResponse<LeaveRequest>
             {
@@ -126,6 +137,13 @@ namespace KHRMS
             {
                 Log.Warning("LeaveRequestController - Invalid leave request object.");
                 return BadRequest("Invalid data.");
+            }
+
+            var currentUserId = _employeeAccessService.GetCurrentEmployeeId();
+            var isPrivileged = await _employeeAccessService.CanAccessEmployeeAsync(0, "LEAVE_MANAGE");
+            if (!isPrivileged && currentUserId > 0)
+            {
+                leaveRequest.EmployeeId = currentUserId;
             }
 
             try
@@ -172,6 +190,13 @@ namespace KHRMS
             {
                 Log.Warning("LeaveRequestController - ID Not Found: URL ID {Id}, Body ID {BodyId}", leaveRequest.Id);
                 return Ok("ID Does Not Exist.");
+            }
+
+            var existing = await _leaveRequestTypeService.GetLeaveRequestTypeById((int)id);
+            if (existing != null && !await _employeeAccessService.CanAccessEmployeeAsync(existing.EmployeeId, "LEAVE_MANAGE"))
+            {
+                Log.Warning("LeaveRequestController - Unauthorized update attempt by {CurrentEmpId} on LeaveRequest {Id} of Employee {TargetEmpId}", _employeeAccessService.GetCurrentEmployeeId(), id, existing.EmployeeId);
+                return Forbid();
             }
 
             var result = await _leaveRequestTypeService.UpdateLeaveRequestType(leaveRequest);

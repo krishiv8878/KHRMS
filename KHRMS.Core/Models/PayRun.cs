@@ -33,7 +33,7 @@ namespace KHRMS.Core.Models
 
         [Required]
         [StringLength(30)]
-        public string Status { get; set; } = "Draft"; // "Draft", "Submitted", "Approved", "Disbursed"
+        public string Status { get; set; } = "Draft"; // "Draft", "Calculated", "In Review", "Approved", "Locked", "Paid" / "Disbursed"
 
         public int? ProcessedByEmployeeId { get; set; }
 
@@ -48,5 +48,15 @@ namespace KHRMS.Core.Models
 
         [StringLength(500)]
         public string? Notes { get; set; }
+
+        public long? WorkflowInstanceId { get; set; }
+
+        public long? AttendanceLockId { get; set; }
+
+        public bool IsLocked { get; set; } = false;
+
+        public DateTime? LockedDate { get; set; }
+
+        public long? LockedByEmployeeId { get; set; }
     }
 }

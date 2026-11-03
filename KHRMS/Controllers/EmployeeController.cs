@@ -258,6 +258,35 @@ namespace KHRMS
                 return Forbid();
             }
 
+            // SEC-01: Safeguard against mass assignment & privilege escalation
+            // Only Admin / HR roles are allowed to modify role assignments, responsibilities/salary JSON, employment status, DOJ, manager, or shift
+            bool canManageRolesAndCoreFields = User.IsInRole("Admin") || User.IsInRole("System Admin")
+                || User.IsInRole("HR") || User.IsInRole("HR Operations")
+                || userRoles.Any(r => string.Equals(r, "Admin", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(r, "System Admin", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(r, "HR", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(r, "HR Operations", StringComparison.OrdinalIgnoreCase));
+
+            if (!canManageRolesAndCoreFields)
+            {
+                var existingEmp = await _employeeService.GetEmployeeById((int)employeeRequestModel.Id);
+                if (existingEmp != null)
+                {
+                    employeeRequestModel.IsActive = existingEmp.IsActive;
+                }
+                employeeRequestModel.RoleIds = null;
+                employeeRequestModel.Responsibilities = null;
+                employeeRequestModel.DateOfJoining = null;
+                employeeRequestModel.ManagerId = null;
+                employeeRequestModel.DesignationId = null;
+                employeeRequestModel.ShiftId = null;
+                employeeRequestModel.EmployeeCode = null;
+                employeeRequestModel.ProbationEndDate = null;
+                employeeRequestModel.ProbationStatus = null;
+                employeeRequestModel.EmploymentStatus = null;
+                employeeRequestModel.EmploymentType = null;
+            }
+
             var isEmployeeEdited = await _employeeService.UpdateEmployee(employeeRequestModel);
             if (isEmployeeEdited)
             {
@@ -292,24 +321,37 @@ namespace KHRMS
         {
             Log.Information("EmployeeController - DeleteEmployee called for ID: {EmployeeId}", employeeId);
 
-            var isEmployeeDeleted = await _employeeService.DeleteEmployee(employeeId);
-            if (isEmployeeDeleted)
+            try
             {
-                Log.Information("EmployeeController - Employee with ID {EmployeeId} deleted.", employeeId);
-                return Ok(new ApiResponse<bool>
+                var isEmployeeDeleted = await _employeeService.DeleteEmployee(employeeId);
+                if (isEmployeeDeleted)
                 {
-                    StatusCode = (int)HttpStatusCode.OK,
-                    Message = ApiMessageConstant.EmployeeDeleted,
-                    Data = true
-                });
+                    Log.Information("EmployeeController - Employee with ID {EmployeeId} deleted.", employeeId);
+                    return Ok(new ApiResponse<bool>
+                    {
+                        StatusCode = (int)HttpStatusCode.OK,
+                        Message = ApiMessageConstant.EmployeeDeleted,
+                        Data = true
+                    });
+                }
+                else
+                {
+                    Log.Error("EmployeeController - Failed to delete employee with ID: {EmployeeId}", employeeId);
+                    return Ok(new ApiResponse<bool>
+                    {
+                        StatusCode = (int)HttpStatusCode.OK,
+                        Message = ApiMessageConstant.NoEmployeeFound,
+                        Data = false
+                    });
+                }
             }
-            else
+            catch (InvalidOperationException ex)
             {
-                Log.Error("EmployeeController - Failed to delete employee with ID: {EmployeeId}", employeeId);
-                return Ok(new ApiResponse<bool>
+                Log.Warning(ex, "Safeguard blocked DeleteEmployee for ID: {EmployeeId}", employeeId);
+                return BadRequest(new ApiResponse<bool>
                 {
-                    StatusCode = (int)HttpStatusCode.OK,
-                    Message = ApiMessageConstant.NoEmployeeFound,
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = ex.Message,
                     Data = false
                 });
             }
@@ -381,6 +423,18 @@ namespace KHRMS
         [HttpPost("UploadProfileImage")]
         public async Task<IActionResult> UploadProfileImage([FromForm] ProfileImageRequest request)
         {
+            var currentUserId = _userContext.GetCurrentEmployeeId();
+            var isPrivileged = _userContext.IsAdmin() || _userContext.IsHR() || await _userContext.HasPermissionAsync("EMPLOYEE_MANAGE");
+
+            if (!isPrivileged)
+            {
+                if (request.EmployeeId > 0 && request.EmployeeId != currentUserId)
+                {
+                    return Forbid();
+                }
+                request.EmployeeId = currentUserId;
+            }
+
             var result = await _employeeService.UploadProfileImage(request);
 
             if (result == null)
@@ -399,6 +453,104 @@ namespace KHRMS
                 Message = ApiMessageConstant.EmployeeProfileUploadSuccess,
                 Data = result
             });
+        }
+
+        [HttpGet("probation-reminders")]
+        public async Task<IActionResult> GetProbationReminders()
+        {
+            Log.Information("GetProbationReminders API called.");
+            var reminders = await _employeeService.GetProbationRemindersAsync();
+            return Ok(new ApiResponse<IEnumerable<EmployeeRequestModel>>
+            {
+                StatusCode = (int)HttpStatusCode.OK,
+                Message = "Probation reminder list retrieved successfully",
+                Data = reminders
+            });
+        }
+
+        [HttpPost("{id}/probation-decision")]
+        public async Task<IActionResult> ProcessProbationDecision(long id, [FromBody] ProbationDecisionDto dto)
+        {
+            Log.Information("ProcessProbationDecision API called for employee {EmployeeId}: {Decision}", id, dto.Decision);
+            try
+            {
+                var success = await _employeeService.ProcessProbationDecisionAsync(id, dto);
+                return Ok(new ApiResponse<bool>
+                {
+                    StatusCode = success ? (int)HttpStatusCode.OK : (int)HttpStatusCode.BadRequest,
+                    Message = success ? $"Probation decision '{dto.Decision}' processed successfully." : "Failed to process probation decision.",
+                    Data = success
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = ex.Message,
+                    Data = false
+                });
+            }
+        }
+
+        [HttpGet("matching-hints")]
+        public async Task<IActionResult> GetMatchingFormerEmployees([FromQuery] string? email, [FromQuery] string? pan, [FromQuery] string? uan)
+        {
+            var matches = await _employeeService.GetMatchingFormerEmployeesAsync(email, pan, uan);
+            return Ok(new ApiResponse<IEnumerable<MatchingFormerEmployeeDto>>
+            {
+                StatusCode = (int)HttpStatusCode.OK,
+                Message = "Matching former employee hints retrieved",
+                Data = matches
+            });
+        }
+
+        [HttpGet("historical-rehire-report")]
+        public async Task<IActionResult> GetHistoricalRehireReport()
+        {
+            var report = await _employeeService.GetHistoricalRehiresReportAsync();
+            return Ok(new ApiResponse<IEnumerable<HistoricalRehireReportItemDto>>
+            {
+                StatusCode = (int)HttpStatusCode.OK,
+                Message = "Historical rehire report retrieved",
+                Data = report
+            });
+        }
+
+        [HttpGet("{id}/previous-employment")]
+        public async Task<IActionResult> GetPreviousEmploymentHistory(long id)
+        {
+            var history = await _employeeService.GetPreviousEmploymentHistoryAsync(id);
+            return Ok(new ApiResponse<IEnumerable<PreviousEmploymentHistoryDto>>
+            {
+                StatusCode = (int)HttpStatusCode.OK,
+                Message = "Previous employment history retrieved",
+                Data = history
+            });
+        }
+
+        [HttpPut("{id}/notice-override")]
+        public async Task<IActionResult> UpdateNoticeOverride(long id, [FromBody] NoticePeriodOverrideDto dto)
+        {
+            try
+            {
+                var success = await _employeeService.UpdateNoticeOverrideAsync(id, dto);
+                return Ok(new ApiResponse<bool>
+                {
+                    StatusCode = success ? (int)HttpStatusCode.OK : (int)HttpStatusCode.BadRequest,
+                    Message = success ? "Notice period override updated successfully." : "Failed to update notice period override.",
+                    Data = success
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = ex.Message,
+                    Data = false
+                });
+            }
         }
     }
 }

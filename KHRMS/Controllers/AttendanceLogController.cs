@@ -33,7 +33,7 @@ namespace KHRMS.Controllers
                 {
                     StatusCode = (int)HttpStatusCode.OK,
                     Message = ApiMessageConstant.AttendanceLogNotFound,
-                    Data = null
+                    Data = Enumerable.Empty<AttendanceLog>()
                 });
             }
 
@@ -64,20 +64,20 @@ namespace KHRMS.Controllers
         {
             Log.Information("AttendanceLogController - GetAttendanceLogById called for ID: {EmployeeId}", employeeId);
 
-            var attendances = await _attendanceLogService.GetAttendanceLogByIdAsync(employeeId);
-            if (attendances == null)
+            var attendances = await _attendanceLogService.GetAttendanceLogsByEmployeeIdAsync(employeeId);
+            if (attendances == null || !attendances.Any())
             {
                 Log.Warning("AttendanceLogController - AttendanceLog not found for ID: {EmployeeId}", employeeId);
-                return Ok(new ApiResponse<AttendanceLog>
+                return Ok(new ApiResponse<IEnumerable<AttendanceLog>>
                 {
                     StatusCode = (int)HttpStatusCode.OK,
                     Message = ApiMessageConstant.AttendanceLogNotFound,
-                    Data = null
+                    Data = Enumerable.Empty<AttendanceLog>()
                 });
             }
 
             Log.Information("AttendanceLogController - AttendanceLog retrieved for ID: {EmployeeId}", employeeId);
-            return Ok(new ApiResponse<AttendanceLog>
+            return Ok(new ApiResponse<IEnumerable<AttendanceLog>>
             {
                 StatusCode = (int)HttpStatusCode.OK,
                 Message = ApiMessageConstant.AttendanceLogFound,

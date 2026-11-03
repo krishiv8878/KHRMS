@@ -1,4 +1,4 @@
-﻿
+
 using KHRMS.Core;
 using KHRMS.Core.Models;
 
@@ -12,6 +12,7 @@ namespace KHRMS.Services.Interfaces
         Task DeleteAttendanceLogAsync(long id);
 
         Task<AttendanceLog> GetAttendanceLogByIdAsync (long id);
+        Task<IEnumerable<AttendanceLog>> GetAttendanceLogsByEmployeeIdAsync(long employeeId);
 
     }
 }

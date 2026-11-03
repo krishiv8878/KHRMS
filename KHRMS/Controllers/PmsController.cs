@@ -170,16 +170,41 @@ namespace KHRMS.Controllers
             });
         }
 
+        /// <summary>
+        /// Submits official manager evaluation scores.
+        /// SEC-12: Enforces assigned manager / privileged reviewer verification via PmsService.
+        /// </summary>
         [HttpPost("appraisals/submit-manager")]
         public async Task<IActionResult> SubmitManagerReview([FromBody] SubmitManagerReviewRequest request)
         {
-            var result = await _pmsService.SubmitManagerReviewAsync(request);
-            return Ok(new ApiResponse<PmsAppraisalDto>
+            try
             {
-                StatusCode = (int)HttpStatusCode.OK,
-                Message = "Manager evaluation submitted successfully",
-                Data = result
-            });
+                var result = await _pmsService.SubmitManagerReviewAsync(request);
+                return Ok(new ApiResponse<PmsAppraisalDto>
+                {
+                    StatusCode = (int)HttpStatusCode.OK,
+                    Message = "Manager evaluation submitted successfully",
+                    Data = result
+                });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode((int)HttpStatusCode.Forbidden, new ApiResponse<string>
+                {
+                    StatusCode = (int)HttpStatusCode.Forbidden,
+                    Message = ex.Message,
+                    Data = null
+                });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new ApiResponse<string>
+                {
+                    StatusCode = (int)HttpStatusCode.NotFound,
+                    Message = ex.Message,
+                    Data = null
+                });
+            }
         }
 
         [HttpPost("appraisals/finalize")]

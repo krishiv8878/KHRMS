@@ -82,7 +82,7 @@ namespace KHRMS.Services
         }
 
         public bool IsAdmin() => IsInRole("Admin") || IsInRole("System Admin");
-        public bool IsHR() => IsInRole("HR") || IsInRole("HR Operations");
+        public bool IsHR() => IsInRole("HR") || IsInRole("HR Operations") || IsInRole("HR Manager") || IsInRole("HR Admin") || IsInRole("Human Resources");
         public bool IsManager() => IsInRole("Manager") || IsInRole("Management");
 
         public async Task<bool> HasPermissionAsync(string permissionCode)

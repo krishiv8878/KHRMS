@@ -779,6 +779,179 @@ namespace KHRMS.Services
             return (await GetAppraisalByIdAsync(a.Id))!;
         }
 
+        public async Task<PmsCalibrationDataDto> GetCalibrationDataAsync(long reviewCycleId, string? department = null)
+        {
+            var cycle = await _unitOfWork.PmsReviewCycles.GetById(reviewCycleId);
+            if (cycle == null) throw new KeyNotFoundException($"Review Cycle {reviewCycleId} not found");
+
+            var appraisals = (await _unitOfWork.PmsAppraisals.GetAll())
+                .Where(a => a.ReviewCycleId == reviewCycleId && !a.IsDeleted)
+                .ToList();
+
+            var employees = (await _unitOfWork.Employees.GetAll()).ToList();
+
+            if (!string.IsNullOrEmpty(department) && !department.Equals("All", StringComparison.OrdinalIgnoreCase))
+            {
+                var deptEmpIds = employees
+                    .Where(e => (e.Department ?? e.Branch ?? "").Equals(department, StringComparison.OrdinalIgnoreCase))
+                    .Select(e => e.Id)
+                    .ToHashSet();
+
+                appraisals = appraisals.Where(a => deptEmpIds.Contains(a.EmployeeId)).ToList();
+            }
+
+            int t1 = 0, t2 = 0, t3 = 0, t4 = 0, t5 = 0;
+            decimal sumMgr = 0, sumFinal = 0;
+            int mgrCount = 0, finalCount = 0;
+            int calibratedCount = 0;
+
+            var items = new List<PmsCalibrationAppraisalItemDto>();
+
+            foreach (var a in appraisals)
+            {
+                var emp = employees.FirstOrDefault(e => e.Id == a.EmployeeId);
+                var mgr = a.ManagerId.HasValue ? employees.FirstOrDefault(e => e.Id == a.ManagerId.Value) : null;
+
+                if (a.ManagerRating.HasValue && a.ManagerRating.Value > 0)
+                {
+                    sumMgr += a.ManagerRating.Value;
+                    mgrCount++;
+                }
+
+                decimal effectiveRating = a.CalibratedRating ?? a.FinalRating ?? a.ManagerRating ?? a.SelfRating ?? 0;
+                if (effectiveRating > 0)
+                {
+                    sumFinal += effectiveRating;
+                    finalCount++;
+
+                    if (effectiveRating < 2.0m) t1++;
+                    else if (effectiveRating < 3.0m) t2++;
+                    else if (effectiveRating < 4.0m) t3++;
+                    else if (effectiveRating < 4.5m) t4++;
+                    else t5++;
+                }
+
+                if (a.CalibratedRating.HasValue)
+                {
+                    calibratedCount++;
+                }
+
+                items.Add(new PmsCalibrationAppraisalItemDto
+                {
+                    AppraisalId = a.Id,
+                    EmployeeId = a.EmployeeId,
+                    EmployeeName = emp != null ? $"{emp.FirstName} {emp.LastName}".Trim() : $"EMP-{a.EmployeeId}",
+                    EmployeeCode = emp?.EmployeeCode?.ToString() ?? "",
+                    Department = emp?.Department ?? emp?.Branch ?? "General",
+                    Designation = emp?.Designation ?? "Staff",
+                    ManagerName = mgr != null ? $"{mgr.FirstName} {mgr.LastName}".Trim() : "Unassigned",
+                    SelfRating = a.SelfRating,
+                    ManagerRating = a.ManagerRating,
+                    FinalRating = a.FinalRating,
+                    CalibratedRating = a.CalibratedRating,
+                    CalibrationRemarks = a.CalibrationRemarks,
+                    Status = a.Status
+                });
+            }
+
+            int ratedTotal = finalCount > 0 ? finalCount : 1;
+            var bellCurve = new PmsBellCurveDistributionDto
+            {
+                Tier1Count = t1,
+                Tier2Count = t2,
+                Tier3Count = t3,
+                Tier4Count = t4,
+                Tier5Count = t5,
+                Tier1Percent = Math.Round((decimal)t1 / ratedTotal * 100m, 1),
+                Tier2Percent = Math.Round((decimal)t2 / ratedTotal * 100m, 1),
+                Tier3Percent = Math.Round((decimal)t3 / ratedTotal * 100m, 1),
+                Tier4Percent = Math.Round((decimal)t4 / ratedTotal * 100m, 1),
+                Tier5Percent = Math.Round((decimal)t5 / ratedTotal * 100m, 1)
+            };
+
+            return new PmsCalibrationDataDto
+            {
+                ReviewCycleId = cycle.Id,
+                CycleName = cycle.CycleName,
+                TotalAppraisals = appraisals.Count,
+                CalibratedAppraisalsCount = calibratedCount,
+                AverageManagerRating = mgrCount > 0 ? Math.Round(sumMgr / mgrCount, 2) : 0m,
+                AverageFinalRating = finalCount > 0 ? Math.Round(sumFinal / finalCount, 2) : 0m,
+                BellCurve = bellCurve,
+                Appraisals = items
+            };
+        }
+
+        public async Task<PmsCalibrationAppraisalItemDto> CalibrateAppraisalAsync(CalibrateAppraisalRequest request, long calibratedByEmpId)
+        {
+            var a = await _unitOfWork.PmsAppraisals.GetById(request.AppraisalId);
+            if (a == null || a.IsDeleted) throw new KeyNotFoundException($"Appraisal {request.AppraisalId} not found");
+
+            a.CalibratedRating = Math.Clamp(request.CalibratedRating, 1.0m, 5.0m);
+            a.FinalRating = a.CalibratedRating;
+            a.CalibrationRemarks = request.Remarks?.Trim();
+            a.CalibratedByEmployeeId = calibratedByEmpId;
+            a.CalibrationDate = DateTime.UtcNow;
+            a.Status = "Completed";
+            a.UpdatedDate = DateTime.UtcNow;
+
+            _unitOfWork.PmsAppraisals.Update(a);
+            _unitOfWork.Save();
+
+            var emp = await _unitOfWork.Employees.GetById(a.EmployeeId);
+            var mgr = a.ManagerId.HasValue ? await _unitOfWork.Employees.GetById(a.ManagerId.Value) : null;
+
+            return new PmsCalibrationAppraisalItemDto
+            {
+                AppraisalId = a.Id,
+                EmployeeId = a.EmployeeId,
+                EmployeeName = emp != null ? $"{emp.FirstName} {emp.LastName}".Trim() : $"EMP-{a.EmployeeId}",
+                EmployeeCode = emp?.EmployeeCode?.ToString() ?? "",
+                Department = emp?.Department ?? emp?.Branch ?? "General",
+                Designation = emp?.Designation ?? "Staff",
+                ManagerName = mgr != null ? $"{mgr.FirstName} {mgr.LastName}".Trim() : "Unassigned",
+                SelfRating = a.SelfRating,
+                ManagerRating = a.ManagerRating,
+                FinalRating = a.FinalRating,
+                CalibratedRating = a.CalibratedRating,
+                CalibrationRemarks = a.CalibrationRemarks,
+                Status = a.Status
+            };
+        }
+
+        public async Task<List<EmployeeAppraisalHistoryDto>> GetEmployeeAppraisalHistoryAsync(long employeeId)
+        {
+            var appraisals = (await _unitOfWork.PmsAppraisals.GetAll())
+                .Where(a => a.EmployeeId == employeeId && !a.IsDeleted)
+                .ToList();
+
+            var cycles = (await _unitOfWork.PmsReviewCycles.GetAll()).ToList();
+            var result = new List<EmployeeAppraisalHistoryDto>();
+
+            foreach (var a in appraisals.OrderByDescending(a => a.CreatedDate))
+            {
+                var c = cycles.FirstOrDefault(cy => cy.Id == a.ReviewCycleId);
+                result.Add(new EmployeeAppraisalHistoryDto
+                {
+                    AppraisalId = a.Id,
+                    ReviewCycleId = a.ReviewCycleId,
+                    CycleName = c?.CycleName ?? $"Cycle #{a.ReviewCycleId}",
+                    Period = c?.Period ?? "Annual",
+                    StartDate = c?.StartDate ?? a.CreatedDate ?? DateTime.UtcNow,
+                    EndDate = c?.EndDate ?? a.CreatedDate ?? DateTime.UtcNow,
+                    SelfRating = a.SelfRating,
+                    ManagerRating = a.ManagerRating,
+                    FinalRating = a.FinalRating,
+                    CalibratedRating = a.CalibratedRating,
+                    Status = a.Status,
+                    ManagerComments = a.ManagerComments,
+                    HrComments = a.HrComments
+                });
+            }
+
+            return result;
+        }
+
         // ================= 3. CONTINUOUS FEEDBACK & PRAISE =================
         public async Task<List<PmsFeedbackDto>> GetFeedbackAsync(long? employeeId = null, string? feedbackType = null)
         {

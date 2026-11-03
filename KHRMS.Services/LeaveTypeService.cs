@@ -88,13 +88,66 @@ namespace KHRMS.Services
                 if (leaveTypeDetail != null)
                 {
                    
+                    bool allowedDaysChanged = leaveTypeDetail.AllowedDays != leaveType.AllowedDays;
                     leaveTypeDetail.Description = leaveType.Description;
                     leaveTypeDetail.Type = leaveType.Type;
                     leaveTypeDetail.AllowedDays = leaveType.AllowedDays;
                     leaveTypeDetail.UpdatedDate = DateTime.Now;
-                    // ✅ Ensure IsActive status is updated
                     leaveTypeDetail.IsActive = leaveType.IsActive;
+
+                    // Phase 5: Complete Policy Configuration Fields
+                    leaveTypeDetail.IsPaid = leaveType.IsPaid;
+                    leaveTypeDetail.SandwichRuleEnabled = leaveType.SandwichRuleEnabled;
+                    leaveTypeDetail.MaxSandwichLeavesAllowed = leaveType.MaxSandwichLeavesAllowed;
+                    leaveTypeDetail.IsNegativeBalanceAllowed = leaveType.IsNegativeBalanceAllowed;
+                    leaveTypeDetail.NegativeBalanceLimit = leaveType.NegativeBalanceLimit;
+                    leaveTypeDetail.AccrualEnabled = leaveType.AccrualEnabled;
+                    leaveTypeDetail.AccrualFrequency = leaveType.AccrualFrequency ?? "Monthly";
+                    leaveTypeDetail.AccrualAmount = leaveType.AccrualAmount;
+                    leaveTypeDetail.CarryForwardEnabled = leaveType.CarryForwardEnabled;
+                    leaveTypeDetail.MaxCarryForwardDays = leaveType.MaxCarryForwardDays;
+                    leaveTypeDetail.ExcessBalanceTreatment = leaveType.ExcessBalanceTreatment ?? "Lapse";
+                    leaveTypeDetail.EncashmentAllowed = leaveType.EncashmentAllowed;
+                    leaveTypeDetail.MinBalanceForEncashment = leaveType.MinBalanceForEncashment;
+                    leaveTypeDetail.MaxEncashmentDaysPerRequest = leaveType.MaxEncashmentDaysPerRequest;
+                    leaveTypeDetail.EncashmentSalaryFormula = leaveType.EncashmentSalaryFormula ?? "Basic/30";
+                    leaveTypeDetail.IsCompOff = leaveType.IsCompOff;
+                    leaveTypeDetail.CompOffValidityDays = leaveType.CompOffValidityDays;
+                    leaveTypeDetail.NoticeDaysRequired = leaveType.NoticeDaysRequired;
+                    leaveTypeDetail.MaxConsecutiveDays = leaveType.MaxConsecutiveDays;
+                    leaveTypeDetail.ApplicableGender = leaveType.ApplicableGender ?? "All";
+                    leaveTypeDetail.ApplicableEmploymentType = leaveType.ApplicableEmploymentType ?? "All";
+
                     _unitOfWork.LeaveType.Update(leaveTypeDetail);
+
+                    // If AllowedDays was modified on a fixed/baseline quota, synchronize opening balances for current year
+                    if (allowedDaysChanged && !leaveTypeDetail.AccrualEnabled && leaveTypeDetail.AllowedDays >= 0)
+                    {
+                        int curYear = DateTime.UtcNow.Year;
+                        var openingLedgers = (await _unitOfWork.LeaveLedgers.GetAll())
+                            .Where(l => l.LeaveTypeId == leaveTypeDetail.Id && l.TransactionType == "OpeningBalance" && l.EffectiveDate.Year == curYear && l.IsDeleted != true)
+                            .ToList();
+
+                        foreach (var ol in openingLedgers)
+                        {
+                            decimal diff = leaveTypeDetail.AllowedDays - ol.Days;
+                            ol.Days = leaveTypeDetail.AllowedDays;
+                            ol.BalanceAfter += diff;
+                            _unitOfWork.LeaveLedgers.Update(ol);
+                        }
+
+                        var baselineEntitlements = (await _unitOfWork.LeaveEntitlements.GetAll())
+                            .Where(e => e.LeaveTypeId == leaveTypeDetail.Id && e.SourceType == "OpeningBalance" && e.CreditDate.Year == curYear && e.IsDeleted != true)
+                            .ToList();
+
+                        foreach (var be in baselineEntitlements)
+                        {
+                            be.TotalDays = leaveTypeDetail.AllowedDays;
+                            be.RemainingDays = Math.Max(0, leaveTypeDetail.AllowedDays - be.ConsumedDays);
+                            _unitOfWork.LeaveEntitlements.Update(be);
+                        }
+                    }
+
                     var result = _unitOfWork.Save();
                     if (result > 0)
                         return true;

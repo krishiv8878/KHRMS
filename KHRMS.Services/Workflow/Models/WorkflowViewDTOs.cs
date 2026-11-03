@@ -25,6 +25,7 @@ namespace KHRMS.Services.Workflow.Models
 
         // Server-computed capability flags
         public bool CanApprove { get; set; } = true;
+        public bool CanReturnForRevision { get; set; } = true;
         public bool CanOverride { get; set; } = false;
         public bool CanReassign { get; set; } = false;
         public bool CanCancel { get; set; } = false;
@@ -50,6 +51,7 @@ namespace KHRMS.Services.Workflow.Models
 
         // Server-computed capability flags
         public bool CanApprove { get; set; }
+        public bool CanReturnForRevision { get; set; }
         public bool CanOverride { get; set; }
         public bool CanReassign { get; set; }
         public bool CanCancel { get; set; }
@@ -73,6 +75,7 @@ namespace KHRMS.Services.Workflow.Models
 
         // Server-computed capability flags for current viewer
         public bool CanApprove { get; set; }
+        public bool CanReturnForRevision { get; set; }
         public bool CanOverride { get; set; }
         public bool CanReassign { get; set; }
         public bool CanCancel { get; set; }

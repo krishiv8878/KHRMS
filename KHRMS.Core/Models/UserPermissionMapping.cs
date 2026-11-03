@@ -21,5 +21,8 @@ namespace KHRMS.Core.Models
         public virtual PermissionMaster? Permission { get; set; }
 
         public bool IsGranted { get; set; } = true;
+
+        [StringLength(30)]
+        public string Scope { get; set; } = "All"; // "Self", "Team", "TeamAndIndirect", "Department", "Branch", "All"
     }
 }

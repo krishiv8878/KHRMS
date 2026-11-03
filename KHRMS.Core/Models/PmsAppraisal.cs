@@ -68,9 +68,19 @@ namespace KHRMS.Core.Models
 
         public string HrComments { get; set; } = string.Empty;
 
+        [Column(TypeName = "decimal(3,2)")]
+        public decimal? CalibratedRating { get; set; } // 1.00 to 5.00
+
+        [StringLength(1000)]
+        public string? CalibrationRemarks { get; set; }
+
+        public long? CalibratedByEmployeeId { get; set; }
+
+        public DateTime? CalibrationDate { get; set; }
+
         [Required]
         [StringLength(40)]
-        public string Status { get; set; } = "Self Review Pending"; // Self Review Pending, Manager Review Pending, HR Review Pending, Completed
+        public string Status { get; set; } = "Self Review Pending"; // Self Review Pending, Manager Review Pending, HR Review Pending, Calibrated, Completed
 
         public string CompetencyRatingsJson { get; set; } = string.Empty; // JSON array of competencies with ratings & remarks
 

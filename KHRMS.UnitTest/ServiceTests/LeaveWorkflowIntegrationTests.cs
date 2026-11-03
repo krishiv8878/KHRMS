@@ -33,6 +33,7 @@ namespace KHRMS.UnitTest.ServiceTests
         private readonly Mock<IWorkflowEngineService> _mockWorkflowEngine;
         private readonly Mock<IWorkflowInstanceRepository> _mockWorkflowInstanceRepo;
         private readonly Mock<IWorkflowInstanceStepRepository> _mockWorkflowInstanceStepRepo;
+        private readonly Mock<ILeaveLedgerService> _mockLeaveledger;
 
         public LeaveWorkflowIntegrationTests()
         {
@@ -45,6 +46,7 @@ namespace KHRMS.UnitTest.ServiceTests
             _mockNotificationRepo = new Mock<INotificationRepository>();
             _mockWorkflowInstanceRepo = new Mock<IWorkflowInstanceRepository>();
             _mockWorkflowInstanceStepRepo = new Mock<IWorkflowInstanceStepRepository>();
+            _mockLeaveledger = new Mock<ILeaveLedgerService>();
 
             _mockUow.Setup(u => u.LeaveRequest).Returns(_mockLeaveRequestRepo.Object);
             _mockUow.Setup(u => u.LeaveType).Returns(_mockLeaveTypeRepo.Object);
@@ -111,7 +113,8 @@ namespace KHRMS.UnitTest.ServiceTests
                 _mockUserContext.Object,
                 _mockHttpAccessor.Object,
                 _mockWorkflowEngine.Object,
-                config
+                config,
+                _mockLeaveledger.Object
             );
 
             // Upcoming Monday to Tuesday (working days)
@@ -176,7 +179,8 @@ namespace KHRMS.UnitTest.ServiceTests
                 _mockUserContext.Object,
                 _mockHttpAccessor.Object,
                 _mockWorkflowEngine.Object,
-                config
+                config,
+                _mockLeaveledger.Object
             );
 
             var start = DateTime.Today.AddDays(7);
@@ -227,7 +231,8 @@ namespace KHRMS.UnitTest.ServiceTests
                 _mockUserContext.Object,
                 _mockHttpAccessor.Object,
                 _mockWorkflowEngine.Object,
-                config
+                config,
+                _mockLeaveledger.Object
             );
 
             _mockUserContext.Setup(u => u.GetCurrentEmployeeId()).Returns(20); // Approver is Bob (Manager)
@@ -276,7 +281,8 @@ namespace KHRMS.UnitTest.ServiceTests
                 _mockUserContext.Object,
                 _mockHttpAccessor.Object,
                 _mockWorkflowEngine.Object,
-                config
+                config,
+                _mockLeaveledger.Object
             );
 
             _mockUserContext.Setup(u => u.GetCurrentEmployeeId()).Returns(20);
@@ -326,7 +332,8 @@ namespace KHRMS.UnitTest.ServiceTests
                 _mockUserContext.Object,
                 _mockHttpAccessor.Object,
                 _mockWorkflowEngine.Object,
-                config
+                config,
+                _mockLeaveledger.Object
             );
 
             var existingLeave = new LeaveRequest
@@ -548,7 +555,8 @@ namespace KHRMS.UnitTest.ServiceTests
                 _mockUserContext.Object,
                 _mockHttpAccessor.Object,
                 _mockWorkflowEngine.Object,
-                config
+                config,
+                _mockLeaveledger.Object
             );
 
             // Viewer is Carol (Emp #30), not an Admin or HR, and not Alice's direct manager
@@ -629,7 +637,8 @@ namespace KHRMS.UnitTest.ServiceTests
                 _mockUserContext.Object,
                 _mockHttpAccessor.Object,
                 _mockWorkflowEngine.Object,
-                config
+                config,
+                _mockLeaveledger.Object
             );
 
             var start = DateTime.Today.AddDays(7);
@@ -699,7 +708,8 @@ namespace KHRMS.UnitTest.ServiceTests
                 _mockUserContext.Object,
                 _mockHttpAccessor.Object,
                 _mockWorkflowEngine.Object,
-                config
+                config,
+                _mockLeaveledger.Object
             );
 
             _mockUserContext.Setup(u => u.GetCurrentEmployeeId()).Returns(10); // Alice

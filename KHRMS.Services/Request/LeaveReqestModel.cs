@@ -29,6 +29,12 @@ namespace KHRMS.Services.Request
         public bool CanOverride { get; set; }
         public bool CanReassign { get; set; }
         public bool CanCancel { get; set; }
+
+        // Phase 5: Additional fields for requests view
+        public bool IsLop { get; set; }
+        public bool IsSandwichApplied { get; set; }
+        public decimal SandwichDays { get; set; }
+        public bool IsConvertedFromLop { get; set; }
     }
 
     public class EmployeeLeaveBalanceDto
@@ -39,5 +45,18 @@ namespace KHRMS.Services.Request
         public double UsedDays { get; set; }
         public double RemainingDays { get; set; }
         public int PendingDays { get; set; }
+
+        // Phase 5: Ledger Balance Details
+        public bool IsPaid { get; set; } = true;
+        public double AccruedDays { get; set; } = 0;
+        public double CarriedForwardDays { get; set; } = 0;
+        public double ReservedDays { get; set; } = 0;
+        public double AvailableDays { get; set; } = 0;
+        public bool NegativeBalanceAllowed { get; set; } = false;
+        public decimal NegativeBalanceLimit { get; set; } = 0;
+        public bool EncashmentAllowed { get; set; } = false;
+        public bool IsCompOff { get; set; } = false;
+        public bool SandwichRuleEnabled { get; set; } = false;
+        public int MaxSandwichLeavesAllowed { get; set; } = 1;
     }
 }

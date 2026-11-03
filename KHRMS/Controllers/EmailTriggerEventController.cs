@@ -1,4 +1,5 @@
 using System.Net;
+using KHRMS.Authorization;
 using System.Text.Json;
 using KHRMS.Core.Models;
 using KHRMS.Infrastructure;
@@ -117,6 +118,7 @@ namespace KHRMS.Controllers
         }
 
         [HttpPost("SendTestEmail")]
+        [RequirePermission("EMAIL_TEMPLATE_MANAGE")]
         public async Task<IActionResult> SendTestEmail([FromBody] SendTestEmailRequest request)
         {
             if (string.IsNullOrWhiteSpace(request.ToEmail) || string.IsNullOrWhiteSpace(request.EventCode))

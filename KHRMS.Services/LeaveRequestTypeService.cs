@@ -21,6 +21,7 @@ namespace KHRMS.Services
         public readonly IHttpContextAccessor _httpContextAccessor;
         private readonly IWorkflowEngineService _workflowEngine;
         private readonly IConfiguration _configuration;
+        private readonly ILeaveLedgerService _leaveLedgerService;
 
         public LeaveRequestTypeService(
             IUnitOfWork unitOfWork,
@@ -28,7 +29,8 @@ namespace KHRMS.Services
             IUserContextService userContextService,
             IHttpContextAccessor httpContextAccessor,
             IWorkflowEngineService workflowEngine,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            ILeaveLedgerService leaveLedgerService)
         {
             _unitOfWork = unitOfWork;
             _sendEmailService = emailRepository;
@@ -36,6 +38,7 @@ namespace KHRMS.Services
             _httpContextAccessor = httpContextAccessor;
             _workflowEngine = workflowEngine;
             _configuration = configuration;
+            _leaveLedgerService = leaveLedgerService;
         }
 
         public async Task<HashSet<DateOnly>> GetActiveHolidayDatesAsync()
@@ -83,6 +86,75 @@ namespace KHRMS.Services
             return count;
         }
 
+        public decimal CalculateSandwichDays(
+            DateTime startDate,
+            DateTime endDate,
+            string? leaveMode,
+            HashSet<DateOnly> holidayDates,
+            LeaveType leaveType,
+            long employeeId,
+            List<LeaveRequest> existingLeaves)
+        {
+            if (!leaveType.SandwichRuleEnabled) return 0;
+
+            int currentYear = startDate.Year;
+            int priorSandwichCount = existingLeaves
+                .Count(l => l.EmployeeId == employeeId && l.IsDeleted != true && l.IsSandwichApplied && l.StartDate.Year == currentYear &&
+                            (string.Equals(l.Status, "Approved", StringComparison.OrdinalIgnoreCase) ||
+                             string.Equals(l.Status, "Pending", StringComparison.OrdinalIgnoreCase)));
+
+            if (priorSandwichCount >= leaveType.MaxSandwichLeavesAllowed)
+            {
+                return 0;
+            }
+
+            decimal sandwichDays = 0;
+
+            for (var cur = startDate.Date.AddDays(1); cur < endDate.Date; cur = cur.AddDays(1))
+            {
+                var curDate = DateOnly.FromDateTime(cur);
+                bool isWeekend = cur.DayOfWeek == DayOfWeek.Saturday || cur.DayOfWeek == DayOfWeek.Sunday;
+                bool isHoliday = holidayDates.Contains(curDate);
+
+                if (isWeekend || isHoliday)
+                {
+                    sandwichDays += 1.0m;
+                }
+            }
+
+            if (startDate.DayOfWeek == DayOfWeek.Monday)
+            {
+                var prevFriday = startDate.Date.AddDays(-3);
+                bool hadPrevLeave = existingLeaves.Any(l =>
+                    l.EmployeeId == employeeId && l.IsDeleted != true &&
+                    (string.Equals(l.Status, "Approved", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(l.Status, "Pending", StringComparison.OrdinalIgnoreCase)) &&
+                    l.EndDate.Date >= prevFriday && l.StartDate.Date <= prevFriday);
+
+                if (hadPrevLeave)
+                {
+                    sandwichDays += 2.0m;
+                }
+            }
+
+            if (endDate.DayOfWeek == DayOfWeek.Friday)
+            {
+                var nextMonday = endDate.Date.AddDays(3);
+                bool hasNextLeave = existingLeaves.Any(l =>
+                    l.EmployeeId == employeeId && l.IsDeleted != true &&
+                    (string.Equals(l.Status, "Approved", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(l.Status, "Pending", StringComparison.OrdinalIgnoreCase)) &&
+                    l.StartDate.Date <= nextMonday && l.EndDate.Date >= nextMonday);
+
+                if (hasNextLeave)
+                {
+                    sandwichDays += 2.0m;
+                }
+            }
+
+            return sandwichDays;
+        }
+
         public async Task<bool> AddLeaveRequestType(LeaveRequest leaveRequest)
         {
             if (leaveRequest == null)
@@ -99,6 +171,27 @@ namespace KHRMS.Services
             if (leaveRequest.EndDate.Date < leaveRequest.StartDate.Date)
             {
                 throw new InvalidOperationException("End date cannot be earlier than start date.");
+            }
+
+            // SEC-35: Prevent leave requests for payroll periods that have already been approved, finalized, or disbursed
+            var allPayRuns = _unitOfWork.PayRuns != null ? await _unitOfWork.PayRuns.GetAll() : null;
+            var checkDate = leaveRequest.StartDate.Date;
+            while (allPayRuns != null && checkDate <= leaveRequest.EndDate.Date)
+            {
+                int m = checkDate.Month;
+                int y = checkDate.Year;
+                var locked = allPayRuns.FirstOrDefault(p =>
+                    !p.IsDeleted &&
+                    p.Year == y &&
+                    p.Month == m &&
+                    (string.Equals(p.Status, "Approved", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(p.Status, "Disbursed", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(p.Status, "Finalized", StringComparison.OrdinalIgnoreCase)));
+                if (locked != null && !isPrivileged)
+                {
+                    throw new InvalidOperationException($"Cannot apply for leave on {checkDate:yyyy-MM-dd} because payroll for {checkDate:MMMM yyyy} is already locked ({locked.Status}). Please contact HR.");
+                }
+                checkDate = new DateTime(y, m, 1).AddMonths(1);
             }
 
             var holidayDates = await GetActiveHolidayDatesAsync();
@@ -123,6 +216,64 @@ namespace KHRMS.Services
                 throw new InvalidOperationException($"You already have {statusDesc} leave request (#{overlappingLeave.Id}: {overlappingLeave.StartDate:yyyy-MM-dd} to {overlappingLeave.EndDate:yyyy-MM-dd}) overlapping with the selected dates.");
             }
 
+            var lt = await _unitOfWork.LeaveType.GetById(leaveRequest.LeaveTypeId);
+            if (lt == null)
+            {
+                throw new InvalidOperationException("Invalid leave type.");
+            }
+
+            bool isExplicitLop = leaveRequest.IsLop || !lt.IsPaid ||
+                                 (lt.Type?.IndexOf("loss of pay", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                  lt.Type?.IndexOf("unpaid", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                  lt.Type?.IndexOf("lwp", StringComparison.OrdinalIgnoreCase) >= 0);
+
+            decimal sandwichDays = 0;
+            if (!isExplicitLop && lt.SandwichRuleEnabled)
+            {
+                sandwichDays = CalculateSandwichDays(leaveRequest.StartDate, leaveRequest.EndDate, leaveRequest.LeaveMode, holidayDates, lt, employeeId, allExistingLeaves.ToList());
+            }
+
+            decimal totalRequiredDays = (decimal)workingDays + sandwichDays;
+
+            decimal paidDays = 0;
+            decimal lopDays = 0;
+            bool isLopResult = isExplicitLop;
+
+            if (!isExplicitLop)
+            {
+                var balance = await _leaveLedgerService.GetBalanceSummaryAsync(employeeId, lt.Id);
+                decimal availableLimit = (decimal)balance.AvailableDays + (lt.IsNegativeBalanceAllowed ? lt.NegativeBalanceLimit : 0);
+
+                if (totalRequiredDays <= availableLimit)
+                {
+                    paidDays = totalRequiredDays;
+                    lopDays = 0;
+                    isLopResult = false;
+                }
+                else
+                {
+                    // Automatic split coverage: allocate available paid days, and remaining shortfall as LOP
+                    if (availableLimit > 0)
+                    {
+                        paidDays = availableLimit;
+                        lopDays = totalRequiredDays - availableLimit;
+                        isLopResult = false;
+                    }
+                    else
+                    {
+                        paidDays = 0;
+                        lopDays = totalRequiredDays;
+                        isLopResult = true;
+                    }
+                }
+            }
+            else
+            {
+                paidDays = 0;
+                lopDays = (decimal)workingDays;
+                isLopResult = true;
+            }
+
             var leaverequest = new LeaveRequest
             {
                 EmployeeId = employeeId,
@@ -134,11 +285,33 @@ namespace KHRMS.Services
                 LeaveReason = leaveRequest.LeaveReason,
                 LeaveMode = leaveRequest.LeaveMode,
                 LeaveTypeId = leaveRequest.LeaveTypeId,
-                Status = "Pending"
+                Status = "Pending",
+                TotalWorkingDays = (decimal)workingDays,
+                PaidDays = paidDays,
+                LopDays = lopDays,
+                IsLop = isLopResult,
+                IsSandwichApplied = sandwichDays > 0,
+                SandwichDays = sandwichDays
             };
 
             await _unitOfWork.LeaveRequest.Add(leaverequest);
             _unitOfWork.Save();
+
+            if (leaverequest.PaidDays > 0)
+            {
+                await _leaveLedgerService.ReserveBalanceAsync(employeeId, leaverequest.LeaveTypeId, leaverequest.PaidDays, leaverequest.Id);
+            }
+            if (leaverequest.LopDays > 0)
+            {
+                await _leaveLedgerService.RecordTransactionAsync(
+                    employeeId,
+                    leaverequest.LeaveTypeId,
+                    "Reservation",
+                    -leaverequest.LopDays,
+                    leaverequest.Id,
+                    null,
+                    $"Reserved {leaverequest.LopDays} days Loss of Pay (LOP) for Leave Request #{leaverequest.Id}");
+            }
 
             // Configurable Approval Workflow Engine Integration (toggleable per module)
             bool isWorkflowEnabled = _configuration?.GetValue<bool>("WorkflowEngine:Modules:Leave", false) ?? false;
@@ -148,7 +321,6 @@ namespace KHRMS.Services
                 {
                     var emp = await _unitOfWork.Employees.GetById(employeeId);
                     var desig = emp?.DesignationId.HasValue == true ? await _unitOfWork.Designations.GetById(emp.DesignationId.Value) : null;
-                    var lt = await _unitOfWork.LeaveType.GetById(leaveRequest.LeaveTypeId);
 
                     var context = new WorkflowContext
                     {
@@ -344,7 +516,11 @@ namespace KHRMS.Services
                     CanApprove = false,
                     CanOverride = false,
                     CanReassign = false,
-                    TotalDays = CalculateWorkingLeaveDays(x.request.StartDate, x.request.EndDate, x.request.LeaveMode, holidayDates)
+                    TotalDays = CalculateWorkingLeaveDays(x.request.StartDate, x.request.EndDate, x.request.LeaveMode, holidayDates),
+                    IsLop = x.request.IsLop,
+                    IsSandwichApplied = x.request.IsSandwichApplied,
+                    SandwichDays = x.request.SandwichDays,
+                    IsConvertedFromLop = x.request.IsConvertedFromLop
                 };
             }).ToList();
 
@@ -362,9 +538,37 @@ namespace KHRMS.Services
         {
             if (leaveRequest == null) return false;
 
+            long currentUserId = _userContext.GetCurrentEmployeeId();
+            bool isPrivileged = _userContext.IsAdmin() || _userContext.IsHR();
             var existingRequest = await _unitOfWork.LeaveRequest.GetById(leaveRequest.Id);
             if (existingRequest != null && !string.Equals(existingRequest.Status, "Approved", StringComparison.OrdinalIgnoreCase))
             {
+                if (existingRequest.EmployeeId != currentUserId && !isPrivileged)
+                {
+                    throw new UnauthorizedAccessException("You are not authorized to update another employee's leave request.");
+                }
+
+                var allPayRuns = _unitOfWork.PayRuns != null ? await _unitOfWork.PayRuns.GetAll() : null;
+                var checkDate = leaveRequest.StartDate.Date;
+                while (allPayRuns != null && checkDate <= leaveRequest.EndDate.Date)
+                {
+                    int m = checkDate.Month;
+                    int y = checkDate.Year;
+                    var locked = allPayRuns.FirstOrDefault(p =>
+                        !p.IsDeleted &&
+                        p.Year == y &&
+                        p.Month == m &&
+                        (string.Equals(p.Status, "Approved", StringComparison.OrdinalIgnoreCase) ||
+                         string.Equals(p.Status, "Disbursed", StringComparison.OrdinalIgnoreCase) ||
+                         string.Equals(p.Status, "Finalized", StringComparison.OrdinalIgnoreCase)));
+                    if (locked != null && !isPrivileged)
+                    {
+                        throw new InvalidOperationException($"Cannot update leave to {checkDate:yyyy-MM-dd} because payroll for {checkDate:MMMM yyyy} is already locked ({locked.Status}). Please contact HR.");
+                    }
+                    checkDate = new DateTime(y, m, 1).AddMonths(1);
+                }
+
+                
                 existingRequest.StartDate = leaveRequest.StartDate;
                 existingRequest.EndDate = leaveRequest.EndDate;
                 existingRequest.UpdatedDate = DateTime.Now;
@@ -385,9 +589,31 @@ namespace KHRMS.Services
         {
             if (LeaveRequestTypeId <= 0) return false;
 
+            long currentUserId = _userContext.GetCurrentEmployeeId();
+            bool isPrivileged = _userContext.IsAdmin() || _userContext.IsHR();
             var leaveRequest = await _unitOfWork.LeaveRequest.GetById(LeaveRequestTypeId);
             if (leaveRequest != null)
             {
+                if (leaveRequest.EmployeeId != currentUserId && !isPrivileged)
+                {
+                    throw new UnauthorizedAccessException("You are not authorized to delete another employee's leave request.");
+                }
+
+                int m = leaveRequest.StartDate.Month;
+                int y = leaveRequest.StartDate.Year;
+                var payRuns = _unitOfWork.PayRuns != null ? await _unitOfWork.PayRuns.GetAll() : null;
+                var locked = payRuns?.FirstOrDefault(p =>
+                    !p.IsDeleted &&
+                    p.Year == y &&
+                    p.Month == m &&
+                    (string.Equals(p.Status, "Approved", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(p.Status, "Disbursed", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(p.Status, "Finalized", StringComparison.OrdinalIgnoreCase)));
+                if (locked != null && !isPrivileged)
+                {
+                    throw new InvalidOperationException($"Cannot delete/cancel leave for {leaveRequest.StartDate:yyyy-MM-dd} because payroll for {leaveRequest.StartDate:MMMM yyyy} is already locked ({locked.Status}). Please contact HR.");
+                }
+
                 // Approved leaves for past dates or days that have already passed cannot be deleted
                 if (string.Equals(leaveRequest.Status, "Approved", StringComparison.OrdinalIgnoreCase) && leaveRequest.StartDate.Date < DateTime.Today)
                 {
@@ -418,11 +644,13 @@ namespace KHRMS.Services
             var manager = await _unitOfWork.Employees.GetById(managerId);
 
             var isApprovedDecision = string.Equals(leaveRequest.Status, "Approved", StringComparison.OrdinalIgnoreCase);
+            var isReturnDecision = string.Equals(leaveRequest.Status, "NeedsRevision", StringComparison.OrdinalIgnoreCase) ||
+                                   string.Equals(leaveRequest.Status, "ReturnForRevision", StringComparison.OrdinalIgnoreCase);
 
             // If this request is managed by the Workflow Engine, route through the central engine
             if (leaveRequest1.WorkflowInstanceId.HasValue && leaveRequest1.WorkflowInstanceId.Value > 0 && _workflowEngine != null)
             {
-                var action = isApprovedDecision ? "Approve" : "Reject";
+                var action = isApprovedDecision ? "Approve" : (isReturnDecision ? "ReturnForRevision" : "Reject");
                 var actionResult = await _workflowEngine.ActOnStepAsync(
                     leaveRequest1.WorkflowInstanceId.Value,
                     managerId,
@@ -436,15 +664,27 @@ namespace KHRMS.Services
                 }
 
                 // Fix B: If workflow completed or rejected, send template email to employee
-                if (actionResult.IsWorkflowCompleted && employee != null && !string.IsNullOrEmpty(employee.EmailAddress))
+                if (actionResult.IsWorkflowCompleted)
                 {
-                    await DispatchWorkflowDecisionEmailAsync(leaveRequest1, employee, manager, isApprovedDecision, leaveRequest.RejectionReason);
+                    if (isApprovedDecision)
+                    {
+                        await OnLeaveApprovedAsync(leaveRequest1);
+                    }
+                    else if (!isReturnDecision)
+                    {
+                        await OnLeaveCancelledOrRejectedAsync(leaveRequest1, false, leaveRequest.RejectionReason);
+                    }
+
+                    if (employee != null && !string.IsNullOrEmpty(employee.EmailAddress))
+                    {
+                        await DispatchWorkflowDecisionEmailAsync(leaveRequest1, employee, manager, isApprovedDecision, leaveRequest.RejectionReason);
+                    }
                 }
 
                 return true;
             }
 
-            leaveRequest1.Status = isApprovedDecision ? "Approved" : "Rejected";
+            leaveRequest1.Status = isApprovedDecision ? "Approved" : (isReturnDecision ? "NeedsRevision" : "Rejected");
             leaveRequest1.ActionBy = managerId;
             leaveRequest1.ActionDate = DateTime.Now;
             leaveRequest1.RejectionReason = leaveRequest.RejectionReason;
@@ -453,6 +693,15 @@ namespace KHRMS.Services
             var result = _unitOfWork.Save();
 
             if (result <= 0) return false;
+
+            if (isApprovedDecision)
+            {
+                await OnLeaveApprovedAsync(leaveRequest1);
+            }
+            else if (!isReturnDecision)
+            {
+                await OnLeaveCancelledOrRejectedAsync(leaveRequest1, false, leaveRequest.RejectionReason);
+            }
 
             var holidayDates = await GetActiveHolidayDatesAsync();
             var workingDays = CalculateWorkingLeaveDays(leaveRequest1.StartDate, leaveRequest1.EndDate, leaveRequest1.LeaveMode, holidayDates);
@@ -538,10 +787,17 @@ namespace KHRMS.Services
                 return false;
             }
 
-            // If managed by the Workflow Engine, route cancellation through the engine
+            // If managed by the Workflow Engine, cancel the workflow instance
             if (leaveRequest.WorkflowInstanceId.HasValue && leaveRequest.WorkflowInstanceId.Value > 0 && _workflowEngine != null)
             {
-                return await _workflowEngine.CancelWorkflowAsync(leaveRequest.WorkflowInstanceId.Value, currentUserId, reason ?? "Cancelled by Employee");
+                try
+                {
+                    await _workflowEngine.CancelWorkflowAsync(leaveRequest.WorkflowInstanceId.Value, currentUserId, reason ?? "Cancelled by Employee");
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Workflow cancellation non-fatal warning for Leave #{Id}", leaveRequestId);
+                }
             }
 
             // Already cancelled or rejected
@@ -563,6 +819,7 @@ namespace KHRMS.Services
                 }
             }
 
+            bool wasApproved = string.Equals(leaveRequest.Status, "Approved", StringComparison.OrdinalIgnoreCase);
             leaveRequest.Status = "Cancelled";
             leaveRequest.ActionDate = DateTime.Now;
             leaveRequest.ActionBy = currentUserId > 0 ? currentUserId : leaveRequest.ActionBy;
@@ -573,6 +830,7 @@ namespace KHRMS.Services
 
             if (result > 0)
             {
+                await OnLeaveCancelledOrRejectedAsync(leaveRequest, wasApproved, reason);
                 try
                 {
                     await _unitOfWork.Notifications.Add(new Notification
@@ -736,69 +994,130 @@ namespace KHRMS.Services
         public async Task<IEnumerable<EmployeeLeaveBalanceDto>> GetEmployeeLeaveBalances(long? targetEmployeeId = null)
         {
             var empId = targetEmployeeId ?? _userContext.GetCurrentEmployeeId();
-            var leaveTypes = (await _unitOfWork.LeaveType.GetAll()).Where(t => t.IsActive == true && t.IsDeleted != true).ToList();
-            var leaveRequests = (await _unitOfWork.LeaveRequest.GetAll())
-                                .Where(lr => lr.EmployeeId == empId && lr.IsDeleted != true && (lr.IsActive != false || lr.IsActive == null))
-                                .ToList();
-            var holidayDates = await GetActiveHolidayDatesAsync();
+            return await _leaveLedgerService.GetAllEmployeeBalancesAsync(empId);
+        }
 
-            var currentYear = DateTime.Now.Year;
-            var balances = new List<EmployeeLeaveBalanceDto>();
-
-            foreach (var lt in leaveTypes)
+        private async Task OnLeaveApprovedAsync(LeaveRequest req)
+        {
+            if (req.PaidDays > 0)
             {
-                var typeName = lt.Type ?? "Leave";
-                int totalQuota = lt.AllowedDays;
-                if (totalQuota <= 0)
-                {
-                    if (typeName.IndexOf("unpaid", StringComparison.OrdinalIgnoreCase) >= 0 || typeName.IndexOf("loss of pay", StringComparison.OrdinalIgnoreCase) >= 0)
-                    {
-                        totalQuota = 0;
-                    }
-                    else if (typeName.IndexOf("sick", StringComparison.OrdinalIgnoreCase) >= 0)
-                    {
-                        totalQuota = 10;
-                    }
-                    else if (typeName.IndexOf("casual", StringComparison.OrdinalIgnoreCase) >= 0)
-                    {
-                        totalQuota = 12;
-                    }
-                }
+                await _leaveLedgerService.CommitDeductionAsync(req.EmployeeId, req.LeaveTypeId, req.PaidDays, req.Id);
+            }
+            if (req.LopDays > 0)
+            {
+                await _leaveLedgerService.RecordTransactionAsync(
+                    req.EmployeeId,
+                    req.LeaveTypeId,
+                    "ReservationRelease",
+                    req.LopDays,
+                    req.Id,
+                    null,
+                    $"Released LOP reservation on approval for Leave Request #{req.Id}");
 
-                // Filter for requests in current year
-                var requestsForType = leaveRequests.Where(r => r.LeaveTypeId == lt.Id && r.StartDate.Year == currentYear).ToList();
-
-                double usedDays = 0;
-                int pendingDays = 0;
-
-                foreach (var req in requestsForType)
-                {
-                    double days = CalculateWorkingLeaveDays(req.StartDate, req.EndDate, req.LeaveMode, holidayDates);
-
-                    if (string.Equals(req.Status, "Approved", StringComparison.OrdinalIgnoreCase))
-                    {
-                        usedDays += days;
-                    }
-                    else if (string.Equals(req.Status, "Pending", StringComparison.OrdinalIgnoreCase) || (!req.ActionBy.HasValue && !string.Equals(req.Status, "Rejected", StringComparison.OrdinalIgnoreCase)))
-                    {
-                        pendingDays += (int)Math.Ceiling(days);
-                    }
-                }
-
-                double remaining = Math.Max(0, totalQuota - usedDays);
-
-                balances.Add(new EmployeeLeaveBalanceDto
-                {
-                    LeaveTypeId = lt.Id,
-                    LeaveTypeName = typeName,
-                    TotalQuota = totalQuota,
-                    UsedDays = usedDays,
-                    RemainingDays = remaining,
-                    PendingDays = pendingDays
-                });
+                await _leaveLedgerService.RecordTransactionAsync(
+                    req.EmployeeId,
+                    req.LeaveTypeId,
+                    "Deduction",
+                    -req.LopDays,
+                    req.Id,
+                    null,
+                    $"Deducted {req.LopDays} days Loss of Pay (LOP) for approved Leave Request #{req.Id}");
             }
 
-            return balances;
+            var holidayDates = await GetActiveHolidayDatesAsync();
+            for (var d = req.StartDate.Date; d <= req.EndDate.Date; d = d.AddDays(1))
+            {
+                var dOnly = DateOnly.FromDateTime(d);
+                if (holidayDates.Contains(dOnly) || d.DayOfWeek == DayOfWeek.Saturday || d.DayOfWeek == DayOfWeek.Sunday)
+                {
+                    if (!req.IsSandwichApplied) continue;
+                }
+
+                var dailyRec = (await _unitOfWork.DailyAttendanceRecords.GetAll())
+                    .FirstOrDefault(r => r.EmployeeId == req.EmployeeId && r.AttendanceDate == dOnly && r.IsDeleted != true);
+
+                if (dailyRec != null)
+                {
+                    dailyRec.Status = "OnLeave";
+                    dailyRec.LeaveRequestId = req.Id;
+                    dailyRec.Remarks = $"Leave: {req.LeaveReason ?? (req.IsLop ? "LOP" : "Approved Leave")}";
+                    dailyRec.UpdatedDate = DateTime.UtcNow;
+                    _unitOfWork.DailyAttendanceRecords.Update(dailyRec);
+                }
+                else
+                {
+                    await _unitOfWork.DailyAttendanceRecords.Add(new DailyAttendanceRecord
+                    {
+                        EmployeeId = req.EmployeeId,
+                        AttendanceDate = dOnly,
+                        ShiftId = 1,
+                        Status = "OnLeave",
+                        LeaveRequestId = req.Id,
+                        Remarks = $"Leave: {req.LeaveReason ?? (req.IsLop ? "LOP" : "Approved Leave")}",
+                        CreatedDate = DateTime.UtcNow,
+                        IsActive = true,
+                        IsDeleted = false
+                    });
+                }
+            }
+            _unitOfWork.Save();
+        }
+
+        private async Task OnLeaveCancelledOrRejectedAsync(LeaveRequest req, bool wasApproved, string? reason)
+        {
+            decimal paidDaysToProcess = req.PaidDays > 0 ? req.PaidDays : (!req.IsLop ? (req.TotalWorkingDays > 0 ? req.TotalWorkingDays : (decimal)req.TotalDays) : 0);
+            decimal lopDaysToProcess = req.LopDays > 0 ? req.LopDays : (req.IsLop ? (req.TotalWorkingDays > 0 ? req.TotalWorkingDays : (decimal)req.TotalDays) : 0);
+
+            if (wasApproved)
+            {
+                if (paidDaysToProcess > 0)
+                {
+                    await _leaveLedgerService.RestoreDeductionAsync(req.EmployeeId, req.LeaveTypeId, paidDaysToProcess, req.Id, reason ?? "Leave Cancelled");
+                }
+                if (lopDaysToProcess > 0)
+                {
+                    await _leaveLedgerService.RecordTransactionAsync(
+                        req.EmployeeId,
+                        req.LeaveTypeId,
+                        "Restoration",
+                        lopDaysToProcess,
+                        req.Id,
+                        null,
+                        $"Restored {lopDaysToProcess} days LOP from cancelled Leave Request #{req.Id}: {reason}");
+                }
+
+                var dailyRecs = (await _unitOfWork.DailyAttendanceRecords.GetAll())
+                    .Where(r => r.EmployeeId == req.EmployeeId && r.LeaveRequestId == req.Id && r.IsDeleted != true)
+                    .ToList();
+
+                foreach (var rec in dailyRecs)
+                {
+                    rec.Status = "Absent";
+                    rec.LeaveRequestId = null;
+                    rec.Remarks = "Leave Cancelled";
+                    rec.UpdatedDate = DateTime.UtcNow;
+                    _unitOfWork.DailyAttendanceRecords.Update(rec);
+                }
+                _unitOfWork.Save();
+            }
+            else
+            {
+                if (paidDaysToProcess > 0)
+                {
+                    await _leaveLedgerService.ReleaseReservationAsync(req.EmployeeId, req.LeaveTypeId, paidDaysToProcess, req.Id);
+                }
+                if (lopDaysToProcess > 0)
+                {
+                    await _leaveLedgerService.RecordTransactionAsync(
+                        req.EmployeeId,
+                        req.LeaveTypeId,
+                        "ReservationRelease",
+                        lopDaysToProcess,
+                        req.Id,
+                        null,
+                        $"Released {lopDaysToProcess} days LOP reservation for cancelled Leave Request #{req.Id}");
+                }
+            }
         }
 
       

@@ -34,6 +34,12 @@ namespace KHRMS.Services
             await _unitOfWork.AttendanceLog.DeleteAsync(id);
             return;
         }
+        public async Task<IEnumerable<AttendanceLog>> GetAttendanceLogsByEmployeeIdAsync(long employeeId)
+        {
+            var all = await _unitOfWork.AttendanceLog.GetAll();
+            return all.Where(r => r.EmployeeId == employeeId).ToList();
+        }
+
         public async Task<AttendanceLog> GetAttendanceLogByIdAsync(long id)
         {
             return await _unitOfWork.AttendanceLog.GetById(id);

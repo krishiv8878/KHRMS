@@ -20,6 +20,7 @@ namespace KHRMS.Services
         private readonly IUserContextService _userContextService;
         private readonly ISendEmailService _emailService;
         private readonly IAttendanceLogService _attendanceLogService;
+        private readonly IEmployeeAccessService? _employeeAccessService;
 
         private readonly IWorkflowEngineService? _workflowEngine;
         private readonly IConfiguration? _configuration;
@@ -31,7 +32,8 @@ namespace KHRMS.Services
             ISendEmailService emailService,
             IAttendanceLogService attendanceLogService,
             IWorkflowEngineService? workflowEngine = null,
-            IConfiguration? configuration = null)
+            IConfiguration? configuration = null,
+            IEmployeeAccessService? employeeAccessService = null)
         {
             _unitOfWork = unitOfWork;
             _userContextService = userContextService;
@@ -40,6 +42,7 @@ namespace KHRMS.Services
             _attendanceLogService = attendanceLogService;
             _workflowEngine = workflowEngine;
             _configuration = configuration;
+            _employeeAccessService = employeeAccessService;
         }
 
         public async Task<IEnumerable<AttendanceRequestUpdateDTO>> GetAllAsync()
@@ -56,16 +59,24 @@ namespace KHRMS.Services
             var attendance = await _unitOfWork.AttendanceRequests.GetAll();
             var employees = await _unitOfWork.Employees.GetAll();
 
+            var subordinateIds = _employeeAccessService != null 
+                ? await _employeeAccessService.GetSubordinateEmployeeIdsAsync(currentEmpId)
+                : new List<long>();
+
             IEnumerable<AttendanceRequest> filteredAttendance;
             if (isAdminOrHr)
             {
                 filteredAttendance = attendance.Where(x => !x.IsDeleted);
             }
-            else if (isManager)
+            else if (isManager || subordinateIds.Count > 0)
             {
-                // Manager sees direct reportees + requests routed to them + self
+                // Manager sees direct & indirect reportees + requests routed to them + self
                 filteredAttendance = attendance.Where(x => !x.IsDeleted && 
-                    (x.ManagerId == currentEmpId || x.EmployeeId == currentEmpId || x.RequestedBy == currentEmpId || employees.Any(e => e.Id == x.EmployeeId && e.ManagerId == currentEmpId)));
+                    (x.ManagerId == currentEmpId || 
+                     x.EmployeeId == currentEmpId || 
+                     x.RequestedBy == currentEmpId || 
+                     subordinateIds.Contains(x.EmployeeId) ||
+                     employees.Any(e => e.Id == x.EmployeeId && e.ManagerId == currentEmpId)));
             }
             else
             {
@@ -199,9 +210,11 @@ namespace KHRMS.Services
             if (attendanceRequest == null)
                 throw new ArgumentNullException(nameof(attendanceRequest));
 
-            long employeeId = attendanceRequest.EmployeeId.HasValue && attendanceRequest.EmployeeId.Value > 0
+            long currentUserId = _userContextService.GetCurrentEmployeeId();
+            bool isPrivileged = _userContextService.IsAdmin() || _userContextService.IsHR();
+            long employeeId = (isPrivileged && attendanceRequest.EmployeeId.HasValue && attendanceRequest.EmployeeId.Value > 0)
                 ? attendanceRequest.EmployeeId.Value
-                : _userContextService.GetCurrentEmployeeId();
+                : currentUserId;
 
             if (employeeId == 0 && user != null)
             {
@@ -243,6 +256,63 @@ namespace KHRMS.Services
                     ? "already approved" 
                     : "currently pending approval";
                 throw new InvalidOperationException($"A regularization request for {attendanceRequest.RequestedDate:yyyy-MM-dd} is {statusDesc}. You can only submit a new request if the previous one was rejected.");
+            }
+
+            // SEC-35: Prevent regularization for payroll periods that have already been approved, finalized, or disbursed
+            if (_unitOfWork.PayRuns != null)
+            {
+                int reqMonth = attendanceRequest.RequestedDate.Month;
+                int reqYear = attendanceRequest.RequestedDate.Year;
+                var lockedPayRuns = await _unitOfWork.PayRuns.GetAll();
+                if (lockedPayRuns != null)
+                {
+                    var lockedPayRun = lockedPayRuns.FirstOrDefault(p =>
+                        !p.IsDeleted &&
+                        p.Year == reqYear &&
+                        p.Month == reqMonth &&
+                        (string.Equals(p.Status, "Approved", StringComparison.OrdinalIgnoreCase) ||
+                         string.Equals(p.Status, "Disbursed", StringComparison.OrdinalIgnoreCase) ||
+                         string.Equals(p.Status, "Finalized", StringComparison.OrdinalIgnoreCase)));
+
+                    if (lockedPayRun != null && !isPrivileged)
+                    {
+                        throw new InvalidOperationException($"Cannot submit attendance regularization for {attendanceRequest.RequestedDate:yyyy-MM-dd} because the payroll for {attendanceRequest.RequestedDate:MMMM yyyy} has already been {lockedPayRun.Status.ToLowerInvariant()}. Please contact HR.");
+                    }
+                }
+            }
+
+            // Phase 4: Prevent regularization if month is locked in AttendanceLocks
+            var isMonthLocked = (await _unitOfWork.AttendanceLocks.GetAll())
+                .Any(l => !l.IsDeleted && l.IsLocked && l.Month == attendanceRequest.RequestedDate.Month && l.Year == attendanceRequest.RequestedDate.Year);
+            if (isMonthLocked && !isPrivileged)
+            {
+                throw new InvalidOperationException($"Cannot submit attendance regularization for {attendanceRequest.RequestedDate:yyyy-MM-dd} because the attendance for {attendanceRequest.RequestedDate:MMMM yyyy} has been locked for payroll processing. Please contact HR.");
+            }
+
+            // Phase 4: Backdated window restriction (Max 7 days)
+            if (attendanceRequest.RequestedDate.Date < DateTime.Today.AddDays(-7) && !isPrivileged)
+            {
+                throw new InvalidOperationException($"Attendance regularization can only be submitted for dates within the last 7 days (on or after {DateTime.Today.AddDays(-7):yyyy-MM-dd}). For older dates, please request an HR override.");
+            }
+
+            // Phase 4: Monthly quota limit (Max 3 regularizations per calendar month)
+            int targetMonth = attendanceRequest.RequestedDate.Month;
+            int targetYear = attendanceRequest.RequestedDate.Year;
+            var monthlyRequestsCount = (await _unitOfWork.AttendanceRequests.GetAll())
+                .Count(r => !r.IsDeleted && r.EmployeeId == employee.Id &&
+                            r.RequestedDate.Month == targetMonth && r.RequestedDate.Year == targetYear &&
+                            (string.Equals(r.Status, "Pending", StringComparison.OrdinalIgnoreCase) ||
+                             string.Equals(r.Status, "Approved", StringComparison.OrdinalIgnoreCase)));
+
+            if (monthlyRequestsCount >= 3 && !isPrivileged)
+            {
+                throw new InvalidOperationException($"You have reached the monthly limit of 3 attendance regularizations for {attendanceRequest.RequestedDate:MMMM yyyy}. Contact HR for exceptional requests.");
+            }
+
+            // Phase 4: Mandatory reason validation (at least 5 characters)
+            if (string.IsNullOrWhiteSpace(attendanceRequest.Reason) || attendanceRequest.Reason.Trim().Length < 5)
+            {
+                throw new ArgumentException("A detailed justification reason of at least 5 characters is required.");
             }
 
             // Attendance regularization is strictly for past completed workdays
@@ -381,7 +451,9 @@ namespace KHRMS.Services
             if (request.WorkflowInstanceId.HasValue && request.WorkflowInstanceId.Value > 0 && _workflowEngine != null)
             {
                 var isApproved = string.Equals(attendanceRequest.Status, "Approved", StringComparison.OrdinalIgnoreCase);
-                var action = isApproved ? "Approve" : "Reject";
+                var isReturn = string.Equals(attendanceRequest.Status, "NeedsRevision", StringComparison.OrdinalIgnoreCase) ||
+                               string.Equals(attendanceRequest.Status, "ReturnForRevision", StringComparison.OrdinalIgnoreCase);
+                var action = isApproved ? "Approve" : (isReturn ? "ReturnForRevision" : "Reject");
                 var actionResult = await _workflowEngine.ActOnStepAsync(
                     request.WorkflowInstanceId.Value,
                     actionById,
@@ -504,6 +576,54 @@ namespace KHRMS.Services
                 };
                 await _attendanceLogService.UpdateAttendanceLogAsync(attendanceLog);
                 _unitOfWork.Save();
+
+                // Phase 4: Sync into DailyAttendanceRecords on regularization approval
+                try
+                {
+                    var existingDaily = (await _unitOfWork.DailyAttendanceRecords.GetAll())
+                        .FirstOrDefault(r => !r.IsDeleted && r.EmployeeId == request.EmployeeId && r.AttendanceDate == requestedDateOnly);
+
+                    int totalMins = (int)(duration * 60);
+                    string regularizedStatus = duration >= 8 ? "Present" : "HalfDay";
+
+                    if (existingDaily != null)
+                    {
+                        existingDaily.FirstClockIn = inTime;
+                        existingDaily.LastClockOut = outTime;
+                        existingDaily.TotalWorkMinutes = totalMins;
+                        existingDaily.EffectiveWorkMinutes = totalMins;
+                        existingDaily.Status = regularizedStatus;
+                        existingDaily.IsRegularized = true;
+                        existingDaily.Remarks = $"Regularized: {request.Reason}";
+                        existingDaily.UpdatedDate = DateTime.UtcNow;
+                        _unitOfWork.DailyAttendanceRecords.Update(existingDaily);
+                    }
+                    else
+                    {
+                        var newDaily = new DailyAttendanceRecord
+                        {
+                            EmployeeId = request.EmployeeId,
+                            AttendanceDate = requestedDateOnly,
+                            FirstClockIn = inTime,
+                            LastClockOut = outTime,
+                            TotalWorkMinutes = totalMins,
+                            EffectiveWorkMinutes = totalMins,
+                            Status = regularizedStatus,
+                            IsRegularized = true,
+                            Remarks = $"Regularized: {request.Reason}",
+                            CreatedDate = DateTime.UtcNow,
+                            UpdatedDate = DateTime.UtcNow,
+                            IsActive = true,
+                            IsDeleted = false
+                        };
+                        await _unitOfWork.DailyAttendanceRecords.Add(newDaily);
+                    }
+                    _unitOfWork.Save();
+                }
+                catch (Exception ex)
+                {
+                    Serilog.Log.Error(ex, "Failed to sync DailyAttendanceRecord on regularization approval.");
+                }
 
                 // Send email notification to employee
                 try

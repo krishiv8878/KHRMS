@@ -7,6 +7,7 @@ using KHRMS.Services.Request;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 
@@ -18,13 +19,20 @@ namespace KHRMS.Services
         private readonly ISendEmailService _sendEmailService;
         private readonly ITokenService _tokenService;
         private readonly IConfiguration _configuration;
-        public UserLoginService(IUnitOfWork unitOfWork,ISendEmailService sendEmail,ITokenService tokenService,IConfiguration configuration)
+        private readonly IMemoryCache? _memoryCache;
+
+        public UserLoginService(
+            IUnitOfWork unitOfWork,
+            ISendEmailService sendEmail,
+            ITokenService tokenService,
+            IConfiguration configuration,
+            IMemoryCache? memoryCache = null)
         {
             _unitOfWork = unitOfWork;
             _sendEmailService = sendEmail;
             _tokenService = tokenService;
             _configuration = configuration;
-        
+            _memoryCache = memoryCache;
         }
         
         //public async Task<bool> GetUserLoginById(string email, string password)
@@ -47,6 +55,20 @@ namespace KHRMS.Services
 
         public async Task<UserLoginModel?> GetUserLoginById(string Email, string Password)
         {
+            var normalizedEmail = (Email ?? string.Empty).ToLowerInvariant().Trim();
+            if (_memoryCache != null && !string.IsNullOrWhiteSpace(normalizedEmail))
+            {
+                if (_memoryCache.TryGetValue($"login_lockout_{normalizedEmail}", out DateTime lockoutUntil))
+                {
+                    var remaining = lockoutUntil.Subtract(DateTime.UtcNow);
+                    if (remaining.TotalSeconds > 0)
+                    {
+                        var minutes = Math.Max(1, (int)Math.Ceiling(remaining.TotalMinutes));
+                        throw new InvalidOperationException($"Account is temporarily locked due to 5 consecutive failed login attempts. Please try again after {minutes} minutes or reset your password.");
+                    }
+                }
+            }
+
             var allUsers = await _unitOfWork.UserLogins.GetAll();
             var matchedUser = allUsers.FirstOrDefault(x => x.Email == Email && !x.IsDeleted && x.IsActive);
 
@@ -56,6 +78,11 @@ namespace KHRMS.Services
                 var verificationResult = passwordHasher.VerifyHashedPassword(matchedUser, matchedUser.Password, Password);
                 if (verificationResult == PasswordVerificationResult.Success)
                 {
+                    if (_memoryCache != null && !string.IsNullOrWhiteSpace(normalizedEmail))
+                    {
+                        _memoryCache.Remove($"login_failed_{normalizedEmail}");
+                        _memoryCache.Remove($"login_lockout_{normalizedEmail}");
+                    }
                     // Find matching employee
                     var allEmployees = await _unitOfWork.Employees.GetAll();
                     var existingEmpRecord = allEmployees.FirstOrDefault(e => string.Equals(e.EmailAddress, Email, StringComparison.OrdinalIgnoreCase));
@@ -167,7 +194,7 @@ namespace KHRMS.Services
                         var issuer = _configuration["Jwt:ValidIssuer"] ?? _configuration["Jwt:issuer"];
                         var audience = _configuration["Jwt:ValidAudience"] ?? _configuration["Jwt:audience"];
                         var key = _configuration["Jwt:PasswordResetSecret"] ?? "DefaultSecretKeyForJwtTokenAuth12345";
-                        var tokenExpiryTimeStamp = DateTime.UtcNow.AddDays(30);
+                        var tokenExpiryTimeStamp = DateTime.UtcNow.AddMinutes(60); // SEC-01: Token lifetime shortened from 30 days to 60 minutes
 
                         var claims = new List<Claim>
                         {
@@ -218,6 +245,24 @@ namespace KHRMS.Services
                     }
                 }
             }
+            // SEC-04: Failed login attempt counter & lockout logic
+            if (_memoryCache != null && !string.IsNullOrWhiteSpace(normalizedEmail))
+            {
+                var failKey = $"login_failed_{normalizedEmail}";
+                int failedAttempts = _memoryCache.TryGetValue(failKey, out int count) ? count + 1 : 1;
+                if (failedAttempts >= 5)
+                {
+                    var lockUntil = DateTime.UtcNow.AddMinutes(15);
+                    _memoryCache.Set($"login_lockout_{normalizedEmail}", lockUntil, TimeSpan.FromMinutes(15));
+                    _memoryCache.Remove(failKey);
+                    throw new InvalidOperationException("Account has been temporarily locked for 15 minutes due to 5 consecutive failed login attempts. Please try again later or reset your password.");
+                }
+                else
+                {
+                    _memoryCache.Set(failKey, failedAttempts, TimeSpan.FromMinutes(15));
+                }
+            }
+
             return null;
         }
         public async Task<bool> ForgotPasswordMail(ForgotPasswordRequestModel forgotPassword)
@@ -233,7 +278,20 @@ namespace KHRMS.Services
                         {"Token",token },
                         {"Email" ,forgotPassword.Email}
                     };
-                    var req = QueryHelpers.AddQueryString(forgotPassword.ClientUrl!,dict);
+                    // Prevent password reset poisoning / open redirect: validate against configured baseUrl or localhost
+                    var fallbackClientUrl = _configuration["AppSettings:ClientUrl"] ?? "http://localhost:4200/#/reset-password";
+                    var targetBaseUrl = fallbackClientUrl;
+                    if (!string.IsNullOrWhiteSpace(forgotPassword.ClientUrl) &&
+                        Uri.TryCreate(forgotPassword.ClientUrl, UriKind.Absolute, out var parsedClientUri))
+                    {
+                        var configuredHost = Uri.TryCreate(fallbackClientUrl, UriKind.Absolute, out var parsedConfigUri) ? parsedConfigUri.Host : "localhost";
+                        if (string.Equals(parsedClientUri.Host, configuredHost, StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(parsedClientUri.Host, "localhost", StringComparison.OrdinalIgnoreCase))
+                        {
+                            targetBaseUrl = forgotPassword.ClientUrl;
+                        }
+                    }
+                    var req = QueryHelpers.AddQueryString(targetBaseUrl, dict);
 
                     var subject = $"Reset Password For {userLoginDetails.UserName}";
 
@@ -256,6 +314,17 @@ namespace KHRMS.Services
             if (userLogin == null || string.IsNullOrWhiteSpace(userLogin.Token))
                 return false;
 
+            // SEC-03: Invalidate single-use password reset token
+            if (_memoryCache != null)
+            {
+                var tokenHash = Convert.ToBase64String(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(userLogin.Token)));
+                var usedTokenKey = $"used_reset_token_{tokenHash}";
+                if (_memoryCache.TryGetValue(usedTokenKey, out _))
+                {
+                    throw new InvalidOperationException("This password reset token has already been used. Please request a new password reset link.");
+                }
+            }
+
             var principal = _tokenService.ValidatePasswordResetToken(userLogin.Token);
             if (principal == null)
                 return false;
@@ -274,8 +343,16 @@ namespace KHRMS.Services
             matchedUser.IsResetPasswordRequired = false;
 
             _unitOfWork.UserLogins.Update(matchedUser);
-            return _unitOfWork.Save() > 0;
-
+            var saved = _unitOfWork.Save() > 0;
+            if (saved && _memoryCache != null)
+            {
+                var tokenHash = Convert.ToBase64String(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(userLogin.Token)));
+                _memoryCache.Set($"used_reset_token_{tokenHash}", true, TimeSpan.FromHours(24));
+                var normalizedEmail = (email ?? string.Empty).ToLowerInvariant().Trim();
+                _memoryCache.Remove($"login_lockout_{normalizedEmail}");
+                _memoryCache.Remove($"login_failed_{normalizedEmail}");
+            }
+            return saved;
         }
 
         /* public async Task<bool> CreateUserLogin(UserLogin userLogin)
@@ -335,7 +412,25 @@ namespace KHRMS.Services
                      return userLoginDetails;
                  }
              }
-             return null;
+             // SEC-04: Failed login attempt counter & lockout logic
+            if (_memoryCache != null && !string.IsNullOrWhiteSpace(normalizedEmail))
+            {
+                var failKey = $"login_failed_{normalizedEmail}";
+                int failedAttempts = _memoryCache.TryGetValue(failKey, out int count) ? count + 1 : 1;
+                if (failedAttempts >= 5)
+                {
+                    var lockUntil = DateTime.UtcNow.AddMinutes(15);
+                    _memoryCache.Set($"login_lockout_{normalizedEmail}", lockUntil, TimeSpan.FromMinutes(15));
+                    _memoryCache.Remove(failKey);
+                    throw new InvalidOperationException("Account has been temporarily locked for 15 minutes due to 5 consecutive failed login attempts. Please try again later or reset your password.");
+                }
+                else
+                {
+                    _memoryCache.Set(failKey, failedAttempts, TimeSpan.FromMinutes(15));
+                }
+            }
+
+            return null;
          }
 
          }*/

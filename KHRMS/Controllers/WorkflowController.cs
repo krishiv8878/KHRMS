@@ -127,7 +127,7 @@ namespace KHRMS.Controllers
                 return BadRequest(new ApiResponse<WorkflowActionResult>
                 {
                     StatusCode = (int)HttpStatusCode.BadRequest,
-                    Message = "A valid action ('Approve', 'Reject', 'OverrideApprove', 'OverrideReject', or 'Reassign') is required.",
+                    Message = "A valid action ('Approve', 'Reject', 'ReturnForRevision', 'OverrideApprove', 'OverrideReject', or 'Reassign') is required.",
                     Data = null
                 });
             }
@@ -155,6 +155,120 @@ namespace KHRMS.Controllers
                         Data = result
                     });
                 }
+                if (result.StatusCode == "Forbidden")
+                {
+                    return StatusCode((int)HttpStatusCode.Forbidden, new ApiResponse<WorkflowActionResult>
+                    {
+                        StatusCode = (int)HttpStatusCode.Forbidden,
+                        Message = result.Message,
+                        Data = result
+                    });
+                }
+                if (result.StatusCode == "NotFound")
+                {
+                    return NotFound(new ApiResponse<WorkflowActionResult>
+                    {
+                        StatusCode = (int)HttpStatusCode.NotFound,
+                        Message = result.Message,
+                        Data = result
+                    });
+                }
+
+                return BadRequest(new ApiResponse<WorkflowActionResult>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = result.Message,
+                    Data = result
+                });
+            }
+
+            return Ok(new ApiResponse<WorkflowActionResult>
+            {
+                StatusCode = (int)HttpStatusCode.OK,
+                Message = result.Message,
+                Data = result
+            });
+        }
+
+        [HttpPost("resubmit")]
+        public async Task<IActionResult> ResubmitWorkflow([FromBody] WorkflowResubmitRequest request)
+        {
+            if (request == null || string.IsNullOrWhiteSpace(request.RequestType) || !request.RequestId.HasValue || request.RequestId <= 0)
+            {
+                return BadRequest(new ApiResponse<WorkflowActionResult>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = "Valid RequestType and RequestId are required for resubmission.",
+                    Data = null
+                });
+            }
+
+            long currentUserId = _userContext.GetCurrentEmployeeId();
+            if (currentUserId <= 0)
+            {
+                return Unauthorized(new ApiResponse<WorkflowActionResult>
+                {
+                    StatusCode = (int)HttpStatusCode.Unauthorized,
+                    Message = "Valid employee ID required.",
+                    Data = null
+                });
+            }
+
+            var result = await _workflowEngine.ResubmitWorkflowAsync(request.RequestType, request.RequestId.Value, currentUserId, request.Comment);
+            if (!result.Success)
+            {
+                if (result.StatusCode == "Forbidden")
+                {
+                    return StatusCode((int)HttpStatusCode.Forbidden, new ApiResponse<WorkflowActionResult>
+                    {
+                        StatusCode = (int)HttpStatusCode.Forbidden,
+                        Message = result.Message,
+                        Data = result
+                    });
+                }
+                if (result.StatusCode == "NotFound")
+                {
+                    return NotFound(new ApiResponse<WorkflowActionResult>
+                    {
+                        StatusCode = (int)HttpStatusCode.NotFound,
+                        Message = result.Message,
+                        Data = result
+                    });
+                }
+
+                return BadRequest(new ApiResponse<WorkflowActionResult>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = result.Message,
+                    Data = result
+                });
+            }
+
+            return Ok(new ApiResponse<WorkflowActionResult>
+            {
+                StatusCode = (int)HttpStatusCode.OK,
+                Message = result.Message,
+                Data = result
+            });
+        }
+
+        [HttpPost("instance/{id}/resubmit")]
+        public async Task<IActionResult> ResubmitWorkflowInstance(long id, [FromBody] WorkflowResubmitRequest? request)
+        {
+            long currentUserId = _userContext.GetCurrentEmployeeId();
+            if (currentUserId <= 0)
+            {
+                return Unauthorized(new ApiResponse<WorkflowActionResult>
+                {
+                    StatusCode = (int)HttpStatusCode.Unauthorized,
+                    Message = "Valid employee ID required.",
+                    Data = null
+                });
+            }
+
+            var result = await _workflowEngine.ResubmitWorkflowByIdAsync(id, currentUserId, request?.Comment);
+            if (!result.Success)
+            {
                 if (result.StatusCode == "Forbidden")
                 {
                     return StatusCode((int)HttpStatusCode.Forbidden, new ApiResponse<WorkflowActionResult>

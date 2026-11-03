@@ -13,6 +13,7 @@ namespace KHRMS.Services.Interfaces
         SalaryCalculationResult CalculateCtcBreakdown(SalaryCalculationRequest req);
         Task<EmployeeSalaryAssignment?> GetEmployeeSalaryAssignmentAsync(long employeeId);
         Task<IEnumerable<EmployeeSalaryAssignment>> GetAllSalaryAssignmentsAsync();
+        Task<IEnumerable<EmployeeSalaryAssignment>> GetEmployeeSalaryHistoryAsync(long employeeId);
         Task<EmployeeSalaryAssignment> AssignSalaryAsync(AssignSalaryRequest req);
 
         // Pay Run Engine
@@ -22,8 +23,19 @@ namespace KHRMS.Services.Interfaces
         Task<PayRun> CreatePayRunAsync(CreatePayRunRequest req);
         Task<PayRun> UpdatePayRunStatusAsync(UpdatePayRunStatusRequest req);
         Task<bool> DeletePayRunAsync(long payRunId);
+        Task<bool> LockPayRunAsync(long payRunId, long employeeId);
+        Task<bool> RecalculatePayRunAsync(long payRunId);
+        Task<bool> ToggleHoldEmployeeDetailAsync(long detailId, bool isHold, string? reason);
+        Task<bool> UpdateEmployeeAdjustmentAsync(long detailId, decimal manualAdjustment, decimal arrears, decimal bonus, string? reason);
+
+        // Employee Loans & Advances
+        Task<IEnumerable<EmployeeLoan>> GetAllLoansAsync(long? employeeId = null);
+        Task<EmployeeLoan> ApplyLoanAsync(ApplyEmployeeLoanRequest req, long createdBy);
+        Task<EmployeeLoan> UpdateLoanStatusAsync(long loanId, string status, string? reason);
 
         // Payslips & Self-Service
+        Task<PayslipDto> RecordIndividualSalaryCreditAsync(IndividualSalaryCreditRequest req);
+        Task<IEnumerable<PayslipDto>> GetAllPayslipsAsync();
         Task<IEnumerable<PayslipDto>> GetEmployeePayslipsAsync(long employeeId);
         Task<PayslipDto?> GetPayslipByIdAsync(long id);
         Task<string> GeneratePayslipHtmlAsync(long payslipId);

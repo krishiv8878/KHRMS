@@ -27,7 +27,9 @@ namespace KHRMS.UnitTest.ControllerTests
         {
             _mock = new Mock<ILeaveRequestTypeService>();
             _mock2 = new Mock<IUserContextService>();
-            _controller = new LeaveRequestController(_mock.Object, _mockHttpContextAccessor, _mock2.Object);
+            var mockAccess = new Mock<IEmployeeAccessService>();
+            mockAccess.Setup(a => a.CanAccessEmployeeAsync(It.IsAny<long>(), It.IsAny<string?>())).ReturnsAsync(true);
+            _controller = new LeaveRequestController(_mock.Object, _mockHttpContextAccessor, _mock2.Object, mockAccess.Object);
         }
 
         [Fact]

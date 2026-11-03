@@ -3,10 +3,14 @@ using KHRMS.Core;
 using KHRMS.Core.Models;
 using KHRMS.Infrastructure;
 using KHRMS.Services.Interfaces;
+using KHRMS.Services.Request;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Serilog;
+using System;
+using System.Collections.Generic;
 using System.Net;
+using System.Threading.Tasks;
 
 namespace KHRMS.Controllers
 {
@@ -24,7 +28,7 @@ namespace KHRMS.Controllers
             _userContext = userContext;
         }
 
-        public class SaveRolePermissionsRequest
+        public class LegacySaveRolePermissionsRequest
         {
             public long RoleId { get; set; }
             public List<long> PermissionIds { get; set; } = new();
@@ -63,11 +67,86 @@ namespace KHRMS.Controllers
         }
 
         /// <summary>
-        /// Update permissions for a specific role
+        /// Get detailed permissions with scopes assigned to a specific role
+        /// </summary>
+        [HttpGet("GetRolePermissionsWithScope/{roleId}")]
+        public async Task<IActionResult> GetRolePermissionsWithScope(long roleId)
+        {
+            Log.Information("PermissionController - GetRolePermissionsWithScope called for RoleId {RoleId}", roleId);
+            var permissions = await _permissionService.GetRolePermissionsWithScopeAsync(roleId);
+            return Ok(new ApiResponse<List<RolePermissionViewDto>>
+            {
+                StatusCode = (int)HttpStatusCode.OK,
+                Message = "Role permissions with scopes retrieved successfully.",
+                Data = permissions
+            });
+        }
+
+        /// <summary>
+        /// Update permissions for a specific role with Scopes and mandatory Reason
+        /// </summary>
+        [HttpPost("SaveRolePermissionsWithScope")]
+        [RequirePermission("ROLE_MANAGE")]
+        public async Task<IActionResult> SaveRolePermissionsWithScope([FromBody] SaveRolePermissionsRequest request)
+        {
+            if (request == null || request.RoleId <= 0)
+            {
+                return BadRequest(new ApiResponse<string>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = "Valid RoleId is required.",
+                    Data = null
+                });
+            }
+
+            if (string.IsNullOrWhiteSpace(request.Reason))
+            {
+                return BadRequest(new ApiResponse<string>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = "A mandatory business reason is required to modify role security permissions.",
+                    Data = null
+                });
+            }
+
+            try
+            {
+                var success = await _permissionService.SaveRolePermissionsWithScopeAsync(request.RoleId, request.Permissions, request.Reason);
+                if (!success)
+                {
+                    return StatusCode((int)HttpStatusCode.InternalServerError, new ApiResponse<string>
+                    {
+                        StatusCode = (int)HttpStatusCode.InternalServerError,
+                        Message = "Failed to update role permissions.",
+                        Data = null
+                    });
+                }
+
+                return Ok(new ApiResponse<string>
+                {
+                    StatusCode = (int)HttpStatusCode.OK,
+                    Message = "Role permissions updated successfully.",
+                    Data = null
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error in SaveRolePermissionsWithScope for RoleId {RoleId}", request.RoleId);
+                return BadRequest(new ApiResponse<string>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = ex.Message,
+                    Data = null
+                });
+            }
+        }
+
+        /// <summary>
+        /// Update permissions for a specific role (Legacy endpoint)
         /// </summary>
         [HttpPost("SaveRolePermissions")]
         [RequirePermission("ROLE_MANAGE")]
-        public async Task<IActionResult> SaveRolePermissions([FromBody] SaveRolePermissionsRequest request)
+        public async Task<IActionResult> SaveRolePermissions([FromBody] LegacySaveRolePermissionsRequest request)
         {
             if (request == null || request.RoleId <= 0)
             {

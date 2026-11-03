@@ -1,5 +1,6 @@
 using KHRMS.Core;
 using KHRMS.Core.Interfaces;
+using KHRMS.Core.Models;
 using KHRMS.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore.SqlServer.Storage.Internal;
 
@@ -62,6 +63,7 @@ namespace KHRMS.Infrastructure
         public IEmployeeSalaryAssignmentRepository EmployeeSalaryAssignments { get; }
         public IPayRunRepository PayRuns { get; }
         public IPayRunEmployeeDetailRepository PayRunEmployeeDetails { get; }
+        public IEmployeeLoanRepository EmployeeLoans { get; }
         public IPayslipRepository Payslips { get; }
         public IReimbursementClaimRepository ReimbursementClaims { get; }
         public IFullAndFinalSettlementRepository FullAndFinalSettlements { get; }
@@ -95,6 +97,29 @@ namespace KHRMS.Infrastructure
         public IWorkflowInstanceStepRepository WorkflowInstanceSteps { get; }
         public IWorkflowDelegationRepository WorkflowDelegations { get; }
         public IWorkflowAuditLogRepository WorkflowAuditLogs { get; }
+        public IAuditLogRepository AuditLogs { get; }
+
+        public IChecklistTemplateRepository ChecklistTemplates { get; }
+        public IChecklistTemplateTaskRepository ChecklistTemplateTasks { get; }
+        public IEmployeeChecklistRepository EmployeeChecklists { get; }
+        public IChecklistTaskRepository ChecklistTasks { get; }
+        public ISystemSettingRepository SystemSettings { get; }
+
+        public IEmployeeShiftAssignmentRepository EmployeeShiftAssignments { get; }
+        public IDailyAttendanceRecordRepository DailyAttendanceRecords { get; }
+        public IAttendanceLockRepository AttendanceLocks { get; }
+
+        // Phase 5: Leave Ledger & Management Repositories
+        public ILeaveLedgerRepository LeaveLedgers { get; }
+        public ILeaveEntitlementRepository LeaveEntitlements { get; }
+        public ILopConversionRequestRepository LopConversionRequests { get; }
+        public ILeaveEncashmentRequestRepository LeaveEncashmentRequests { get; }
+        public ICompOffGrantRequestRepository CompOffGrantRequests { get; }
+
+        // Phase 7: Policy & Helpdesk Repositories
+        public ICompanyPolicyRepository CompanyPolicies { get; }
+        public IPolicyAcknowledgementRepository PolicyAcknowledgements { get; }
+        public IHelpdeskTicketRepository HelpdeskTickets { get; }
 
         public UnitOfWork(KHRMSContextClass dbContext,
                             ICandidateRepository candidateRepository,
@@ -168,6 +193,7 @@ namespace KHRMS.Infrastructure
             EmployeeSalaryAssignments = new EmployeeSalaryAssignmentRepository(_dbContext);
             PayRuns = new PayRunRepository(_dbContext);
             PayRunEmployeeDetails = new PayRunEmployeeDetailRepository(_dbContext);
+            EmployeeLoans = new EmployeeLoanRepository(_dbContext);
             Payslips = new PayslipRepository(_dbContext);
             ReimbursementClaims = new ReimbursementClaimRepository(_dbContext);
             FullAndFinalSettlements = new FullAndFinalSettlementRepository(_dbContext);
@@ -201,6 +227,27 @@ namespace KHRMS.Infrastructure
             WorkflowInstanceSteps = new WorkflowInstanceStepRepository(_dbContext);
             WorkflowDelegations = new WorkflowDelegationRepository(_dbContext);
             WorkflowAuditLogs = new WorkflowAuditLogRepository(_dbContext);
+            AuditLogs = new AuditLogRepository(_dbContext);
+
+            ChecklistTemplates = new ChecklistTemplateRepository(_dbContext);
+            ChecklistTemplateTasks = new ChecklistTemplateTaskRepository(_dbContext);
+            EmployeeChecklists = new EmployeeChecklistRepository(_dbContext);
+            ChecklistTasks = new ChecklistTaskRepository(_dbContext);
+            SystemSettings = new SystemSettingRepository(_dbContext);
+
+            EmployeeShiftAssignments = new EmployeeShiftAssignmentRepository(_dbContext);
+            DailyAttendanceRecords = new DailyAttendanceRecordRepository(_dbContext);
+            AttendanceLocks = new AttendanceLockRepository(_dbContext);
+
+            LeaveLedgers = new LeaveLedgerRepository(_dbContext);
+            LeaveEntitlements = new LeaveEntitlementRepository(_dbContext);
+            LopConversionRequests = new LopConversionRequestRepository(_dbContext);
+            LeaveEncashmentRequests = new LeaveEncashmentRequestRepository(_dbContext);
+            CompOffGrantRequests = new CompOffGrantRequestRepository(_dbContext);
+
+            CompanyPolicies = new CompanyPolicyRepository(_dbContext);
+            PolicyAcknowledgements = new PolicyAcknowledgementRepository(_dbContext);
+            HelpdeskTickets = new HelpdeskTicketRepository(_dbContext);
         }
 
         public int Save()

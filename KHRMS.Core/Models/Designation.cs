@@ -1,11 +1,10 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
 
 namespace KHRMS.Core
 {
     public class Designation : KHRMSBase
     {
-
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public long Id { get; set; }
@@ -20,6 +19,8 @@ namespace KHRMS.Core
         [Required(ErrorMessage = "CareerLevel is required")]
         public string? CareerLevel { get; set; }
 
+        public int NoticePeriodDays { get; set; } = 30;
 
+        public int? ProbationNoticePeriodDays { get; set; }
     }
 }

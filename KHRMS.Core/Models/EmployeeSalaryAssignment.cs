@@ -57,6 +57,14 @@ namespace KHRMS.Core.Models
 
         public DateTime EffectiveFromDate { get; set; } = DateTime.UtcNow;
 
+        public DateTime? EffectiveToDate { get; set; }
+
+        public bool IsCurrent { get; set; } = true;
+
+        public long? PreviousAssignmentId { get; set; }
+
+        public long? WorkflowInstanceId { get; set; }
+
         [StringLength(500)]
         public string? Remarks { get; set; }
     }

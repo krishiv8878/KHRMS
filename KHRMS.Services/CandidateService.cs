@@ -16,12 +16,14 @@ namespace KHRMS.Services
     public class CandidateService(
         IUnitOfWork unitOfWork,
         ISendEmailService? sendEmailService = null,
-        ITokenService? tokenService = null
+        ITokenService? tokenService = null,
+        IChecklistService? checklistService = null
     ) : ICandidateService
     {
         public IUnitOfWork _unitOfWork = unitOfWork;
         private readonly ISendEmailService? _sendEmailService = sendEmailService;
         private readonly ITokenService? _tokenService = tokenService;
+        private readonly IChecklistService? _checklistService = checklistService;
         public async Task<bool> CreateCandidate(Candidate candidate)
         {
             if (candidate != null)
@@ -219,6 +221,9 @@ namespace KHRMS.Services
                     e.EmailAddress.Equals(request.EmailAddress, StringComparison.OrdinalIgnoreCase) &&
                     e.IsDeleted != true);
 
+            var probationEnd = request.ProbationEndDate ?? (request.DateOfJoining?.AddMonths(3) ?? now.AddMonths(3));
+            var empType = !string.IsNullOrWhiteSpace(request.EmploymentType) ? request.EmploymentType : "FullTime";
+
             Employee employee;
             if (existingEmp == null)
             {
@@ -241,7 +246,11 @@ namespace KHRMS.Services
                     IsActive = true,
                     IsDeleted = false,
                     CreatedDate = now,
-                    EmployeeCode = 0
+                    EmployeeCode = 0,
+                    ProbationEndDate = probationEnd,
+                    ProbationStatus = "UnderProbation",
+                    EmploymentStatus = "Probation",
+                    EmploymentType = empType
                 };
                 await _unitOfWork.Employees.Add(employee);
                 _unitOfWork.Save();
@@ -260,6 +269,10 @@ namespace KHRMS.Services
                 if (request.ManagerId > 0) employee.ManagerId = request.ManagerId;
                 if (!string.IsNullOrWhiteSpace(request.ShiftId)) employee.ShiftIds = request.ShiftId;
                 if (!string.IsNullOrWhiteSpace(request.MobileNumber)) employee.MobileNumber = request.MobileNumber;
+                employee.ProbationEndDate = probationEnd;
+                employee.ProbationStatus = "UnderProbation";
+                employee.EmploymentStatus = "Probation";
+                employee.EmploymentType = empType;
                 employee.Responsibilities = ctcJson;
                 employee.IsActive = true;
                 employee.IsDeleted = false;
@@ -324,6 +337,19 @@ namespace KHRMS.Services
                 };
                 await _unitOfWork.UserLogins.Add(userLogin);
                 _unitOfWork.Save();
+            }
+
+            // 5b. Auto-instantiate Onboarding Checklist
+            if (_checklistService != null)
+            {
+                try
+                {
+                    await _checklistService.InstantiateChecklistForEmployeeAsync(employee.Id, "Onboarding");
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Failed to instantiate onboarding checklist for Employee #{EmployeeId}", employee.Id);
+                }
             }
 
             // 6. Send Onboarding Credentials Email

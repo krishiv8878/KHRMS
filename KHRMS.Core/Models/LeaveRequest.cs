@@ -30,6 +30,21 @@ namespace KHRMS.Core
 
         public string? RejectionReason { get; set; }
         public long? WorkflowInstanceId { get; set; }
+
+        // Phase 5: Complete Leave Lifecycle & Ledger integration
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal TotalWorkingDays { get; set; } = 0;
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal PaidDays { get; set; } = 0;
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal LopDays { get; set; } = 0;
+        public bool IsLop { get; set; } = false;
+        public bool IsSandwichApplied { get; set; } = false;
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal SandwichDays { get; set; } = 0;
+        public bool IsConvertedFromLop { get; set; } = false;
+        public long? OriginalLopRequestId { get; set; }
+
         [NotMapped]
         public double TotalDays { get; set; }
 

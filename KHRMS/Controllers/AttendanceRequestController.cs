@@ -3,6 +3,7 @@ using KHRMS.Authorization;
 using KHRMS.Core;
 using KHRMS.Infrastructure;
 using KHRMS.Services;
+using KHRMS.Services.Interfaces;
 using KHRMS.Services.Request;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -15,9 +16,10 @@ namespace KHRMS.Controllers
     [Authorize]
     [Route("api/[controller]")]
     [ApiController]
-    public class AttendanceRequestController(IAttendanceRequestService attendanceRequestService) : ControllerBase
+    public class AttendanceRequestController(IAttendanceRequestService attendanceRequestService, IEmployeeAccessService employeeAccessService) : ControllerBase
     {
         private readonly IAttendanceRequestService _attendanceRequestService = attendanceRequestService;
+        private readonly IEmployeeAccessService _employeeAccessService = employeeAccessService;
 
 
         [HttpGet("GetAttendanceRequests")]
@@ -63,6 +65,12 @@ namespace KHRMS.Controllers
                     Message = ApiMessageConstant.AttendanceRequestNotFound,
                     Data = null
                 });
+            }
+
+            if (!await _employeeAccessService.CanAccessEmployeeAsync(attendanceRequest.EmployeeId, "ATTENDANCE_VIEW_ALL"))
+            {
+                Log.Warning("AttendanceRequestController - Unauthorized access attempt by {CurrentEmpId} for AttendanceRequest {Id} of Employee {TargetEmpId}", _employeeAccessService.GetCurrentEmployeeId(), id, attendanceRequest.EmployeeId);
+                return Forbid();
             }
 
             Log.Information("AttendanceRequest with ID {Id} found successfully.", id);
@@ -118,7 +126,7 @@ namespace KHRMS.Controllers
                 return StatusCode((int)HttpStatusCode.InternalServerError, new ApiResponse<bool>
                 {
                     StatusCode = (int)HttpStatusCode.InternalServerError,
-                    Message = ex.Message,
+                    Message = "An error occurred while processing your attendance request.",
                     Data = false
                 });
             }
@@ -169,7 +177,7 @@ namespace KHRMS.Controllers
                 return StatusCode((int)HttpStatusCode.InternalServerError, new ApiResponse<bool>
                 {
                     StatusCode = (int)HttpStatusCode.InternalServerError,
-                    Message = ex.Message,
+                    Message = "An error occurred while processing your attendance request.",
                     Data = false
                 });
             }
@@ -234,7 +242,7 @@ namespace KHRMS.Controllers
                 return StatusCode((int)HttpStatusCode.InternalServerError, new ApiResponse<bool>
                 {
                     StatusCode = (int)HttpStatusCode.InternalServerError,
-                    Message = ex.Message,
+                    Message = "An error occurred while processing your attendance request.",
                     Data = false
                 });
             }

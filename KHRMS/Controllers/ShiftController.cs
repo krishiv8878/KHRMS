@@ -204,6 +204,54 @@ namespace KHRMS
             });
         }
 
+        [HttpGet("GetShiftAssignments/{employeeId}")]
+        [RequirePermission("SHIFT_MANAGE")]
+        public async Task<IActionResult> GetShiftAssignments(long employeeId)
+        {
+            var assignments = await _shiftService.GetEmployeeShiftAssignmentsAsync(employeeId);
+            return Ok(new ApiResponse<IEnumerable<KHRMS.Core.Models.EmployeeShiftAssignment>>
+            {
+                StatusCode = (int)HttpStatusCode.OK,
+                Message = "Employee shift assignments retrieved successfully.",
+                Data = assignments
+            });
+        }
+
+        [HttpPost("AssignShift")]
+        [RequirePermission("SHIFT_ASSIGN")]
+        public async Task<IActionResult> AssignShift([FromBody] KHRMS.Core.Models.EmployeeShiftAssignment assignment)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(new ApiResponse<string>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = "Invalid shift assignment details.",
+                    Data = null
+                });
+            }
+
+            try
+            {
+                var result = await _shiftService.AssignShiftToEmployeeAsync(assignment);
+                return Ok(new ApiResponse<KHRMS.Core.Models.EmployeeShiftAssignment>
+                {
+                    StatusCode = (int)HttpStatusCode.OK,
+                    Message = "Shift assigned to employee successfully.",
+                    Data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ApiResponse<string>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = ex.Message,
+                    Data = null
+                });
+            }
+        }
+
     }
 }
 

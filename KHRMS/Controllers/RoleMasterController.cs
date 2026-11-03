@@ -5,8 +5,11 @@ using KHRMS.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Serilog;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net;
-using static System.Runtime.InteropServices.JavaScript.JSType;
+using System.Threading.Tasks;
 
 namespace KHRMS.Controllers
 {
@@ -20,8 +23,6 @@ namespace KHRMS.Controllers
         /// <summary>
         /// Get List Of RoleMaster
         /// </summary>
-        /// <returns></returns>
-
         [HttpGet("GetRoles")]
         [RequirePermission("ROLE_VIEW")]
         public async Task<IActionResult> GetRoles()
@@ -50,13 +51,9 @@ namespace KHRMS.Controllers
             });
         }
 
-
         /// <summary>
         /// Add New RoleMaster
         /// </summary>
-        /// <param name="roleMaster"></param>
-        /// <returns></returns>
-
         [HttpPost("AddRole")]
         [RequirePermission("ROLE_MANAGE")]
         public async Task<IActionResult> AddRole(RoleMaster roleMaster)
@@ -66,103 +63,140 @@ namespace KHRMS.Controllers
             if (roleMaster == null)
             {
                 Log.Warning("RoleMasterController - Invalid roleMaster object.");
-                return BadRequest("Invalid role data.");
-            }
-
-            var result = await _roleMasterService.AddRoleMaster(roleMaster);
-
-            if (result)
-            {
-                Log.Information("RoleMasterController - Role added successfully.");
-                return Ok(new ApiResponse<bool>
+                return BadRequest(new ApiResponse<bool>
                 {
-                    StatusCode = (int)HttpStatusCode.OK,
-                    Message = ApiMessageConstant.RoleMasterAdded,
-                    Data = true
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = "Invalid role data.",
+                    Data = false
                 });
             }
 
-            Log.Warning("RoleMasterController - Failed to add role.");
-            return BadRequest(new ApiResponse<bool>
+            try
             {
-                StatusCode = (int)HttpStatusCode.BadRequest,
-                Message = ApiMessageConstant.RoleMasterNotAdded,
-                Data = false
-            });
+                var result = await _roleMasterService.AddRoleMaster(roleMaster);
+
+                if (result)
+                {
+                    Log.Information("RoleMasterController - Role added successfully.");
+                    return Ok(new ApiResponse<bool>
+                    {
+                        StatusCode = (int)HttpStatusCode.OK,
+                        Message = ApiMessageConstant.RoleMasterAdded,
+                        Data = true
+                    });
+                }
+
+                return BadRequest(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = ApiMessageConstant.RoleMasterNotAdded,
+                    Data = false
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = ex.Message,
+                    Data = false
+                });
+            }
         }
 
         /// <summary>
         /// Update RoleMaster
         /// </summary>
-        /// <param name="roleMaster"></param>
-        /// <returns></returns>
-
         [HttpPut("UpdateRole/{id}")]
         [RequirePermission("ROLE_MANAGE")]
         public async Task<IActionResult> UpdateRole(RoleMaster roleMaster)
         {
-            Log.Information("RoleMasterController - UpdateRole called for ID: {Id}", roleMaster.Id);
+            Log.Information("RoleMasterController - UpdateRole called for ID: {Id}", roleMaster?.Id);
 
-            if (roleMaster.Id == null)
+            if (roleMaster == null || roleMaster.Id <= 0)
             {
-                Log.Warning("RoleMasterController - ID Not Found: URL ID {Id}, Body ID {BodyId}", roleMaster.Id);
-                return Ok("ID Does not Exist");
-            }
-
-            var result = await _roleMasterService.UpdateRoleMaster(roleMaster);
-
-            if (result)
-            {
-                Log.Information("RoleMasterController - Role updated successfully for ID: {Id}", roleMaster.Id);
-                return Ok(new ApiResponse<bool>
+                return BadRequest(new ApiResponse<bool>
                 {
-                    StatusCode = (int)HttpStatusCode.OK,
-                    Message = ApiMessageConstant.RoleMasterUpdated,
-                    Data = true
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = "Valid Role ID is required.",
+                    Data = false
                 });
             }
 
-            Log.Warning("RoleMasterController - Failed to update role for ID: {Id}", roleMaster.Id);
-            return BadRequest(new ApiResponse<bool>
+            try
             {
-                StatusCode = (int)HttpStatusCode.BadRequest,
-                Message = ApiMessageConstant.RoleMasterNotUpdated,
-                Data = false
-            });
+                var result = await _roleMasterService.UpdateRoleMaster(roleMaster);
+
+                if (result)
+                {
+                    Log.Information("RoleMasterController - Role updated successfully for ID: {Id}", roleMaster.Id);
+                    return Ok(new ApiResponse<bool>
+                    {
+                        StatusCode = (int)HttpStatusCode.OK,
+                        Message = ApiMessageConstant.RoleMasterUpdated,
+                        Data = true
+                    });
+                }
+
+                return BadRequest(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = ApiMessageConstant.RoleMasterNotUpdated,
+                    Data = false
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = ex.Message,
+                    Data = false
+                });
+            }
         }
 
         /// <summary>
         /// Delete RoleMaster
         /// </summary>
-        /// <param name="RoleId"></param>
-        /// <returns></returns>
-
         [HttpDelete("DeleteRole/{id}")]
         [RequirePermission("ROLE_MANAGE")]
         public async Task<IActionResult> DeleteRole(long id)
         {
             Log.Information("RoleMasterController - DeleteRole called for ID: {Id}", id);
 
-            var result = await _roleMasterService.DeleteRoleMaster(id);
-
-            if (result)
+            try
             {
-                Log.Information("RoleMasterController - Role deleted for ID: {Id}", id);
-                return Ok(new ApiResponse<bool>
+                var result = await _roleMasterService.DeleteRoleMaster(id);
+
+                if (result)
                 {
-                    StatusCode = (int)HttpStatusCode.OK,
-                    Message = ApiMessageConstant.RoleMasterDeleted,
-                    Data = true
+                    Log.Information("RoleMasterController - Role deleted for ID: {Id}", id);
+                    return Ok(new ApiResponse<bool>
+                    {
+                        StatusCode = (int)HttpStatusCode.OK,
+                        Message = ApiMessageConstant.RoleMasterDeleted,
+                        Data = true
+                    });
+                }
+
+                return BadRequest(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = ApiMessageConstant.RoleMasterNotDeleted,
+                    Data = false
                 });
             }
-
-            Log.Warning("RoleMasterController - Failed to delete role for ID: {Id}", id);
-            return BadRequest(new ApiResponse<bool>
+            catch (InvalidOperationException ex)
             {
-                StatusCode = (int)HttpStatusCode.BadRequest,
-                Message = ApiMessageConstant.RoleMasterNotDeleted,
-                Data = false
-            });
+                Log.Warning(ex, "Safeguard blocked DeleteRole for RoleId {RoleId}", id);
+                return BadRequest(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = ex.Message,
+                    Data = false
+                });
+            }
         }
     }
 }
