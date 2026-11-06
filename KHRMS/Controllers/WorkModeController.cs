@@ -51,7 +51,7 @@ namespace KHRMS.Controllers
                 return StatusCode((int)HttpStatusCode.InternalServerError, new ApiResponse<WorkModeResponseDTO?>
                 {
                     StatusCode = (int)HttpStatusCode.InternalServerError,
-                    Message = ex.Message,
+                    Message = "An unexpected error occurred while processing the work mode request. Please try again later.",
                     Data = null
                 });
             }
@@ -89,7 +89,7 @@ namespace KHRMS.Controllers
                 return StatusCode((int)HttpStatusCode.InternalServerError, new ApiResponse<IEnumerable<WorkModeResponseDTO>>
                 {
                     StatusCode = (int)HttpStatusCode.InternalServerError,
-                    Message = ex.Message,
+                    Message = "An unexpected error occurred while processing the work mode request. Please try again later.",
                     Data = []
                 });
             }
@@ -119,7 +119,7 @@ namespace KHRMS.Controllers
                 return StatusCode((int)HttpStatusCode.InternalServerError, new ApiResponse<IEnumerable<WorkModeResponseDTO>>
                 {
                     StatusCode = (int)HttpStatusCode.InternalServerError,
-                    Message = ex.Message,
+                    Message = "An unexpected error occurred while processing the work mode request. Please try again later.",
                     Data = []
                 });
             }
@@ -153,7 +153,7 @@ namespace KHRMS.Controllers
                 return StatusCode((int)HttpStatusCode.InternalServerError, new ApiResponse<IEnumerable<WorkModeResponseDTO>>
                 {
                     StatusCode = (int)HttpStatusCode.InternalServerError,
-                    Message = ex.Message,
+                    Message = "An unexpected error occurred while processing the work mode request. Please try again later.",
                     Data = []
                 });
             }
@@ -207,7 +207,7 @@ namespace KHRMS.Controllers
                 return StatusCode((int)HttpStatusCode.InternalServerError, new ApiResponse<WorkModeResponseDTO?>
                 {
                     StatusCode = (int)HttpStatusCode.InternalServerError,
-                    Message = ex.Message,
+                    Message = "An unexpected error occurred while processing the work mode request. Please try again later.",
                     Data = null
                 });
             }

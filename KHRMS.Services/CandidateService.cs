@@ -224,6 +224,19 @@ namespace KHRMS.Services
             var probationEnd = request.ProbationEndDate ?? (request.DateOfJoining?.AddMonths(3) ?? now.AddMonths(3));
             var empType = !string.IsNullOrWhiteSpace(request.EmploymentType) ? request.EmploymentType : "FullTime";
 
+            long? resolvedDepartmentId = request.DepartmentId;
+            if (!resolvedDepartmentId.HasValue && !string.IsNullOrWhiteSpace(request.Department))
+            {
+                var matchedDept = (await _unitOfWork.Departments.GetAll())
+                    .FirstOrDefault(d => !d.IsDeleted &&
+                        (d.Name.Equals(request.Department.Trim(), StringComparison.OrdinalIgnoreCase) ||
+                         (d.Code != null && d.Code.Equals(request.Department.Trim(), StringComparison.OrdinalIgnoreCase))));
+                if (matchedDept != null)
+                {
+                    resolvedDepartmentId = matchedDept.Id;
+                }
+            }
+
             Employee employee;
             if (existingEmp == null)
             {
@@ -236,6 +249,7 @@ namespace KHRMS.Services
                     MobileNumber = request.MobileNumber?.Trim(),
                     DesignationId = request.DesignationId > 0 ? request.DesignationId : null,
                     Designation = request.Designation,
+                    DepartmentId = resolvedDepartmentId,
                     Branch = request.Department ?? "Engineering",
                     DateOfJoining = request.DateOfJoining ?? now,
                     Gender = !string.IsNullOrWhiteSpace(request.Gender) ? request.Gender : "Male",
@@ -264,6 +278,7 @@ namespace KHRMS.Services
                 employee = existingEmp;
                 if (request.DesignationId > 0) employee.DesignationId = request.DesignationId;
                 if (!string.IsNullOrWhiteSpace(request.Designation)) employee.Designation = request.Designation;
+                if (resolvedDepartmentId.HasValue) employee.DepartmentId = resolvedDepartmentId.Value;
                 if (!string.IsNullOrWhiteSpace(request.Department)) employee.Branch = request.Department;
                 if (request.DateOfJoining.HasValue) employee.DateOfJoining = request.DateOfJoining.Value;
                 if (request.ManagerId > 0) employee.ManagerId = request.ManagerId;
@@ -279,6 +294,59 @@ namespace KHRMS.Services
                 employee.UpdatedDate = now;
                 _unitOfWork.Employees.Update(employee);
                 _unitOfWork.Save();
+            }
+
+            // 3b. Create or Update Active EmployeeSalaryAssignment for accurate Payroll integration
+            try
+            {
+                var existingAssignments = (await _unitOfWork.EmployeeSalaryAssignments.GetAll())
+                    .Where(s => s.EmployeeId == employee.Id && s.IsCurrent && !s.IsDeleted)
+                    .ToList();
+
+                foreach (var existingAssignment in existingAssignments)
+                {
+                    existingAssignment.IsCurrent = false;
+                    existingAssignment.EffectiveToDate = DateTime.UtcNow;
+                    _unitOfWork.EmployeeSalaryAssignments.Update(existingAssignment);
+                }
+
+                decimal annualCtc = request.AnnualCtc;
+                decimal monthlyGross = annualCtc > 0 ? Math.Round(annualCtc / 12m, 2) : 0m;
+                decimal basic = request.BasicSalary > 0 ? request.BasicSalary : (monthlyGross > 0 ? Math.Round(monthlyGross * 0.40m, 2) : 0m);
+                decimal hra = request.Hra > 0 ? request.Hra : (basic > 0 ? Math.Round(basic * 0.50m, 2) : 0m);
+                decimal special = request.SpecialAllowance > 0 ? request.SpecialAllowance : Math.Max(0, monthlyGross - basic - hra);
+                decimal pf = request.PfDeduction > 0 ? request.PfDeduction : (basic > 0 ? Math.Round(Math.Min(basic, 15000m) * 0.12m, 2) : 0m);
+                decimal netSalary = request.NetMonthlySalary > 0 ? request.NetMonthlySalary : Math.Max(0, monthlyGross - pf);
+
+                if (annualCtc > 0 || basic > 0)
+                {
+                    var newAssignment = new EmployeeSalaryAssignment
+                    {
+                        EmployeeId = employee.Id,
+                        AnnualCtc = annualCtc,
+                        MonthlyGross = monthlyGross,
+                        BasicSalary = basic,
+                        Hra = hra,
+                        SpecialAllowance = special,
+                        EpfEmployee = pf,
+                        EpfEmployer = pf,
+                        MonthlyNetTakeHome = netSalary,
+                        TaxRegime = "New",
+                        EffectiveFromDate = employee.DateOfJoining ?? DateTime.UtcNow,
+                        IsCurrent = true,
+                        IsActive = true,
+                        IsDeleted = false,
+                        CreatedDate = DateTime.UtcNow,
+                        Remarks = "Initial salary assignment generated via Candidate Onboarding"
+                    };
+                    await _unitOfWork.EmployeeSalaryAssignments.Add(newAssignment);
+                    _unitOfWork.Save();
+                    Log.Information("CandidateService - Created EmployeeSalaryAssignment for Employee #{EmployeeId} with Annual CTC {AnnualCtc}", employee.Id, annualCtc);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Failed to create EmployeeSalaryAssignment during onboarding for Employee #{EmployeeId}", employee.Id);
             }
 
             // 4. Assign Employee Role

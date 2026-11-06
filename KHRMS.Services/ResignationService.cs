@@ -549,7 +549,26 @@ namespace KHRMS.Services
             var res = await _unitOfWork.Resignation.GetById(resignationId);
             if (res == null || res.IsDeleted) throw new KeyNotFoundException("Resignation record not found.");
 
+            // INT-03: Verify Asset Clearance before advancing FnF to "Prepared" or "Settled"
+            bool isSettlementAdvance = string.Equals(dto.Status, "Prepared", StringComparison.OrdinalIgnoreCase) ||
+                                       string.Equals(dto.Status, "Settled", StringComparison.OrdinalIgnoreCase);
+
+            if (isSettlementAdvance && _checklistService != null)
+            {
+                var assetStatus = await _checklistService.VerifyAssetReturnsAsync(res.EmployeeId);
+                if (!assetStatus.AllCleared && string.IsNullOrWhiteSpace(dto.OverrideReason))
+                {
+                    throw new InvalidOperationException(
+                        $"Cannot mark FnF settlement as '{dto.Status}' while {assetStatus.PendingAssets} asset(s) are pending return " +
+                        $"({string.Join(", ", assetStatus.PendingAssetDetails)}). Company assets must be recovered before final settlement payout, or an HR override reason must be provided.");
+                }
+            }
+
             res.FnFStatus = dto.Status;
+            if (!string.IsNullOrWhiteSpace(dto.OverrideReason))
+            {
+                res.AssetClearanceOverrideReason = dto.OverrideReason;
+            }
             res.FnFRemarks = dto.Remarks;
             res.FnFPreparedDate = DateTime.UtcNow;
             res.UpdatedBy = (int)_userContextService.GetCurrentEmployeeId();

@@ -23,4 +23,11 @@ namespace KHRMS.Infrastructure.Repositories
         {
         }
     }
+
+    public class HelpdeskTicketActivityRepository : GenericRepository<HelpdeskTicketActivity>, IHelpdeskTicketActivityRepository
+    {
+        public HelpdeskTicketActivityRepository(KHRMSContextClass dbContext) : base(dbContext)
+        {
+        }
+    }
 }

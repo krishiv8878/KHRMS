@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
@@ -11,5 +11,7 @@ namespace KHRMS.Services.Interfaces
     {
         string GeneratePasswordResetToken(string email);
         public ClaimsPrincipal? ValidatePasswordResetToken(string token);
+        string GenerateInvitationToken(string email, long employeeId, int expiryHours = 48);
+        public ClaimsPrincipal? ValidateInvitationToken(string token);
     }
 }

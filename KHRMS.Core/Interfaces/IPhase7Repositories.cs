@@ -13,4 +13,8 @@ namespace KHRMS.Core.Interfaces
     public interface IHelpdeskTicketRepository : IGenericRepository<HelpdeskTicket>
     {
     }
+
+    public interface IHelpdeskTicketActivityRepository : IGenericRepository<HelpdeskTicketActivity>
+    {
+    }
 }

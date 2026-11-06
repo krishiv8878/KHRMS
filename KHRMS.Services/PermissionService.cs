@@ -373,6 +373,7 @@ namespace KHRMS.Services
                     new() { PermissionCode = "HOLIDAY_MANAGE", ModuleName = "System Operations", DisplayName = "Manage Holiday Calendar", Description = "Configure national, regional, and company holidays", SortOrder = 72, IsActive = true },
                     new() { PermissionCode = "EMAIL_TEMPLATE_MANAGE", ModuleName = "System Operations", DisplayName = "Manage Email Templates", Description = "Configure notification triggers and automated email templates", SortOrder = 72, IsActive = true },
                     new() { PermissionCode = "DESIGNATION_MANAGE", ModuleName = "System Operations", DisplayName = "Manage Designations", Description = "Create, update, or delete job designations", SortOrder = 73, IsActive = true },
+                    new() { PermissionCode = "DEPARTMENT_MANAGE", ModuleName = "System Operations", DisplayName = "Manage Departments", Description = "Create, update, or delete departments and assign department heads", SortOrder = 73, IsActive = true },
                     new() { PermissionCode = "SKILL_MANAGE", ModuleName = "System Operations", DisplayName = "Manage Skills Library", Description = "Create and manage skill categories and proficiency levels", SortOrder = 74, IsActive = true },
                     new() { PermissionCode = "PROJECT_MANAGE", ModuleName = "System Operations", DisplayName = "Manage Projects", Description = "Create and manage project master records", SortOrder = 75, IsActive = true },
 
@@ -461,7 +462,7 @@ namespace KHRMS.Services
                     "EXPENSE_VIEW_ALL", "EXPENSE_APPROVE", "EXPENSE_MANAGE",
                     "RECRUITMENT_VIEW", "RECRUITMENT_MANAGE",
                     "PMS_MANAGE",
-                    "DESIGNATION_MANAGE", "SKILL_MANAGE", "PROJECT_MANAGE", "RESIGNATION_MANAGE",
+                    "DESIGNATION_MANAGE", "DEPARTMENT_MANAGE", "SKILL_MANAGE", "PROJECT_MANAGE", "RESIGNATION_MANAGE",
                     "EXIT_CLEAR_HR", "EXIT_CLEAR_IT", "EXIT_CLEAR_FINANCE", "EXIT_CLEAR_FACILITIES",
                     "EXIT_TASK_WAIVE", "NOTICE_OVERRIDE", "ATTENDANCE_LOCK"
                 };

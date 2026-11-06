@@ -12,6 +12,7 @@ namespace KHRMS.Infrastructure
         public ICandidateRepository Candidates { get; }
         public ISkillRepository Skills { get; }
         public IDesignationRepository Designations { get; }
+        public IDepartmentRepository Departments { get; }
 
         public IHolidayRepository Holidays { get; }
 
@@ -120,6 +121,7 @@ namespace KHRMS.Infrastructure
         public ICompanyPolicyRepository CompanyPolicies { get; }
         public IPolicyAcknowledgementRepository PolicyAcknowledgements { get; }
         public IHelpdeskTicketRepository HelpdeskTickets { get; }
+        public IHelpdeskTicketActivityRepository HelpdeskTicketActivities { get; }
 
         public UnitOfWork(KHRMSContextClass dbContext,
                             ICandidateRepository candidateRepository,
@@ -158,6 +160,7 @@ namespace KHRMS.Infrastructure
             Candidates = candidateRepository;
             Skills = skillRepository;
             Designations = designationRepository;
+            Departments = new DepartmentRepository(_dbContext);
             Employees = employeesRepository;
             Holidays = holidayRepository;
             AssetsMasters = assetsMasterRepository;
@@ -248,6 +251,7 @@ namespace KHRMS.Infrastructure
             CompanyPolicies = new CompanyPolicyRepository(_dbContext);
             PolicyAcknowledgements = new PolicyAcknowledgementRepository(_dbContext);
             HelpdeskTickets = new HelpdeskTicketRepository(_dbContext);
+            HelpdeskTicketActivities = new HelpdeskTicketActivityRepository(_dbContext);
         }
 
         public int Save()

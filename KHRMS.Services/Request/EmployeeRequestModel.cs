@@ -108,6 +108,8 @@ namespace KHRMS.Services.Request
         // Branch
         [StringLength(100)]
         public string? Branch { get; set; }
+        public long? DepartmentId { get; set; }
+        public string? DepartmentName { get; set; }
         public DateTime? DateOfBirth { get; set; }
 
         [JsonConverter(typeof(FlexibleBoolConverter))]

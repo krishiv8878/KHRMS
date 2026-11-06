@@ -36,7 +36,7 @@ namespace KHRMS.Controllers
             catch (Exception ex)
             {
                 Log.Error(ex, "Error fetching job requisitions");
-                return StatusCode(500, new { message = ex.Message });
+                return StatusCode(500, new { message = "An unexpected error occurred while processing the recruitment request. Please try again later." });
             }
         }
 
@@ -52,7 +52,7 @@ namespace KHRMS.Controllers
             catch (Exception ex)
             {
                 Log.Error(ex, "Error fetching job requisition {Id}", id);
-                return StatusCode(500, new { message = ex.Message });
+                return StatusCode(500, new { message = "An unexpected error occurred while processing the recruitment request. Please try again later." });
             }
         }
 
@@ -68,7 +68,7 @@ namespace KHRMS.Controllers
             catch (Exception ex)
             {
                 Log.Error(ex, "Error creating job requisition");
-                return StatusCode(500, new { message = ex.Message });
+                return StatusCode(500, new { message = "An unexpected error occurred while processing the recruitment request. Please try again later." });
             }
         }
 
@@ -84,7 +84,7 @@ namespace KHRMS.Controllers
             catch (Exception ex)
             {
                 Log.Error(ex, "Error updating job requisition {Id}", id);
-                return StatusCode(500, new { message = ex.Message });
+                return StatusCode(500, new { message = "An unexpected error occurred while processing the recruitment request. Please try again later." });
             }
         }
 
@@ -100,7 +100,7 @@ namespace KHRMS.Controllers
             catch (Exception ex)
             {
                 Log.Error(ex, "Error updating requisition status {Id}", id);
-                return StatusCode(500, new { message = ex.Message });
+                return StatusCode(500, new { message = "An unexpected error occurred while processing the recruitment request. Please try again later." });
             }
         }
 
@@ -116,7 +116,7 @@ namespace KHRMS.Controllers
             catch (Exception ex)
             {
                 Log.Error(ex, "Error deleting requisition {Id}", id);
-                return StatusCode(500, new { message = ex.Message });
+                return StatusCode(500, new { message = "An unexpected error occurred while processing the recruitment request. Please try again later." });
             }
         }
 
@@ -134,7 +134,7 @@ namespace KHRMS.Controllers
             catch (Exception ex)
             {
                 Log.Error(ex, "Error fetching candidate pipeline");
-                return StatusCode(500, new { message = ex.Message });
+                return StatusCode(500, new { message = "An unexpected error occurred while processing the recruitment request. Please try again later." });
             }
         }
 
@@ -150,7 +150,7 @@ namespace KHRMS.Controllers
             catch (Exception ex)
             {
                 Log.Error(ex, "Error fetching candidate detail {CandidateId}", candidateId);
-                return StatusCode(500, new { message = ex.Message });
+                return StatusCode(500, new { message = "An unexpected error occurred while processing the recruitment request. Please try again later." });
             }
         }
 
@@ -166,7 +166,7 @@ namespace KHRMS.Controllers
             catch (Exception ex)
             {
                 Log.Error(ex, "Error advancing candidate stage");
-                return StatusCode(500, new { message = ex.Message });
+                return StatusCode(500, new { message = "An unexpected error occurred while processing the recruitment request. Please try again later." });
             }
         }
 
@@ -198,7 +198,7 @@ namespace KHRMS.Controllers
             catch (Exception ex)
             {
                 Log.Error(ex, "Error fetching interviews");
-                return StatusCode(500, new { message = ex.Message });
+                return StatusCode(500, new { message = "An unexpected error occurred while processing the recruitment request. Please try again later." });
             }
         }
 
@@ -214,7 +214,7 @@ namespace KHRMS.Controllers
             catch (Exception ex)
             {
                 Log.Error(ex, "Error scheduling interview");
-                return StatusCode(500, new { message = ex.Message });
+                return StatusCode(500, new { message = "An unexpected error occurred while processing the recruitment request. Please try again later." });
             }
         }
 
@@ -229,7 +229,7 @@ namespace KHRMS.Controllers
             catch (Exception ex)
             {
                 Log.Error(ex, "Error submitting interview feedback");
-                return StatusCode(500, new { message = ex.Message });
+                return StatusCode(500, new { message = "An unexpected error occurred while processing the recruitment request. Please try again later." });
             }
         }
 
@@ -244,7 +244,7 @@ namespace KHRMS.Controllers
             catch (Exception ex)
             {
                 Log.Error(ex, "Error cancelling interview {Id}", id);
-                return StatusCode(500, new { message = ex.Message });
+                return StatusCode(500, new { message = "An unexpected error occurred while processing the recruitment request. Please try again later." });
             }
         }
 
@@ -263,7 +263,7 @@ namespace KHRMS.Controllers
             catch (Exception ex)
             {
                 Log.Error(ex, "Error fetching job offers");
-                return StatusCode(500, new { message = ex.Message });
+                return StatusCode(500, new { message = "An unexpected error occurred while processing the recruitment request. Please try again later." });
             }
         }
 
@@ -279,7 +279,7 @@ namespace KHRMS.Controllers
             catch (Exception ex)
             {
                 Log.Error(ex, "Error creating job offer");
-                return StatusCode(500, new { message = ex.Message });
+                return StatusCode(500, new { message = "An unexpected error occurred while processing the recruitment request. Please try again later." });
             }
         }
 
@@ -295,7 +295,7 @@ namespace KHRMS.Controllers
             catch (Exception ex)
             {
                 Log.Error(ex, "Error updating offer status {Id}", id);
-                return StatusCode(500, new { message = ex.Message });
+                return StatusCode(500, new { message = "An unexpected error occurred while processing the recruitment request. Please try again later." });
             }
         }
 
@@ -313,7 +313,7 @@ namespace KHRMS.Controllers
             catch (Exception ex)
             {
                 Log.Error(ex, "Error fetching recruitment metrics");
-                return StatusCode(500, new { message = ex.Message });
+                return StatusCode(500, new { message = "An unexpected error occurred while processing the recruitment request. Please try again later." });
             }
         }
     }

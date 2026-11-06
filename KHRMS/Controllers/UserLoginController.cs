@@ -69,30 +69,29 @@ namespace KHRMS
         [HttpPost("forgot-password")]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequestModel model)
         {
-            Log.Information("UserLoginController - Forgot Password attempt for Email: {Email}", model.Email);
+            Log.Information("UserLoginController - Forgot Password attempt for Email: {Email}", model?.Email);
 
             if (model == null || string.IsNullOrEmpty(model.Email) || string.IsNullOrEmpty(model.ClientUrl))
                 return BadRequest("Email and client URL are required.");
-
             var result = await _userLoginService.ForgotPasswordMail(model);
 
             if (!result)
             {
-                Log.Warning("UserLoginController - Forgot Password for Email Not Found: {Email}", model.Email);
-                return BadRequest(new ApiResponse<string>
-                {
-                    StatusCode = (int)HttpStatusCode.BadRequest,
-                    Message = ApiMessageConstant.EmailNotfound,
-                    Data = null
-                });
+                Log.Warning("UserLoginController - Forgot Password for Email Not Found or Inactive: {Email}", model.Email);
             }
-            Log.Information("UserLoginController - Password Forgot Link Sent Success for Email: {email}", model.Email);
+            else
+            {
+                Log.Information("UserLoginController - Password Forgot Link Sent Success for Email: {Email}", model.Email);
+            }
+
+            // SEC-04: Neutralize account enumeration via uniform response
             return Ok(new ApiResponse<string>
             {
                 StatusCode = (int)HttpStatusCode.OK,
-                Message = ApiMessageConstant.sentPasswordResetMail,
+                Message = ApiMessageConstant.GenericPasswordResetNotice,
                 Data = null
             });
+
         }
 
         [HttpPost("reset-password")]

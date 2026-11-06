@@ -72,6 +72,7 @@ namespace KHRMS.Services.Request
         public string Subject { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public string Priority { get; set; } = "Medium"; // 'Low', 'Medium', 'High', 'Critical'
+        public long? AssignedToEmployeeId { get; set; }
     }
 
     public class UpdateHelpdeskTicketStatusRequest
@@ -80,6 +81,35 @@ namespace KHRMS.Services.Request
         public string Status { get; set; } = "In Progress"; // 'Open', 'In Progress', 'Pending User', 'Resolved', 'Closed'
         public string? ResolutionNotes { get; set; }
         public long? AssignedToEmployeeId { get; set; }
+    }
+
+    public class AssignTicketRequest
+    {
+        public long TicketId { get; set; }
+        public long AssignToEmployeeId { get; set; }
+        public string? AssignmentNotes { get; set; }
+    }
+
+    public class AddTicketCommentRequest
+    {
+        public long TicketId { get; set; }
+        public string Comment { get; set; } = string.Empty;
+    }
+
+    public class HelpdeskTicketActivityDto
+    {
+        public long Id { get; set; }
+        public long TicketId { get; set; }
+        public string ActivityType { get; set; } = "Comment"; // "Created", "StatusChange", "Assigned", "Comment", "Resolution"
+        public string? OldStatus { get; set; }
+        public string? NewStatus { get; set; }
+        public long? AssignedToEmployeeId { get; set; }
+        public string? AssigneeName { get; set; }
+        public long PerformedByEmployeeId { get; set; }
+        public string PerformedByName { get; set; } = string.Empty;
+        public string PerformedByEmail { get; set; } = string.Empty;
+        public string Comment { get; set; } = string.Empty;
+        public DateTime Timestamp { get; set; }
     }
 
     public class HelpdeskTicketDto
@@ -103,6 +133,13 @@ namespace KHRMS.Services.Request
         public string? ResolutionNotes { get; set; }
         public DateTime CreatedDate { get; set; }
         public string SlaStatus { get; set; } = "On Track"; // 'On Track', 'Overdue', 'Resolved in SLA', 'Resolved Past SLA'
+        public List<HelpdeskTicketActivityDto> Activities { get; set; } = new();
+        public bool CanCurrentUserUpdateStatus { get; set; }
+        public bool CanCurrentUserAssign { get; set; }
+        public bool CanCurrentUserClaim { get; set; }
+        public bool CanCurrentUserComment { get; set; } = true;
+        public bool CanRequesterCloseOrReopen { get; set; }
+        public bool CanRequesterCancel { get; set; }
     }
 
     public class HelpdeskMetricsDto
@@ -116,7 +153,6 @@ namespace KHRMS.Services.Request
         public decimal SlaCompliancePercent { get; set; }
         public decimal AverageResolutionHours { get; set; }
     }
-
     // ================= 3. REPORTING DTOS =================
     public class AttendanceReportItemDto
     {

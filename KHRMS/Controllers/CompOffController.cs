@@ -49,7 +49,7 @@ namespace KHRMS.Controllers
                 return StatusCode(500, new ApiResponse<string>
                 {
                     StatusCode = 500,
-                    Message = ex.Message,
+                    Message = "An unexpected error occurred while processing the Comp-Off request. Please try again later.",
                     Data = null
                 });
             }
@@ -84,7 +84,7 @@ namespace KHRMS.Controllers
                 return StatusCode(500, new ApiResponse<string>
                 {
                     StatusCode = 500,
-                    Message = ex.Message,
+                    Message = "An unexpected error occurred while processing the Comp-Off request. Please try again later.",
                     Data = null
                 });
             }
@@ -117,7 +117,7 @@ namespace KHRMS.Controllers
                 return StatusCode(500, new ApiResponse<string>
                 {
                     StatusCode = 500,
-                    Message = ex.Message,
+                    Message = "An unexpected error occurred while processing the Comp-Off request. Please try again later.",
                     Data = null
                 });
             }
@@ -159,7 +159,7 @@ namespace KHRMS.Controllers
                 return StatusCode(500, new ApiResponse<string>
                 {
                     StatusCode = 500,
-                    Message = ex.Message,
+                    Message = "An unexpected error occurred while processing the Comp-Off request. Please try again later.",
                     Data = null
                 });
             }
@@ -192,7 +192,7 @@ namespace KHRMS.Controllers
                 return StatusCode(500, new ApiResponse<string>
                 {
                     StatusCode = 500,
-                    Message = ex.Message,
+                    Message = "An unexpected error occurred while processing the Comp-Off request. Please try again later.",
                     Data = null
                 });
             }

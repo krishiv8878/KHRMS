@@ -459,7 +459,9 @@ namespace KHRMS.Services
             // Route through central Workflow Engine if managed by workflow
             if (report.WorkflowInstanceId.HasValue && report.WorkflowInstanceId.Value > 0 && _workflowEngine != null)
             {
-                var isApprove = string.Equals(request.Action, "Approve", StringComparison.OrdinalIgnoreCase);
+                var isApprove = string.Equals(request.Action, "Approve", StringComparison.OrdinalIgnoreCase) ||
+                                string.Equals(request.Action, "ManagerApprove", StringComparison.OrdinalIgnoreCase) ||
+                                string.Equals(request.Action, "FinanceApprove", StringComparison.OrdinalIgnoreCase);
                 var isReturn = string.Equals(request.Action, "NeedsRevision", StringComparison.OrdinalIgnoreCase) ||
                                string.Equals(request.Action, "ReturnForRevision", StringComparison.OrdinalIgnoreCase);
                 var action = isApprove ? "Approve" : (isReturn ? "ReturnForRevision" : "Reject");

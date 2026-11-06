@@ -87,6 +87,7 @@ namespace KHRMS
         public static readonly string InvalidCredentials = "Invalid credentials";
         public static readonly string EmailNotfound = "Email not found.";
         public static readonly string sentPasswordResetMail = "Password reset email sent to the given Email";
+        public static readonly string GenericPasswordResetNotice = "If an account matching this email exists, a password reset link has been dispatched.";
         public static readonly string resetPasswordFail = "Failed to reset password.";
         public static readonly string resetPasswordSuccess = "Password reset successfully.";
 
@@ -269,5 +270,19 @@ namespace KHRMS
         public static readonly string AttendanceLogAdded = "Attendance Log added successfully.";
         public static readonly string AttendanceLogUpdated = "Attendance Log updated successfully.";
         public static readonly string AttendanceLogDeleted = "Attendance Log deleted successfully.";
+
+        /// <summary>
+        /// This is Department Messages Constant
+        /// </summary>
+        public static readonly string DepartmentFound = "Department retrieved successfully";
+        public static readonly string DepartmentsFound = "Departments retrieved successfully";
+        public static readonly string DepartmentNotFound = "Department not found";
+        public static readonly string DepartmentAdded = "Department saved successfully";
+        public static readonly string DepartmentNotAdded = "Department is not saved successfully";
+        public static readonly string DepartmentUpdated = "Department updated successfully";
+        public static readonly string DepartmentNotUpdated = "Department is not updated successfully";
+        public static readonly string DepartmentDeleted = "Department is deleted successfully";
+        public static readonly string DepartmentNotDeleted = "Department is not deleted successfully";
+        public static readonly string DepartmentBackfilled = "Departments backfilled successfully from existing employee records";
     }
 }

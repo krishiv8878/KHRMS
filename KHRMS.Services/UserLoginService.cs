@@ -193,7 +193,9 @@ namespace KHRMS.Services
                     {
                         var issuer = _configuration["Jwt:ValidIssuer"] ?? _configuration["Jwt:issuer"];
                         var audience = _configuration["Jwt:ValidAudience"] ?? _configuration["Jwt:audience"];
-                        var key = _configuration["Jwt:PasswordResetSecret"] ?? "DefaultSecretKeyForJwtTokenAuth12345";
+                        var key = !string.IsNullOrWhiteSpace(_configuration["Jwt:PasswordResetSecret"])
+                            ? _configuration["Jwt:PasswordResetSecret"]!
+                            : "DefaultSecretKeyForJwtTokenAuth12345";
                         var tokenExpiryTimeStamp = DateTime.UtcNow.AddMinutes(60); // SEC-01: Token lifetime shortened from 30 days to 60 minutes
 
                         var claims = new List<Claim>

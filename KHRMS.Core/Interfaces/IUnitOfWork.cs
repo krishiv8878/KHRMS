@@ -8,6 +8,7 @@ namespace KHRMS.Core
         ICandidateRepository Candidates { get; }
         ISkillRepository Skills { get; }
         IDesignationRepository Designations { get; }
+        IDepartmentRepository Departments { get; }
         IEmployeeRepository Employees { get; }
         IHolidayRepository Holidays { get; }
         ILeaveRepository LeaveType { get; }
@@ -111,6 +112,7 @@ namespace KHRMS.Core
         ICompanyPolicyRepository CompanyPolicies { get; }
         IPolicyAcknowledgementRepository PolicyAcknowledgements { get; }
         IHelpdeskTicketRepository HelpdeskTickets { get; }
+        IHelpdeskTicketActivityRepository HelpdeskTicketActivities { get; }
 
         int Save();
     }

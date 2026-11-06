@@ -13,6 +13,7 @@ namespace KHRMS.Services.Request
         public int DesignationId { get; set; }
         public string? Designation { get; set; }
         public string? Department { get; set; }
+        public long? DepartmentId { get; set; }
         public long? ManagerId { get; set; }
         public string? ShiftId { get; set; }
         public DateTime? DateOfJoining { get; set; }

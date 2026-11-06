@@ -7,6 +7,15 @@ namespace KHRMS.Services.Request
         public decimal HraPercentage { get; set; } = 50;   // 50% of Basic
         public bool IncludePf { get; set; } = true;
         public bool IncludeEsic { get; set; } = true;
+        public bool RestrictPfToWageCeiling { get; set; } = true;
+        public decimal PfWageCeiling { get; set; } = 15000m;
+        public decimal PfEmployeePercent { get; set; } = 12.0m;
+        public decimal PfEmployerPercent { get; set; } = 12.0m;
+        public decimal EsicGrossWageCeiling { get; set; } = 21000m;
+        public decimal EsicEmployeePercent { get; set; } = 0.75m;
+        public decimal EsicEmployerPercent { get; set; } = 3.25m;
+        public string? ProfessionalTaxState { get; set; } = "Karnataka";
+        public int MonthForPtCalculation { get; set; } = 1;
         public string TaxRegime { get; set; } = "New";     // "New" or "Old"
     }
 

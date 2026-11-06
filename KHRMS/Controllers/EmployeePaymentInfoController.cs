@@ -274,7 +274,7 @@ namespace KHRMS
                 return StatusCode((int)HttpStatusCode.InternalServerError, new ApiResponse<bool>
                 {
                     StatusCode = (int)HttpStatusCode.InternalServerError,
-                    Message = ex.Message,
+                    Message = "An unexpected error occurred while creating payment info. Please try again later.",
                     Data = false
                 });
             }
@@ -337,11 +337,10 @@ namespace KHRMS
             catch (Exception ex)
             {
                 Log.Error(ex, "EmployeePaymentInfoController - Error updating payment info");
-                var msg = ex.InnerException != null ? $"{ex.Message} --> {ex.InnerException.Message}" : ex.Message;
                 return StatusCode((int)HttpStatusCode.InternalServerError, new ApiResponse<bool>
                 {
                     StatusCode = (int)HttpStatusCode.InternalServerError,
-                    Message = msg,
+                    Message = "An unexpected error occurred while updating payment info. Please try again later.",
                     Data = false
                 });
             }

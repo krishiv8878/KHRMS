@@ -14,6 +14,7 @@ namespace KHRMS.Services.Request
         public int? DesignationId { get; set; }
         public string? ProfileImage { get; set; }
         public string? EmailAddress { get; set; }
+        public long? DepartmentId { get; set; }
         public string? Department { get; set; }
         public long? ManagerId { get; set; }
         public bool IsActive { get; set; }

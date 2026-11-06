@@ -37,6 +37,7 @@ builder.Services.AddDIServices(builder.Configuration);
 builder.Services.AddScoped<ICandidateService, CandidateService>();
 builder.Services.AddScoped<ISkillService, SkillService>();
 builder.Services.AddScoped<IDesignationService, DesignationService>();
+builder.Services.AddScoped<IDepartmentService, DepartmentService>();
 builder.Services.AddScoped<IAssetsMasterService, AssetsMasterService>();
 builder.Services.AddScoped<IAssetRequestService, AssetRequestService>();
 builder.Services.AddScoped<IHolidayService, HolidayService>();
@@ -65,6 +66,7 @@ builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IEmailTriggerEventService, EmailTriggerEventService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.AddScoped<IAuditService, AuditService>();
+builder.Services.AddScoped<IStatutoryDeductionEngine, StatutoryDeductionEngine>();
 builder.Services.AddScoped<IPayrollService, PayrollService>();
 builder.Services.AddScoped<IPmsService, PmsService>();
 builder.Services.AddScoped<IExpenseService, ExpenseService>();
@@ -77,6 +79,10 @@ builder.Services.AddScoped<ILeaveLedgerService, LeaveLedgerService>();
 builder.Services.AddScoped<ILopConversionService, LopConversionService>();
 builder.Services.AddScoped<ILeaveEncashmentService, LeaveEncashmentService>();
 builder.Services.AddScoped<ICompOffService, CompOffService>();
+// Phase 7 Services: Helpdesk, Company Policies, and Reports
+builder.Services.AddScoped<IHelpdeskService, HelpdeskService>();
+builder.Services.AddScoped<ICompanyPolicyService, CompanyPolicyService>();
+builder.Services.AddScoped<IReportsService, ReportsService>();
 
 // Configurable Approval Workflow System
 builder.Services.AddScoped<IConditionEvaluator, ConditionEvaluator>();
@@ -149,6 +155,16 @@ builder.Services.AddCors(p => p.AddPolicy("corspolice", corsBuilder =>
     corsBuilder.WithOrigins("http://localhost:4200")
     .AllowAnyMethod().AllowAnyHeader().AllowCredentials();
 }));
+// Fail-fast configuration validation: ensure JWT secret is cryptographically secure (at least 32 bytes / 256 bits)
+var configuredJwtSecret = builder.Configuration["Jwt:PasswordResetSecret"];
+if (string.IsNullOrWhiteSpace(configuredJwtSecret) || Encoding.UTF8.GetByteCount(configuredJwtSecret) < 32)
+{
+    throw new InvalidOperationException(
+        "CRITICAL SECURITY CONFIGURATION ERROR: 'Jwt:PasswordResetSecret' must be configured with a key of at least 256 bits (32 bytes). " +
+        "In local development, configure this via .NET User Secrets (dotnet user-secrets set 'Jwt:PasswordResetSecret' '<secret>'); " +
+        "in production, supply it via environment variables (Jwt__PasswordResetSecret) or Key Vault. The application cannot start with a missing or blank secret.");
+}
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(option => option.TokenValidationParameters = new TokenValidationParameters { 
         ValidateIssuer = true,
@@ -157,7 +173,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         ValidateIssuerSigningKey = true,
         ValidIssuer = builder.Configuration["Jwt:ValidIssuer"],
         ValidAudience = builder.Configuration["Jwt:ValidAudience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:PasswordResetSecret"]!)),
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuredJwtSecret)),
     });
 builder.Services.AddAuthorization(options =>
 {
@@ -193,8 +209,8 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-// ── Phase 1: Gemini AI client ────────────────────────────────────────────────
-// API key lives in user-secrets ("Gemini:ApiKey") — never in appsettings.json.
+
+// API key lives in user-secrets ("Gemini:ApiKey") never in appsettings.json.
 // Model name and endpoint are read from appsettings.json ("Gemini" section).
 var geminiApiKey = builder.Configuration["Gemini:ApiKey"]
     ?? "AI_KEY_NOT_CONFIGURED";
@@ -219,9 +235,8 @@ builder.Services.AddChatClient(
     openAiClient.GetChatClient(geminiModel).AsIChatClient())
     .UseFunctionInvocation();
 
-// Phase 3: Policy search service (in-memory; replace with EF Core later).
-builder.Services.AddSingleton<IChatPolicyService, InMemoryChatPolicyService>();
-// ─────────────────────────────────────────────────────────────────────────────
+// INT-04: Database-backed SQL company policy service for Gemini AI Chatbot
+builder.Services.AddScoped<IChatPolicyService, SqlChatPolicyService>();
 
 var app = builder.Build();
 

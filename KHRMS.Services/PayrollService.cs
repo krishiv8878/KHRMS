@@ -13,11 +13,13 @@ namespace KHRMS.Services
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IUserContextService _userContext;
+        private readonly IStatutoryDeductionEngine _statutoryEngine;
 
-        public PayrollService(IUnitOfWork unitOfWork, IUserContextService userContext)
+        public PayrollService(IUnitOfWork unitOfWork, IUserContextService userContext, IStatutoryDeductionEngine? statutoryEngine = null)
         {
             _unitOfWork = unitOfWork;
             _userContext = userContext;
+            _statutoryEngine = statutoryEngine ?? new StatutoryDeductionEngine();
         }
 
         #region Salary Structure & Components
@@ -106,66 +108,50 @@ namespace KHRMS.Services
             decimal hraPercent = req.HraPercentage > 0 ? req.HraPercentage : 50m;
             decimal hra = Math.Round(basic * (hraPercent / 100m), 2);
 
-            // PF: 12% of Basic (max 1800 if wage ceiling of 15,000 applies, or unconstrained)
-            decimal epfEmployee = 0;
-            decimal epfEmployer = 0;
-            if (req.IncludePf)
+            // PF: via Statutory Deduction Engine
+            var pfResult = _statutoryEngine.CalculatePf(new PfCalculationParams
             {
-                decimal pfWage = Math.Min(basic, 15000m); // Statutory standard cap 15k, or basic
-                epfEmployee = Math.Round(pfWage * 0.12m, 2);
-                epfEmployer = epfEmployee;
-            }
-
-            // ESIC: Applicable only if gross <= 21,000
-            decimal esicEmployee = 0;
-            decimal esicEmployer = 0;
-            if (req.IncludeEsic && (basic + hra) <= 21000m)
+                BasicSalary = basic,
+                IncludePf = req.IncludePf,
+                RestrictToWageCeiling = req.RestrictPfToWageCeiling,
+                WageCeiling = req.PfWageCeiling,
+                EmployeeRate = req.PfEmployeePercent,
+                EmployerRate = req.PfEmployerPercent
+            });
+            decimal epfEmployee = pfResult.EmployeeContribution;
+            decimal epfEmployer = pfResult.EmployerContribution;
+            // ESIC: via Statutory Deduction Engine
+            var esicResult = _statutoryEngine.CalculateEsic(new EsicCalculationParams
             {
-                esicEmployee = Math.Round((basic + hra) * 0.0075m, 2);
-                esicEmployer = Math.Round((basic + hra) * 0.0325m, 2);
-            }
-
-            // Professional Tax (Standard ₹200/mo)
-            decimal pt = monthlyCtc > 15000m ? 200m : (monthlyCtc > 10000m ? 150m : 0m);
-
+                GrossWage = basic + hra,
+                IncludeEsic = req.IncludeEsic,
+                WageCeiling = req.EsicGrossWageCeiling,
+                EmployeeRate = req.EsicEmployeePercent,
+                EmployerRate = req.EsicEmployerPercent
+            });
+            decimal esicEmployee = esicResult.EmployeeContribution;
+            decimal esicEmployer = esicResult.EmployerContribution;
             // Special Allowance = Monthly CTC - (Basic + HRA + EpfEmployer + EsicEmployer)
             decimal specialAllowance = Math.Max(0, monthlyCtc - (basic + hra + epfEmployer + esicEmployer));
             decimal monthlyGross = basic + hra + specialAllowance;
 
-            // TDS estimation (Indian New Tax Regime slabs)
-            decimal taxableIncome = Math.Max(0, (monthlyGross * 12m) - 50000m); // ₹50k standard deduction
-            decimal annualTds = 0;
-            if (req.TaxRegime?.Equals("Old", StringComparison.OrdinalIgnoreCase) == true)
+            // Professional Tax via Statutory Deduction Engine (State and month aware)
+            var ptResult = _statutoryEngine.CalculateProfessionalTax(new PtCalculationParams
             {
-                // Old Regime: 2.5L to 5L (5%), 5L to 10L (20%), >10L (30%)
-                if (taxableIncome > 1000000m)
-                    annualTds = 112500m + ((taxableIncome - 1000000m) * 0.30m);
-                else if (taxableIncome > 500000m)
-                    annualTds = 12500m + ((taxableIncome - 500000m) * 0.20m);
-                else if (taxableIncome > 250000m)
-                    annualTds = (taxableIncome - 250000m) * 0.05m;
-            }
-            else
-            {
-                // New Regime 2024-25: Rebate up to ₹7,00,000
-                if (taxableIncome > 700000m)
-                {
-                    if (taxableIncome > 1500000m)
-                        annualTds = 150000m + ((taxableIncome - 1500000m) * 0.30m);
-                    else if (taxableIncome > 1200000m)
-                        annualTds = 90000m + ((taxableIncome - 1200000m) * 0.20m);
-                    else if (taxableIncome > 900000m)
-                        annualTds = 45000m + ((taxableIncome - 900000m) * 0.15m);
-                    else if (taxableIncome > 600000m)
-                        annualTds = 15000m + ((taxableIncome - 600000m) * 0.10m);
-                    else if (taxableIncome > 300000m)
-                        annualTds = (taxableIncome - 300000m) * 0.05m;
+                MonthlyGross = monthlyGross,
+                State = req.ProfessionalTaxState,
+                Month = req.MonthForPtCalculation
+            });
+            decimal pt = ptResult.TaxAmount;
 
-                    // 4% Health & Education cess
-                    annualTds *= 1.04m;
-                }
-            }
-            decimal monthlyTds = Math.Round(annualTds / 12m, 2);
+            // TDS estimation via Statutory Deduction Engine
+            var tdsResult = _statutoryEngine.CalculateTds(new TdsCalculationParams
+            {
+                AnnualGross = monthlyGross * 12m,
+                TaxRegime = req.TaxRegime ?? "New",
+                StandardDeduction = 50000m
+            });
+            decimal monthlyTds = tdsResult.MonthlyTds;
 
             decimal totalDeductions = epfEmployee + esicEmployee + pt + monthlyTds;
             decimal takeHome = Math.Max(0, monthlyGross - totalDeductions);
@@ -390,9 +376,9 @@ namespace KHRMS.Services
                 decimal basic = salary?.BasicSalary ?? (monthlyGross * 0.4m);
                 decimal hra = salary?.Hra ?? (basic * 0.5m);
                 decimal specialAllowance = salary?.SpecialAllowance ?? (monthlyGross - basic - hra);
-                decimal epf = salary?.EpfEmployee ?? Math.Round(Math.Min(basic, 15000m) * 0.12m, 2);
-                decimal esic = salary?.EsicEmployee ?? 0m;
-                decimal pt = salary?.ProfessionalTax ?? 200m;
+                decimal epf = salary?.EpfEmployee ?? _statutoryEngine.CalculatePf(new PfCalculationParams { BasicSalary = basic }).EmployeeContribution;
+                decimal esic = salary?.EsicEmployee ?? _statutoryEngine.CalculateEsic(new EsicCalculationParams { GrossWage = monthlyGross }).EmployeeContribution;
+                decimal pt = salary?.ProfessionalTax ?? _statutoryEngine.CalculateProfessionalTax(new PtCalculationParams { MonthlyGross = monthlyGross, Month = req.Month }).TaxAmount;
                 decimal tds = salary?.MonthlyTds ?? 0m;
 
                 // Attendance calculation

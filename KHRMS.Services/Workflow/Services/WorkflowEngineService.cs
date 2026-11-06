@@ -1550,6 +1550,53 @@ namespace KHRMS.Services.Workflow.Services
                                     Duration = duration
                                 });
                             }
+
+                            // BL-04: Synchronize DailyAttendanceRecords upon regularization approval
+                            try
+                            {
+                                var existingDaily = (await _unitOfWork.DailyAttendanceRecords.GetAll())
+                                    .FirstOrDefault(r => !r.IsDeleted && r.EmployeeId == attReq.EmployeeId && r.AttendanceDate == reqDateOnly);
+
+                                int totalMins = (int)(duration * 60);
+                                string regularizedStatus = duration >= 8 ? "Present" : "HalfDay";
+
+                                if (existingDaily != null)
+                                {
+                                    existingDaily.FirstClockIn = inTime;
+                                    existingDaily.LastClockOut = outTime;
+                                    existingDaily.TotalWorkMinutes = totalMins;
+                                    existingDaily.EffectiveWorkMinutes = totalMins;
+                                    existingDaily.Status = regularizedStatus;
+                                    existingDaily.IsRegularized = true;
+                                    existingDaily.Remarks = $"Regularized via Workflow: {attReq.Reason}";
+                                    existingDaily.UpdatedDate = DateTime.UtcNow;
+                                    _unitOfWork.DailyAttendanceRecords.Update(existingDaily);
+                                }
+                                else
+                                {
+                                    var newDaily = new DailyAttendanceRecord
+                                    {
+                                        EmployeeId = attReq.EmployeeId,
+                                        AttendanceDate = reqDateOnly,
+                                        FirstClockIn = inTime,
+                                        LastClockOut = outTime,
+                                        TotalWorkMinutes = totalMins,
+                                        EffectiveWorkMinutes = totalMins,
+                                        Status = regularizedStatus,
+                                        IsRegularized = true,
+                                        Remarks = $"Regularized via Workflow: {attReq.Reason}",
+                                        CreatedDate = DateTime.UtcNow,
+                                        UpdatedDate = DateTime.UtcNow,
+                                        IsActive = true,
+                                        IsDeleted = false
+                                    };
+                                    await _unitOfWork.DailyAttendanceRecords.Add(newDaily);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Log.Error(ex, "Failed to sync DailyAttendanceRecord on workflow regularization approval for Employee {EmployeeId} on {Date}", attReq.EmployeeId, reqDateOnly);
+                            }
                         }
 
                         _unitOfWork.AttendanceRequests.Update(attReq);

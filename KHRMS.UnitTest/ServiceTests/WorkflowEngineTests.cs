@@ -675,5 +675,94 @@ namespace KHRMS.UnitTest.ServiceTests
             _mockInstanceStepRepo.Verify(r => r.Add(It.Is<WorkflowInstanceStep>(s => s.StepOrder == 2 && s.Status == "Waiting")), Times.Once);
             _mockAuditRepo.Verify(a => a.Add(It.Is<WorkflowAuditLog>(l => l.EventType == "WorkflowStarted")), Times.Once);
         }
+
+        [Fact]
+        public async Task ActOnStepAsync_WhenAttendanceRegularizationFinalApproval_SyncsDailyAttendanceRecord()
+        {
+            long instanceId = 55;
+            long actorId = 101;
+            long employeeId = 50;
+            var reqDate = DateTime.Today.AddDays(-2);
+            var reqDateOnly = DateOnly.FromDateTime(reqDate);
+
+            var instance = new WorkflowInstance
+            {
+                Id = instanceId,
+                RequestType = "AttendanceRegularization",
+                RequestId = 10,
+                RequesterEmployeeId = employeeId,
+                CurrentStepOrder = 1,
+                Status = "Pending",
+                IsActive = true,
+                IsDeleted = false
+            };
+
+            var step = new WorkflowInstanceStep
+            {
+                Id = 1,
+                WorkflowInstanceId = instanceId,
+                StepOrder = 1,
+                StepName = "Manager Approval",
+                ApproverRuleType = "ReportingManager",
+                Status = "Pending",
+                EligibleApproverIdsJson = JsonSerializer.Serialize(new List<long> { actorId }),
+                IsActive = true,
+                IsDeleted = false
+            };
+
+            var attReq = new AttendanceRequest
+            {
+                Id = 10,
+                EmployeeId = employeeId,
+                RequestedDate = reqDate,
+                ClockInTime = reqDate.AddHours(9),
+                ClockOutTime = reqDate.AddHours(18),
+                Reason = "Forgot badge",
+                Status = "Pending"
+            };
+
+            var mockAttReqRepo = new Mock<IAttendanceRequestRepository>();
+            mockAttReqRepo.Setup(r => r.GetById(10)).ReturnsAsync(attReq);
+            _mockUow.Setup(u => u.AttendanceRequests).Returns(mockAttReqRepo.Object);
+
+            var mockEmpAttRepo = new Mock<IEmployeeAttendanceRepository>();
+            mockEmpAttRepo.Setup(r => r.GetAll()).ReturnsAsync(new List<EmployeeAttendance>());
+            _mockUow.Setup(u => u.EmployeeAttendance).Returns(mockEmpAttRepo.Object);
+
+            var mockAttLogRepo = new Mock<IAttendanceLogRepository>();
+            mockAttLogRepo.Setup(r => r.GetAll()).ReturnsAsync(new List<AttendanceLog>());
+            _mockUow.Setup(u => u.AttendanceLog).Returns(mockAttLogRepo.Object);
+
+            var mockDailyRepo = new Mock<IDailyAttendanceRecordRepository>();
+            var dailyRecords = new List<DailyAttendanceRecord>();
+            mockDailyRepo.Setup(r => r.GetAll()).ReturnsAsync(dailyRecords);
+            DailyAttendanceRecord? capturedDaily = null;
+            mockDailyRepo.Setup(r => r.Add(It.IsAny<DailyAttendanceRecord>()))
+                .Callback<DailyAttendanceRecord>(d => capturedDaily = d)
+                .Returns(Task.CompletedTask);
+            _mockUow.Setup(u => u.DailyAttendanceRecords).Returns(mockDailyRepo.Object);
+
+            _mockInstanceRepo.Setup(r => r.GetById(instanceId)).ReturnsAsync(instance);
+            _mockInstanceStepRepo.Setup(r => r.GetAll()).ReturnsAsync(new List<WorkflowInstanceStep> { step });
+            _mockPermissionService.Setup(p => p.HasPermissionAsync(actorId, "ATTENDANCE_REGULARIZE_APPROVE")).ReturnsAsync(true);
+            _mockEmpRepo.Setup(r => r.GetAll()).ReturnsAsync(new List<Employee>
+            {
+                new Employee { Id = actorId, FirstName = "Boss", LastName = "Man", IsActive = true, IsDeleted = false },
+                new Employee { Id = employeeId, FirstName = "Worker", LastName = "Bee", IsActive = true, IsDeleted = false }
+            });
+            _mockDelegationRepo.Setup(r => r.GetAll()).ReturnsAsync(new List<WorkflowDelegation>());
+
+            var actionReq = new WorkflowActionRequest { Action = "Approve", Reason = "Regularization approved." };
+            var result = await _engineService.ActOnStepAsync(instanceId, actorId, actionReq);
+
+            Assert.True(result.Success);
+            Assert.Equal("Approved", instance.Status);
+            mockDailyRepo.Verify(r => r.Add(It.IsAny<DailyAttendanceRecord>()), Times.Once);
+            Assert.NotNull(capturedDaily);
+            Assert.Equal("Present", capturedDaily.Status);
+            Assert.True(capturedDaily.IsRegularized);
+            Assert.Equal(employeeId, capturedDaily.EmployeeId);
+            Assert.Equal(reqDateOnly, capturedDaily.AttendanceDate);
+        }
     }
 }

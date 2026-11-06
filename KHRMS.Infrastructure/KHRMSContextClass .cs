@@ -14,6 +14,7 @@ namespace KHRMS.Infrastructure
         public DbSet<Candidate> Candidates { get; set; }
         public DbSet<Skill> Skills { get; set; }
         public DbSet<Designation> Designations { get; set; }
+        public DbSet<Department> Departments { get; set; }
         public DbSet<Holiday> Holidays { get; set; }
         public DbSet<Employee> Employees { get; set; }
         public DbSet<AssetsMaster> AssetsMasters { get; set; }
@@ -240,6 +241,61 @@ namespace KHRMS.Infrastructure
                 entity.HasOne(e => e.Employee).WithMany().HasForeignKey(e => e.EmployeeId).OnDelete(DeleteBehavior.Restrict);
             });
 
+            // Department Relationships & Foreign Keys
+            modelBuilder.Entity<Department>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+                entity.Property(e => e.Code).HasMaxLength(20);
+                entity.Property(e => e.CostCenter).HasMaxLength(50);
+                entity.Property(e => e.Description).HasMaxLength(250);
+
+                entity.HasOne(d => d.Manager)
+                      .WithMany()
+                      .HasForeignKey(d => d.ManagerId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<Employee>(entity =>
+            {
+                entity.HasOne(e => e.DepartmentNavigation)
+                      .WithMany()
+                      .HasForeignKey(e => e.DepartmentId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Helpdesk Tickets & Activities Relationships (Prevent multiple cascade paths / cycles)
+            modelBuilder.Entity<HelpdeskTicket>(entity =>
+            {
+                entity.HasOne(t => t.Requester)
+                      .WithMany()
+                      .HasForeignKey(t => t.RequesterEmployeeId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(t => t.Assignee)
+                      .WithMany()
+                      .HasForeignKey(t => t.AssignedToEmployeeId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<HelpdeskTicketActivity>(entity =>
+            {
+                entity.HasOne(a => a.Ticket)
+                      .WithMany()
+                      .HasForeignKey(a => a.TicketId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(a => a.PerformedByEmployee)
+                      .WithMany()
+                      .HasForeignKey(a => a.PerformedByEmployeeId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(a => a.AssignedToEmployee)
+                      .WithMany()
+                      .HasForeignKey(a => a.AssignedToEmployeeId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
             // Global Query Filter: Automatically exclude soft-deleted records across all KHRMSBase entities
             foreach (var entityType in modelBuilder.Model.GetEntityTypes().ToList())
             {
@@ -362,5 +418,6 @@ namespace KHRMS.Infrastructure
         public DbSet<CompanyPolicy> CompanyPolicies { get; set; }
         public DbSet<PolicyAcknowledgement> PolicyAcknowledgements { get; set; }
         public DbSet<HelpdeskTicket> HelpdeskTickets { get; set; }
+        public DbSet<HelpdeskTicketActivity> HelpdeskTicketActivities { get; set; }
     }
 }

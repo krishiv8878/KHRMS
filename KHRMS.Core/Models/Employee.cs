@@ -172,10 +172,15 @@ namespace KHRMS.Core
         [StringLength(300)]
         public string? PersonalEmail { get; set; }
 
+        public long? DepartmentId { get; set; }
+
+        [ForeignKey("DepartmentId")]
+        public virtual Department? DepartmentNavigation { get; set; }
+
         [NotMapped]
         public string? Department
         {
-            get => Branch ?? Designation ?? "General";
+            get => DepartmentNavigation?.Name ?? Branch ?? Designation ?? "General";
             set => Branch = value;
         }
 

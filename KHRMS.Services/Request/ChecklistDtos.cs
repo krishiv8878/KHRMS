@@ -235,6 +235,7 @@ namespace KHRMS.Services.Request
     {
         public string Status { get; set; } = "Prepared"; // "Prepared", "NotApplicable"
         public string? Remarks { get; set; }
+        public string? OverrideReason { get; set; }
     }
 
     public class AssetReturnVerificationDto

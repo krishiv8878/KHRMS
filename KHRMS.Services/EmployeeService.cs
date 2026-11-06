@@ -170,6 +170,15 @@ namespace KHRMS.Services
                 assignedEmpCode = existingCodes.Any() ? (existingCodes.Max() ?? 100) + 1 : 101;
             }
 
+            if (employeeRequestModel.ManagerId.HasValue && employeeRequestModel.ManagerId.Value > 0)
+            {
+                var mgr = await _unitOfWork.Employees.GetById(employeeRequestModel.ManagerId.Value);
+                if (mgr == null || mgr.IsDeleted)
+                {
+                    throw new ArgumentException($"Assigned manager (ID: {employeeRequestModel.ManagerId.Value}) does not exist.");
+                }
+            }
+
             var newEmployee = new Employee
             {
                 FirstName = employeeRequestModel.FirstName,
@@ -192,7 +201,9 @@ namespace KHRMS.Services
                 ProbationEndDate = employeeRequestModel.ProbationEndDate ?? employeeRequestModel.DateOfJoining?.AddMonths(3) ?? now.AddMonths(3),
                 ProbationStatus = !string.IsNullOrWhiteSpace(employeeRequestModel.ProbationStatus) ? employeeRequestModel.ProbationStatus : "UnderProbation",
                 EmploymentStatus = !string.IsNullOrWhiteSpace(employeeRequestModel.EmploymentStatus) ? employeeRequestModel.EmploymentStatus : "Probation",
-                EmploymentType = !string.IsNullOrWhiteSpace(employeeRequestModel.EmploymentType) ? employeeRequestModel.EmploymentType : "FullTime"
+                EmploymentType = !string.IsNullOrWhiteSpace(employeeRequestModel.EmploymentType) ? employeeRequestModel.EmploymentType : "FullTime",
+                DepartmentId = employeeRequestModel.DepartmentId,
+                Branch = employeeRequestModel.Branch
             };
 
             await _unitOfWork.Employees.Add(newEmployee);
@@ -376,6 +387,7 @@ namespace KHRMS.Services
             var rolemaster = (await _unitOfWork.RoleMaster.GetAll()).ToDictionary(role => role.Id);
             var projects = (await _unitOfWork.ProjectMasters.GetAll()).ToDictionary(p => p.Id, p => p.ProjectName);
             var employeeDictionary = employees.ToDictionary(emp => emp.Id);
+            var departments = (await _unitOfWork.Departments.GetAll()).ToDictionary(d => d.Id, d => d.Name);
 
             var employeesWithRoles = employees.Select(emp => new EmployeeRequestModel
             {
@@ -421,6 +433,10 @@ namespace KHRMS.Services
                 PassportExpiryDate = emp.PassportExpiryDate,
                 PassportScanCopy = emp.PassportScanCopy,
                 Branch = emp.Branch,
+                DepartmentId = emp.DepartmentId,
+                DepartmentName = emp.DepartmentId.HasValue && departments.TryGetValue(emp.DepartmentId.Value, out var deptName)
+                    ? deptName
+                    : (!string.IsNullOrWhiteSpace(emp.Branch) ? emp.Branch : "General"),
                 DateOfBirth = emp.DateOfBirth,
                 SkillIds = emp.SkillIds ?? new List<long>(),
                 Skills = (emp.SkillIds ?? Enumerable.Empty<long>())
@@ -464,6 +480,8 @@ namespace KHRMS.Services
             var employees = await _unitOfWork.Employees.GetAll();
             var designations = (await _unitOfWork.Designations.GetAll())
                 .ToDictionary(d => d.Id, d => d.DesignationName);
+            var departments = (await _unitOfWork.Departments.GetAll())
+                .ToDictionary(d => d.Id, d => d.Name);
 
             var lookupList = employees
                 .Where(e => !e.IsDeleted && e.IsActive)
@@ -478,7 +496,10 @@ namespace KHRMS.Services
                     DesignationId = e.DesignationId,
                     ProfileImage = e.ProfileImage,
                     EmailAddress = e.EmailAddress,
-                    Department = e.Branch,
+                    DepartmentId = e.DepartmentId,
+                    Department = (e.DepartmentId.HasValue && departments.TryGetValue(e.DepartmentId.Value, out var deptName))
+                        ? deptName
+                        : e.Branch,
                     ManagerId = e.ManagerId,
                     IsActive = e.IsActive
                 })
@@ -535,7 +556,61 @@ namespace KHRMS.Services
             employeeDetails.IsActive = employeeRequestModel.IsActive;
             employeeDetails.UpdatedDate = DateTime.Now;
             employeeDetails.ShiftIds = employeeRequestModel.ShiftId ?? employeeDetails.ShiftIds;
-            employeeDetails.ManagerId = employeeRequestModel.ManagerId ?? employeeDetails.ManagerId;
+            if (employeeRequestModel.ManagerId.HasValue)
+            {
+                if (employeeRequestModel.ManagerId.Value > 0)
+                {
+                    long proposedManagerId = employeeRequestModel.ManagerId.Value;
+                    if (proposedManagerId == employeeDetails.Id)
+                    {
+                        throw new InvalidOperationException("An employee cannot be assigned as their own reporting manager.");
+                    }
+
+                    var proposedManager = await _unitOfWork.Employees.GetById(proposedManagerId);
+                    if (proposedManager == null || proposedManager.IsDeleted)
+                    {
+                        throw new ArgumentException($"Assigned manager (ID: {proposedManagerId}) does not exist.");
+                    }
+
+                    // Traverse upstream reporting chain to detect circular loops
+                    var allEmployees = (await _unitOfWork.Employees.GetAll())
+                        .Where(e => !e.IsDeleted)
+                        .ToDictionary(e => e.Id);
+                    var visited = new HashSet<long> { proposedManagerId };
+                    long? currentUpstream = proposedManager.ManagerId;
+
+                    while (currentUpstream.HasValue && currentUpstream.Value > 0)
+                    {
+                        if (currentUpstream.Value == employeeDetails.Id)
+                        {
+                            throw new InvalidOperationException(
+                                $"Circular reporting hierarchy detected: Employee #{employeeDetails.Id} ({employeeDetails.FirstName} {employeeDetails.LastName}) " +
+                                $"is already an upstream manager of #{proposedManager.Id} ({proposedManager.FirstName} {proposedManager.LastName}). " +
+                                "Assigning this manager would create an infinite reporting loop.");
+                        }
+
+                        if (!visited.Add(currentUpstream.Value))
+                        {
+                            break;
+                        }
+
+                        if (allEmployees.TryGetValue(currentUpstream.Value, out var upEmp))
+                        {
+                            currentUpstream = upEmp.ManagerId;
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+
+                    employeeDetails.ManagerId = proposedManagerId;
+                }
+                else
+                {
+                    employeeDetails.ManagerId = null;
+                }
+            }
             employeeDetails.PrimaryEmailAddress = employeeRequestModel.PrimaryEmailAddress ?? employeeDetails.PrimaryEmailAddress;
             employeeDetails.PrimaryContactName = employeeRequestModel.PrimaryContactName ?? employeeDetails.PrimaryContactName;
             employeeDetails.PrimaryContactRelationship = employeeRequestModel.PrimaryContactRelationship ?? employeeDetails.PrimaryContactRelationship;
@@ -570,6 +645,7 @@ namespace KHRMS.Services
             employeeDetails.PassportExpiryDate = employeeRequestModel.PassportExpiryDate ?? employeeDetails.PassportExpiryDate;
             employeeDetails.PassportScanCopy = employeeRequestModel.PassportScanCopy ?? employeeDetails.PassportScanCopy;
             employeeDetails.Branch = employeeRequestModel.Branch ?? employeeDetails.Branch;
+            if (employeeRequestModel.DepartmentId.HasValue) employeeDetails.DepartmentId = employeeRequestModel.DepartmentId.Value;
             employeeDetails.DateOfBirth = employeeRequestModel.DateOfBirth ?? employeeDetails.DateOfBirth;
             if (employeeRequestModel.SkillIds != null)
                 employeeDetails.SkillIds = employeeRequestModel.SkillIds;

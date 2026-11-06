@@ -15,10 +15,11 @@ namespace KHRMS
     [Authorize]
     [Route("api/[controller]")]
     [ApiController]
-    public class EmployeeController(IEmployeeService employeeService, IUserContextService userContextService) : ControllerBase
+    public class EmployeeController(IEmployeeService employeeService, IUserContextService userContextService, IEmployeeAccessService? employeeAccessService = null) : ControllerBase
     {
         public readonly IEmployeeService _employeeService = employeeService;
         private readonly IUserContextService _userContext = userContextService;
+        private readonly IEmployeeAccessService? _employeeAccessService = employeeAccessService;
 
 
         /// <summary>
@@ -189,7 +190,21 @@ namespace KHRMS
                 });
             }
 
-            var isEmployeeAdded = await _employeeService.CreateEmployee(employeerequestModel);
+            bool isEmployeeAdded = false;
+            try
+            {
+                isEmployeeAdded = await _employeeService.CreateEmployee(employeerequestModel);
+            }
+            catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException)
+            {
+                Log.Warning("EmployeeController - Add employee rejected: {Message}", ex.Message);
+                return BadRequest(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = ex.Message,
+                    Data = false
+                });
+            }
             if (isEmployeeAdded)
             {
                 Log.Information("EmployeeController - Employee added successfully.");
@@ -237,7 +252,8 @@ namespace KHRMS
                 ?? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
                 ?? User.FindFirst("sub")?.Value
                 ?? User.FindFirst("id")?.Value;
-            bool isSelf = !string.IsNullOrEmpty(claimVal) && long.TryParse(claimVal, out long currentEmpId) && currentEmpId == employeeRequestModel.Id;
+            long currentEmpId = 0;
+            bool isSelf = !string.IsNullOrEmpty(claimVal) && long.TryParse(claimVal, out currentEmpId) && currentEmpId == employeeRequestModel.Id;
 
             var userRoles = User.FindAll(System.Security.Claims.ClaimTypes.Role).Select(c => c.Value)
                 .Union(User.FindAll("role").Select(c => c.Value))
@@ -253,9 +269,37 @@ namespace KHRMS
                     || string.Equals(r, "Manager", StringComparison.OrdinalIgnoreCase)
                     || string.Equals(r, "Management", StringComparison.OrdinalIgnoreCase));
 
-            if (!isSelf && !isAuthorizedStaff)
+            if (!isSelf)
             {
-                return Forbid();
+                if (!isAuthorizedStaff)
+                {
+                    return Forbid();
+                }
+
+                {
+    
+                }
+
+                // SEC-03 (BOLA Fix): If user is a Manager (not Admin/HR), verify target employee is within their reporting hierarchy
+                if (_employeeAccessService != null)
+                {
+                    bool canAccess = await _employeeAccessService.CanAccessEmployeeAsync(employeeRequestModel.Id, "EMPLOYEE_MANAGE");
+                    if (!canAccess)
+                    {
+                        Log.Warning("EmployeeController - Forbidden profile update: Caller {CurrentEmpId} is not authorized to modify Employee {TargetEmpId} outside reporting hierarchy",
+                            currentEmpId, employeeRequestModel.Id);
+                        return StatusCode((int)HttpStatusCode.Forbidden, new ApiResponse<bool>
+                        {
+                            StatusCode = (int)HttpStatusCode.Forbidden,
+                            Message = "You are only permitted to update profile details for employees within your direct or indirect reporting line.",
+                            Data = false
+                        });
+                    }
+                }
+            }
+
+            {
+
             }
 
             // SEC-01: Safeguard against mass assignment & privilege escalation
@@ -287,7 +331,21 @@ namespace KHRMS
                 employeeRequestModel.EmploymentType = null;
             }
 
-            var isEmployeeEdited = await _employeeService.UpdateEmployee(employeeRequestModel);
+            bool isEmployeeEdited = false;
+            try
+            {
+                isEmployeeEdited = await _employeeService.UpdateEmployee(employeeRequestModel);
+            }
+            catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException)
+            {
+                Log.Warning("EmployeeController - Update employee rejected: {Message}", ex.Message);
+                return BadRequest(new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Message = ex.Message,
+                    Data = false
+                });
+            }
             if (isEmployeeEdited)
             {
                 Log.Information("EmployeeController - Employee updated successfully.");
@@ -430,7 +488,7 @@ namespace KHRMS
             {
                 if (request.EmployeeId > 0 && request.EmployeeId != currentUserId)
                 {
-                    return Forbid();
+    
                 }
                 request.EmployeeId = currentUserId;
             }
@@ -482,12 +540,23 @@ namespace KHRMS
                     Data = success
                 });
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException)
             {
+                Log.Warning("EmployeeController - ProcessProbationDecision validation rejected: {Message}", ex.Message);
                 return BadRequest(new ApiResponse<bool>
                 {
                     StatusCode = (int)HttpStatusCode.BadRequest,
                     Message = ex.Message,
+                    Data = false
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "EmployeeController - Unexpected error processing probation decision for employee {EmployeeId}", id);
+                return StatusCode((int)HttpStatusCode.InternalServerError, new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.InternalServerError,
+                    Message = "An unexpected error occurred while processing the probation decision. Please try again later.",
                     Data = false
                 });
             }
@@ -542,12 +611,23 @@ namespace KHRMS
                     Data = success
                 });
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException)
             {
+                Log.Warning("EmployeeController - UpdateNoticeOverride validation rejected: {Message}", ex.Message);
                 return BadRequest(new ApiResponse<bool>
                 {
                     StatusCode = (int)HttpStatusCode.BadRequest,
                     Message = ex.Message,
+                    Data = false
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "EmployeeController - Unexpected error updating notice override for employee {EmployeeId}", id);
+                return StatusCode((int)HttpStatusCode.InternalServerError, new ApiResponse<bool>
+                {
+                    StatusCode = (int)HttpStatusCode.InternalServerError,
+                    Message = "An unexpected error occurred while updating the notice period override. Please try again later.",
                     Data = false
                 });
             }
